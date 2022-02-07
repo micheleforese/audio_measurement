@@ -1,0 +1,13 @@
+# List Commands
+
+```
+TRIG:DELAY 0.001
+TRIG:COUN 3
+
+CONF:VOLT:AC
+TRIG:SOUR IMM
+INIT
+FETC?
+
+1 INIT; :FETC?
+```

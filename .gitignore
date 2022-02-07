@@ -1,0 +1,10 @@
+# Python cache
+**/__pycache__
+
+# Code Editors settings
+.vscode/*
+!.vscode/tasks.json
+
+# Configs
+config/*
+!config/config_template.json

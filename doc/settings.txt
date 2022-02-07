@@ -1,0 +1,15 @@
+*RST
+:FUNC "VOLT"            # Sets the Volt measurement
+:TRIG:SOUR IMM          # The trigger is in Immediate MODE
+
+CONF:VOLT:AC            # Sets the AC mode
+
+:TRIG:DEL:AUTO OFF          # Sets to OFF the Automatic delay
+:TRIG:DEL +1.60000000E-04   # Sets the delay between the trigger and the first measurement
+
+SENSe:<function>:RANGe      # Sets fixed range measurements
+
+:SAMP:SOUR TIM              # Immmediate Mode on sampling
+:SAMP:TIM <value>           # Seets te interval of the measurement
+:SAMP:COUN +2               # Number of Samples
+
