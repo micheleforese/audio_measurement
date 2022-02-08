@@ -22,7 +22,7 @@ import nidaqmx.stream_readers
 import nidaqmx.stream_writers
 import numpy as np
 from cDAQ.utility import *
-from usbTmc.UsbTmc import *
+from cDAQ.UsbTmc import *
 from usbTmc.utility import *
 from pathlib import Path
 from .utility import *

@@ -22,9 +22,10 @@ import nidaqmx.constants
 import nidaqmx.stream_readers
 import nidaqmx.stream_writers
 import numpy as np
+from cDAQ.rigol import Rigol
 from cDAQ.utility import *
-from usbTmc.UsbTmc import *
-from usbTmc.utility import *
+from cDAQ.UsbTmc import *
+from .utility import *
 from pathlib import Path
 from .utility import *
 from scipy.fft import fft, fftfreq, rfft
@@ -36,15 +37,13 @@ from numpy.lib.function_base import average
 from numpy.ma.core import sin, sqrt
 from rich import table
 from rich.console import Console
-from rich import inspect, pretty
 from rich.panel import Panel
 from rich.table import Column, Table
 import nidaqmx
 import nidaqmx.system
 from rich.tree import Tree
 import numpy as np
-import math
-import json
+
 import jstyleson
 
 
@@ -137,3 +136,61 @@ def curva(
 
     console.print(
         Panel.fit("[red]{}[/] - RMS: {} V".format(number_of_samples, rms_value)))
+
+
+def sampling_filter(
+    file_path: str, csv_file_path: str,
+    min_Hz: np.int = 10, max_Hz: np.int = 100,
+    points_for_decade: np.int = 10,
+    csv_table_titles=False,
+    time_report: bool = False, debug: bool = False,
+):
+    step: np.float = 1 / points_for_decade
+    sample_number = 1
+    frequency: np.float
+    voltages_measurements: List[np.float]
+    period: np.float
+    delay: np.float = 0.0
+    aperture: np.float = 0.0
+    interval: np.float = 0.0
+
+    timer = Timer()
+
+    """Asks for the 2 instruments"""
+    list_devices: list() = get_device_list()
+    print_devices_list(list_devices)
+    index_generator: np.int = np.int(input("Which is the Generator? "))
+    index_reader: np.int = np.int(input("Which is the Reader? "))
+
+    """Generates the instrument's interfaces"""
+    gen: usbtmc.Instrument = list_devices[index_generator]
+    read: usbtmc.Instrument = list_devices[index_reader]
+
+    """Open the Instruments interfaces"""
+    gen.open()
+    read.open()
+
+    """Sets the Configuration for the Voltmeter"""
+    configs_gen: list = [
+        "*CLS",
+        Rigol.set_voltage_ac(),
+        ":OUTPut1 OFF",
+        ":OUTPut1 ON",
+        Rigol.clear(),
+    ]
+
+    configs_read: list = [
+        "*CLS",
+        "CONF:VOLT:AC",
+        ":VOLT:AC:BAND +3.00000000E+00",
+        ":TRIG:SOUR IMM",
+        ":TRIG:DEL:AUTO OFF",
+        ":FREQ:VOLT:RANG:AUTO ON",
+        ":SAMP:SOUR TIM",
+        f":SAMP:COUN {sample_number}",
+    ]
+
+    exec_commands(gen, configs_gen)
+    exec_commands(read, configs_read)
+
+    pass

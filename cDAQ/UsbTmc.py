@@ -491,7 +491,13 @@ def test_sampling(file_path: str, min_Hz: np.int = 10, max_Hz: np.int = 100, poi
     read.close()
 
 
-def test_filter(file_path: str, csv_file_path: str, min_Hz: np.int = 10, max_Hz: np.int = 100, points_for_decade: np.int = 10, time_report: bool = False, debug: bool = False, csv_table_titles=False):
+def test_filter(
+    file_path: str, csv_file_path: str,
+    min_Hz: np.int = 10, max_Hz: np.int = 100,
+    points_for_decade: np.int = 10,
+    csv_table_titles=False,
+    time_report: bool = False, debug: bool = False,
+):
 
     step: np.float = 1 / points_for_decade
     sample_number = 1
