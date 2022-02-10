@@ -16,6 +16,7 @@ import numpy as np
 import os
 import usbtmc
 from usbtmc.usbtmc import Instrument
+from timer import Timer, Timer_Message
 
 console = Console()
 
@@ -30,7 +31,11 @@ def print_info_instrument(instr: usbtmc.Instrument):
 ###########################################################
 
 
-def exec_commands(instr: usbtmc.Instrument, commands: List[str], debug: bool = False):
+def exec_commands(
+    instr: usbtmc.Instrument,
+    commands: List[str],
+    debug: bool = False
+):
     for command in commands:
         if(command.find("?") > 0):
             response = instr.ask(command)
@@ -280,9 +285,13 @@ def csv_to_plot():
     plt.savefig("plot.pdf")
 
 
-def test_sampling(file_path: str, min_Hz: np.int = 10, max_Hz: np.int = 100, points_for_decade: np.int = 10,
-                  sample_number=1,
-                  time_report: bool = False, debug: bool = False):
+def test_sampling(
+    file_path: str,
+    min_Hz: np.int = 10, max_Hz: np.int = 100,
+    points_for_decade: np.int = 10,
+    sample_number=1,
+    time_report: bool = False, debug: bool = False
+):
 
     table_config = Table(title="Configurations")
     table_config.add_column("Configuration", style="cyan", no_wrap=True)
@@ -388,7 +397,8 @@ def test_sampling(file_path: str, min_Hz: np.int = 10, max_Hz: np.int = 100, poi
     f = open(file_path, "w")
 
     """Start time"""
-    start = datetime.now()
+    timer = Timer()
+    timer.start()
 
     step_curr = 0
     while step_curr < step_total + 1:
@@ -476,12 +486,12 @@ def test_sampling(file_path: str, min_Hz: np.int = 10, max_Hz: np.int = 100, poi
     f.close()
 
     """Stop time"""
-    stop = datetime.now()
+    timer_message: Timer_Message = timer.stop()
 
     if(time_report):
         console.print(
             Panel(
-                f"{(stop-start).total_seconds()} s",
+                f"{}: {} s".format(timer_message.message, timer_message.elapsed_time),
                 title="Execution Time"
             )
         )

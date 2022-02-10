@@ -1,13 +1,24 @@
-import time
+from email.errors import MessageParseError
 from typing import Optional
 from rich.console import Console
 from rich.panel import Panel
+import time
+from datetime import timedelta
 
 console = Console()
 
 
 class TimerError(Exception):
     """A custom exception used to report errors in use of Timer class"""
+
+
+class Timer_Message():
+    elapsed_time: timedelta
+    message: str
+
+    def __init__(self, elapsed_time, message):
+        self.elapsed_time = elapsed_time
+        self.message = message
 
 
 class Timer:
@@ -28,19 +39,18 @@ class Timer:
 
         self._start_time = time.perf_counter()
 
-    def stop(self, message: Optional[str] = None):
+    def stop(self, display: bool) -> Timer_Message:
         """Stop the timer, and report the elapsed time"""
         if self._start_time is None:
-            raise TimerError(f"Timer is not running. Use .start() to start it")
+            raise TimerError(f"Timer is not running. Use start() to start it")
 
-        elapsed_time = time.perf_counter() - self._start_time
+        message = self._message
+        elapsed_time = timedelta(time.perf_counter() - self._start_time)
+
+        if(display):
+            console.print(
+                Panel.fit("{}: {} s".format(self._message, elapsed_time)))
+
         self._start_time = None
-
-        if(message is not None):
-            self._message = message
-
-        if self._message is None:
-            self._message = self._defalt_message
-
-        console.print(
-            Panel.fit("{}: {} s".format(self._message, elapsed_time)))
+        self._message = ""
+        return Timer_Message(elapsed_time, message)

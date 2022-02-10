@@ -22,7 +22,9 @@ import nidaqmx.constants
 import nidaqmx.stream_readers
 import nidaqmx.stream_writers
 import numpy as np
-from cDAQ.rigol import Rigol
+from cDAQ.alghorithm import LogaritmicScale
+from cDAQ.config import Config
+from cDAQ.scpi import Switch, SCPI
 from cDAQ.utility import *
 from cDAQ.UsbTmc import *
 from .utility import *
@@ -47,27 +49,22 @@ import numpy as np
 import jstyleson
 
 
-def load_json_config(config_file_path):
-    with open(config_file_path) as config_file:
-        config = jstyleson.loads(config_file.read())
-        return config
-
-
 def curva(
     config_file_path,
+    file_path,
     debug: bool = False,
 ):
-    """Load JSON config
-    """
-    config = load_json_config(config_file_path)
+    sampling_curve(config_file_path=config_file_path,
+                   file_path=file_path, debug=debug)
 
-    frequency = float(config['frequency'])
-    number_of_samples = int(config['number_of_samples'])
-    Fs = int(config['Fs'])
-    amplitude_pp = float(config['amplitude_pp'])
-    ch_input = str(config['nidaq']["ch_input"])
-    max_voltage = float(config['nidaq']['max_voltage'])
-    min_voltage = float(config['nidaq']['min_voltage'])
+
+def sampling_curve(
+    config_file_path,
+    file_path,
+    debug: bool = False,
+):
+    """Load JSON config"""
+    config = Config(config_file_path)
 
     """Asks for the 2 instruments"""
     list_devices: List[Instrument] = get_device_list()
@@ -82,36 +79,24 @@ def curva(
 
     """Sets the Configuration for the Voltmeter"""
     generator_configs: list = [
-        "*CLS",
-        ":FUNCtion:VOLTage:AC",
-        ":OUTPut1 OFF",
-        ":OUTPut2 OFF",
+        SCPI.clear(),
+        SCPI.set_function_voltage_ac(),
+        SCPI.set_output(1, Switch.OFF),
     ]
 
-    exec_commands(generator, generator_configs)
+    SCPI.exec_commands(generator, generator_configs)
 
-    generator_ac_curves: list = [
-        ":SOURce1:VOLTAGE:AMPLitude {}".format(amplitude_pp),
-        ":SOURce1:FREQ {}".format(round(frequency, 5)),
-        ":SOURce2:VOLTAGE:AMPLitude {}".format(amplitude_pp),
-        ":SOURce2:FREQ {}".format(round(frequency, 5)),
+    generator_ac_curves: List[str] = [
+        SCPI.set_source_voltage_amplitude(1, amplitude_pp),
+        SCPI.set_source_frequency(1, round(frequency, 5)),
+        SCPI.set_output_impedance(1, 50),
+        SCPI.set_output_load(1, "INF"),
 
-        ":OUTPut1:IMPedance 50",
-        ":OUTPut2:IMPedance 50",
-        ":OUTPut1:LOAD INF",
-        ":OUTPut2:LOAD INF",
-
-        ":SOURce1:PHASe 0",
-        ":SOURce2:PHASe 180",
-
-        ":SOUR1:PHAS:INIT",
-        ":SOUR2:PHAS:SYNC",
-
-        # ":OUTPut2 ON",
-        ":OUTPut1 ON",
+        SCPI.set_source_phase(1, 0),
+        SCPI.set_output(1, Switch.ON),
     ]
 
-    exec_commands(generator, generator_ac_curves)
+    SCPI.exec_commands(generator, generator_ac_curves)
 
     if(debug):
         table = Table(
@@ -128,69 +113,91 @@ def curva(
 
         console.print(table)
 
-    rms_value = rms(frequency=frequency, Fs=Fs,
-                    ch_input=ch_input,
-                    max_voltages=max_voltage,
-                    min_voltages=min_voltage,
-                    number_of_samples=number_of_samples, time_report=False)
+    log_scale: LogaritmicScale = LogaritmicScale(
+        min_Hz, max_Hz,
+        step, points_for_decade
+    )
 
-    console.print(
-        Panel.fit("[red]{}[/] - RMS: {} V".format(number_of_samples, rms_value)))
+    voltages_measurements: List[float]
+    period: np.float = 0.0
 
-
-def sampling_filter(
-    file_path: str, csv_file_path: str,
-    min_Hz: np.int = 10, max_Hz: np.int = 100,
-    points_for_decade: np.int = 10,
-    csv_table_titles=False,
-    time_report: bool = False, debug: bool = False,
-):
-    step: np.float = 1 / points_for_decade
-    sample_number = 1
-    frequency: np.float
-    voltages_measurements: List[np.float]
-    period: np.float
     delay: np.float = 0.0
     aperture: np.float = 0.0
     interval: np.float = 0.0
 
-    timer = Timer()
+    delay_min: np.float = config.delay_min
+    aperture_min: np.float = config.aperture_min
+    interval_min: np.float = config.interval_min
 
-    """Asks for the 2 instruments"""
-    list_devices: list() = get_device_list()
-    print_devices_list(list_devices)
-    index_generator: np.int = np.int(input("Which is the Generator? "))
-    index_reader: np.int = np.int(input("Which is the Reader? "))
+    f = open(file_path, "w")
+    frequency: float
 
-    """Generates the instrument's interfaces"""
-    gen: usbtmc.Instrument = list_devices[index_generator]
-    read: usbtmc.Instrument = list_devices[index_reader]
+    while log_scale.check():
+        log_scale.next()
+        # Frequency in Hz
+        frequency = log_scale.get_frequency()
 
-    """Open the Instruments interfaces"""
-    gen.open()
-    read.open()
+        # Period in seconds
+        period = 1 / frequency
 
-    """Sets the Configuration for the Voltmeter"""
-    configs_gen: list = [
-        "*CLS",
-        Rigol.set_voltage_ac(),
-        ":OUTPut1 OFF",
-        ":OUTPut1 ON",
-        Rigol.clear(),
-    ]
+        # Delay in seconds
+        delay = period * 6
+        delay = 1
 
-    configs_read: list = [
-        "*CLS",
-        "CONF:VOLT:AC",
-        ":VOLT:AC:BAND +3.00000000E+00",
-        ":TRIG:SOUR IMM",
-        ":TRIG:DEL:AUTO OFF",
-        ":FREQ:VOLT:RANG:AUTO ON",
-        ":SAMP:SOUR TIM",
-        f":SAMP:COUN {sample_number}",
-    ]
+        # Aperture in seconds
+        aperture = period * 0.5
 
-    exec_commands(gen, configs_gen)
-    exec_commands(read, configs_read)
+        # Interval in seconds
+        # Interval is 10% more than aperture
+        interval = period * 0.5
 
-    pass
+        if(delay < delay_min):
+            delay = delay_min
+
+        if(aperture < aperture_min):
+            aperture = aperture_min
+
+        if(interval < interval_min):
+            interval = interval_min
+
+        aperture *= 1.2
+        interval *= 5
+
+        delay = round(delay, 4)
+        aperture = round(aperture, 4)
+        interval = round(interval, 4)
+
+        # Sets the Frequency
+        gen.write(":SOURce1:FREQ {}".format(round(frequency, 5)))
+
+        # GET MEASUREMENTS
+        rms_value = rms(frequency=frequency, Fs=config.Fs,
+                        ch_input=config.nidaq.ch_input,
+                        max_voltages=config.nidaq.max_voltage,
+                        min_voltages=config.nidaq.min_voltage,
+                        number_of_samples=config.number_of_samples,
+                        time_report=False)
+
+        """File Writing"""
+        f.write("{},{}\n".format(frequency, rms_value))
+
+        """PRINTING"""
+        if(debug):
+            error = float(read.ask("*ESR?"))
+            table_update.add_row("Step Curr", f"{step_curr}")
+            table_update.add_row("Step Curr in log Hz", f"{step_curr_Hz}")
+            table_update.add_row("Frequency", f"{frequency}")
+            table_update.add_row("Period", f"{period}")
+            table_update.add_row("Delay", f"{delay}")
+            table_update.add_row("Aperture", f"{aperture}")
+            table_update.add_row("Interval", f"{interval}")
+            table_update.add_row("Voltages", "\n".join(voltages_measurements))
+            if(error != 0):
+                table_update.add_row("ERROR", f"{error}")
+
+            console.print(table_update)
+
+    f.close()
+
+    console.print(
+        Panel.fit("[red]{}[/] - RMS: {} V".format(number_of_samples, rms_value)))

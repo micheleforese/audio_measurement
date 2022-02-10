@@ -1,5 +1,4 @@
 {
-    "frequency": 1000,
     "number_of_samples": 100,
     "Fs": 102000,
     "amplitude_pp": 2,
@@ -9,9 +8,14 @@
         "ch_input": "cDAQ9189-1CDBE0AMod1/ai1"
     },
     "sampling": {
-        "points_for_decade": 10,
+        "points_per_decade": 10,
         "min_Hz": 10,
         "max_Hz": 1000,
         "amplitude_pp": 4.47
+    },
+    "limits": {
+        "delay_min": 0.0,
+        "aperture_min": 0.01,
+        "interval_min": 0.01
     }
 }

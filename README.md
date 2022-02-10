@@ -1,5 +1,11 @@
 # Common Commands
 
+## Update the repository
+
+```console
+git pull
+```
+
 ## Basics - [HERE](https://wiki.epfl.ch/me412-emem-2020/documents/34460-90901.pdf#page=194)
 
 Chain commands
