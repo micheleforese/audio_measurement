@@ -87,7 +87,7 @@ def sampling_curve(
     SCPI.exec_commands(generator, generator_configs)
 
     generator_ac_curves: List[str] = [
-        SCPI.set_source_voltage_amplitude(1, amplitude_pp),
+        SCPI.set_source_voltage_amplitude(1, config.amplitude_pp),
         SCPI.set_source_frequency(1, round(frequency, 5)),
         SCPI.set_output_impedance(1, 50),
         SCPI.set_output_load(1, "INF"),
@@ -97,21 +97,6 @@ def sampling_curve(
     ]
 
     SCPI.exec_commands(generator, generator_ac_curves)
-
-    if(debug):
-        table = Table(
-            Column(justify="center"),
-            Column(justify="right"),
-            title="Curva Info", show_header=False
-        )
-
-        table.add_row("Amplitude", "{}".format(amplitude_pp))
-        table.add_row("Frequency", "{}".format(frequency))
-        table.add_row("Sampling Frequency", "{}".format(Fs))
-        table.add_row("Number of samples per Frequency",
-                      "{}".format(number_of_samples))
-
-        console.print(table)
 
     log_scale: LogaritmicScale = LogaritmicScale(
         min_Hz, max_Hz,
@@ -168,7 +153,7 @@ def sampling_curve(
         interval = round(interval, 4)
 
         # Sets the Frequency
-        gen.write(":SOURce1:FREQ {}".format(round(frequency, 5)))
+        generator.write(":SOURce1:FREQ {}".format(round(frequency, 5)))
 
         # GET MEASUREMENTS
         rms_value = rms(frequency=frequency, Fs=config.Fs,
@@ -181,23 +166,4 @@ def sampling_curve(
         """File Writing"""
         f.write("{},{}\n".format(frequency, rms_value))
 
-        """PRINTING"""
-        if(debug):
-            error = float(read.ask("*ESR?"))
-            table_update.add_row("Step Curr", f"{step_curr}")
-            table_update.add_row("Step Curr in log Hz", f"{step_curr_Hz}")
-            table_update.add_row("Frequency", f"{frequency}")
-            table_update.add_row("Period", f"{period}")
-            table_update.add_row("Delay", f"{delay}")
-            table_update.add_row("Aperture", f"{aperture}")
-            table_update.add_row("Interval", f"{interval}")
-            table_update.add_row("Voltages", "\n".join(voltages_measurements))
-            if(error != 0):
-                table_update.add_row("ERROR", f"{error}")
-
-            console.print(table_update)
-
     f.close()
-
-    console.print(
-        Panel.fit("[red]{}[/] - RMS: {} V".format(number_of_samples, rms_value)))

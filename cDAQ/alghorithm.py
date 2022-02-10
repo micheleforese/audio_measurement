@@ -1,5 +1,8 @@
 
 
+from math import log10
+
+
 class LogaritmicScale():
     min_Hz: float
     max_Hz: float
@@ -36,15 +39,15 @@ class LogaritmicScale():
 
         self.step_curr = 0
 
-        frequency = pow(10, step_curr_Hz)
+        frequency = pow(10, self.step_curr_Hz)
 
     def check(self) -> bool:
         return self.step_curr < self.step_total + 1
 
-    def get_frequency() -> float:
-        return frequency
+    def get_frequency(self) -> float:
+        return self.frequency
 
     def next(self):
-        self.step_curr_Hz = self.min_index + self.step_curr * step
-        self.frequency = pow(10, step_curr_Hz)
+        self.step_curr_Hz = self.min_index + self.step_curr * self.step
+        self.frequency = pow(10, self.step_curr_Hz)
         self.step_curr += 1
