@@ -1,6 +1,6 @@
 from typing import Any, List
 from sympy import And
-from console import console
+from cDAQ.console import console
 import jstyleson
 
 

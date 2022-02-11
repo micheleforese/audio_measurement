@@ -24,7 +24,7 @@ cdaq.print_list_devices()
 
 # test_rigol_rms_ni_output(2, 40000, number_of_samples=100)
 
-curva("config/curva.json", debug=True)
+# curva("config/curva.json", debug=True)
 
 
 def test_samp():
@@ -44,3 +44,5 @@ def test_samp():
     diff_steps(csv_file)
 
     console.print("Finished")
+
+plot("config/config_template.json")

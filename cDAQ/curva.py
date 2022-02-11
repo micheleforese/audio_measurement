@@ -1,61 +1,51 @@
-from curses.ascii import FS
 import enum
+from curses.ascii import FS
 from os import read
+from pathlib import Path
 from platform import system
 from re import A
 from time import clock
 from typing import List
-from nidaqmx._task_modules.channels.ai_channel import AIChannel
-from nidaqmx._task_modules.channels.ao_channel import AOChannel
-from nidaqmx.errors import DaqError, Error
-from nidaqmx.task import Task
-from nidaqmx.types import CtrFreq
-from numpy.ma.core import shape
-from rich.console import Console
-from rich.panel import Panel
-from rich.layout import Layout
-from rich.style import StyleType
-from rich.tree import Tree
+
 import nidaqmx
-import nidaqmx.system
 import nidaqmx.constants
 import nidaqmx.stream_readers
 import nidaqmx.stream_writers
+import nidaqmx.system
 import numpy as np
-from cDAQ.alghorithm import LogaritmicScale
-from cDAQ.config import Config
-from cDAQ.scpi import Switch, SCPI
-from cDAQ.utility import *
-from cDAQ.UsbTmc import *
-from .utility import *
-from pathlib import Path
-from .utility import *
-from scipy.fft import fft, fftfreq, rfft
-from typing import List
+from nidaqmx._task_modules.channels.ai_channel import AIChannel
 from nidaqmx._task_modules.channels.ao_channel import AOChannel
+from nidaqmx.errors import DaqError, Error
 from nidaqmx.system._collections.device_collection import DeviceCollection
 from nidaqmx.system.system import System
+from nidaqmx.task import Task
+from nidaqmx.types import CtrFreq
 from numpy.lib.function_base import average
-from numpy.ma.core import sin, sqrt
+from numpy.ma.core import shape
 from rich import table
-from rich.console import Console
+from rich.layout import Layout
 from rich.panel import Panel
-from rich.table import Column, Table
-import nidaqmx
-import nidaqmx.system
+from rich.style import StyleType
 from rich.tree import Tree
-import numpy as np
+from scipy.fft import fft, fftfreq, rfft
 
-import jstyleson
+from cDAQ.alghorithm import LogaritmicScale
+from cDAQ.config import Config
+from cDAQ.console import console
+from cDAQ.scpi import SCPI, Switch
+from cDAQ.UsbTmc import *
+from cDAQ.utility import *
+
 
 
 def curva(
     config_file_path,
-    file_path,
+    measurements_file_path,
+    plot_file_path,
     debug: bool = False,
 ):
     sampling_curve(config_file_path=config_file_path,
-                   file_path=file_path, debug=debug)
+                   file_path=measurements_file_path, debug=debug)
 
 
 def sampling_curve(
@@ -167,3 +157,15 @@ def sampling_curve(
         f.write("{},{}\n".format(frequency, rms_value))
 
     f.close()
+
+def plot(measurements_file_path: os.path, plot_file_path: os.path):
+    console.print(measurements_file_path)
+    
+    y_dBV: List[float] = []
+    x_frequency: List[float] = []
+    
+    
+    csvfile = genfromtxt(measurements_file_path, delimiter=',')
+    
+    for row in list(csvfile):
+        y_dBV.append(20 * log10(row[1] * Vpp / (2 * sqrt(2))))

@@ -23,7 +23,6 @@ import nidaqmx.stream_writers
 import numpy as np
 from cDAQ.utility import *
 from cDAQ.UsbTmc import *
-from usbTmc.utility import *
 from pathlib import Path
 from .utility import *
 from scipy.fft import fft, fftfreq, rfft

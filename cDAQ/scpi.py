@@ -1,5 +1,8 @@
 from enum import Enum
-from console import console
+from typing import List
+from cDAQ.UsbTmc import UsbTmc
+from cDAQ.console import console
+import usbtmc
 
 
 class Switch(Enum):

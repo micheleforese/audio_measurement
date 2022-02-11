@@ -23,10 +23,9 @@ import nidaqmx.stream_writers
 import numpy as np
 from cDAQ.utility import *
 from cDAQ.UsbTmc import *
-from usbTmc.utility import *
 from pathlib import Path
 from .utility import *
-from scipy.fft import fft, fftfreq, rfft
+from scipy.fft import fft
 from typing import List
 from nidaqmx._task_modules.channels.ao_channel import AOChannel
 from nidaqmx.system._collections.device_collection import DeviceCollection

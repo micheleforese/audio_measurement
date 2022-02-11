@@ -16,7 +16,7 @@ import numpy as np
 import os
 import usbtmc
 from usbtmc.usbtmc import Instrument
-from timer import Timer, Timer_Message
+from cDAQ.timer import Timer, Timer_Message
 
 console = Console()
 
@@ -491,7 +491,7 @@ def test_sampling(
     if(time_report):
         console.print(
             Panel(
-                f"{}: {} s".format(timer_message.message, timer_message.elapsed_time),
+                "{}: {} s".format(timer_message.message, timer_message.elapsed_time),
                 title="Execution Time"
             )
         )
