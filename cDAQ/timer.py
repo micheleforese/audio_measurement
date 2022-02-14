@@ -39,7 +39,7 @@ class Timer:
 
         self._start_time = time.perf_counter()
 
-    def stop(self, display: bool) -> Timer_Message:
+    def stop(self, display: bool = False) -> Timer_Message:
         """Stop the timer, and report the elapsed time"""
         if self._start_time is None:
             raise TimerError(f"Timer is not running. Use start() to start it")

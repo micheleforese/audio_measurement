@@ -1,7 +1,7 @@
 {
-  "number_of_samples": 100,
+  "number_of_samples": 200,
   "Fs": 102000,
-  "amplitude_pp": 2,
+  "amplitude_pp": 4,
   "nidaq": {
     "max_voltage": 4,
     "min_voltage": -4,
@@ -11,7 +11,7 @@
     "points_per_decade": 10,
     "min_Hz": 10,
     "max_Hz": 1000,
-    "amplitude_pp": 4.47
+    "amplitude_pp": 2
   },
   "limits": {
     "delay_min": 0.0,

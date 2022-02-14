@@ -38,7 +38,7 @@ class SCPI:
         return ":FUNCtion:VOLTage:AC"
 
     def set_output(n_output: int, output: Switch) -> str:
-        return ":OUTPut{0} {1}".format(n_output, output)
+        return ":OUTPut{0} {1}".format(n_output, output.value)
 
     def set_voltage_ac_band(voltage_band: float) -> str:
         return ":VOLT:AC:BAND {}".format(voltage_band)
@@ -47,10 +47,10 @@ class SCPI:
         return ":TRIG:SOUR {}".format(source)
 
     def set_trig_del_auto(output: Switch) -> str:
-        return ":TRIG:DEL:AUTO {}".format(output)
+        return ":TRIG:DEL:AUTO {}".format(output.value)
 
     def set_freq_volt_rang_auto(output: Switch) -> str:
-        return ":FREQ:VOLT:RANG:AUTO {}".format(output)
+        return ":FREQ:VOLT:RANG:AUTO {}".format(output.value)
 
     def set_sample_source(source: str) -> str:
         return ":SAMP:SOUR {}".format(source)

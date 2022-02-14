@@ -37,25 +37,32 @@ from cDAQ.UsbTmc import *
 from cDAQ.utility import *
 
 
-
 def curva(
-    config_file_path,
-    measurements_file_path,
-    plot_file_path,
-    debug: bool = False,
-):
-    sampling_curve(config_file_path=config_file_path,
-                   file_path=measurements_file_path, debug=debug)
-
-
-def sampling_curve(
-    config_file_path,
-    file_path,
+    config_file_path: os.path,
+    measurements_file_path: os.path,
+    plot_file_path: os.path,
     debug: bool = False,
 ):
     """Load JSON config"""
     config = Config(config_file_path)
+    config.print()
 
+    sampling_curve(config=config,
+                   measurements_file_path=measurements_file_path, debug=debug)
+
+    plot(
+        config=config,
+        measurements_file_path=measurements_file_path,
+        plot_file_path=plot_file_path,
+        debug=debug
+    )
+
+
+def sampling_curve(
+    config: Config,
+    measurements_file_path: os.path,
+    debug: bool = False,
+):
     """Asks for the 2 instruments"""
     list_devices: List[Instrument] = get_device_list()
     if(debug):
@@ -70,30 +77,27 @@ def sampling_curve(
     """Sets the Configuration for the Voltmeter"""
     generator_configs: list = [
         SCPI.clear(),
-        SCPI.set_function_voltage_ac(),
         SCPI.set_output(1, Switch.OFF),
+        SCPI.set_function_voltage_ac(),
+        SCPI.set_source_voltage_amplitude(1, round(config.amplitude_pp, 5)),
+        SCPI.set_source_frequency(1, round(config.sampling.min_Hz, 5)),
     ]
 
     SCPI.exec_commands(generator, generator_configs)
 
     generator_ac_curves: List[str] = [
-        SCPI.set_source_voltage_amplitude(1, config.amplitude_pp),
-        SCPI.set_source_frequency(1, round(frequency, 5)),
-        SCPI.set_output_impedance(1, 50),
-        SCPI.set_output_load(1, "INF"),
-
-        SCPI.set_source_phase(1, 0),
         SCPI.set_output(1, Switch.ON),
     ]
 
     SCPI.exec_commands(generator, generator_ac_curves)
 
     log_scale: LogaritmicScale = LogaritmicScale(
-        min_Hz, max_Hz,
-        step, points_for_decade
+        config.sampling.min_Hz,
+        config.sampling.max_Hz,
+        config.step,
+        config.sampling.points_per_decade
     )
 
-    voltages_measurements: List[float]
     period: np.float = 0.0
 
     delay: np.float = 0.0
@@ -104,7 +108,7 @@ def sampling_curve(
     aperture_min: np.float = config.aperture_min
     interval_min: np.float = config.interval_min
 
-    f = open(file_path, "w")
+    f = open(measurements_file_path, "w")
     frequency: float
 
     while log_scale.check():
@@ -143,29 +147,51 @@ def sampling_curve(
         interval = round(interval, 4)
 
         # Sets the Frequency
-        generator.write(":SOURce1:FREQ {}".format(round(frequency, 5)))
+        generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
+
+        sleep(0.6)
 
         # GET MEASUREMENTS
         rms_value = rms(frequency=frequency, Fs=config.Fs,
                         ch_input=config.nidaq.ch_input,
-                        max_voltages=config.nidaq.max_voltage,
-                        min_voltages=config.nidaq.min_voltage,
+                        max_voltage=config.nidaq.max_voltage,
+                        min_voltage=config.nidaq.min_voltage,
                         number_of_samples=config.number_of_samples,
-                        time_report=False)
+                        time_report=True)
+
+        if(debug):
+            console.log(
+                "Frequency - Rms Value: {} - {}".format(round(frequency, 5), rms_value))
 
         """File Writing"""
         f.write("{},{}\n".format(frequency, rms_value))
 
     f.close()
 
-def plot(measurements_file_path: os.path, plot_file_path: os.path):
-    console.print(measurements_file_path)
-    
-    y_dBV: List[float] = []
+
+def plot(
+    config: Config,
+    measurements_file_path: os.path,
+    plot_file_path: os.path,
+    debug: bool = False
+):
+    if(debug):
+        console.print("Measurements_file_path: {}".format(
+            measurements_file_path))
+
     x_frequency: List[float] = []
-    
-    
+    y_dBV: List[float] = []
+
     csvfile = genfromtxt(measurements_file_path, delimiter=',')
-    
+
     for row in list(csvfile):
-        y_dBV.append(20 * log10(row[1] * Vpp / (2 * sqrt(2))))
+        y_dBV.append(20 * log10(row[1] * 2*sqrt(2)/config.amplitude_pp))
+        x_frequency.append(row[0])
+
+    plt.plot(x_frequency, y_dBV)
+    plt.xscale("log")
+    plt.title("Frequency response graph")
+    plt.xlabel("Frequency")
+    plt.ylabel("Vout/Vin dB")
+    # plt.yticks(np.arange(start=-10.0, stop=11.0, step=5.0))
+    plt.savefig(plot_file_path)

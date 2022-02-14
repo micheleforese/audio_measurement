@@ -1,4 +1,5 @@
 import enum
+from optparse import Option
 from os import read
 from platform import system
 from re import A
@@ -269,9 +270,12 @@ def sinc(x: float):
     return sin(math.pi * x) / (math.pi * x)
 
 
-def read_voltages(frequency, Fs, number_of_samples,
-                  ch_input: str = 'cDAQ9189-1CDBE0AMod1/ai1', min_voltage: float = -4, max_voltage: float = 4
-                  ) -> float:
+def read_voltages(
+    frequency: float, Fs: float,
+    number_of_samples: int,
+    ch_input: str = 'cDAQ9189-1CDBE0AMod1/ai1',
+    min_voltage: float = -4, max_voltage: float = 4
+) -> float:
 
     if(frequency > Fs / 2):
         raise ValueError("The Sampling rate is low: Fs / 2 > frequency.")
@@ -322,7 +326,7 @@ def rms(frequency: float, Fs: float, number_of_samples: int, ch_input: str, max_
     except Exception as e:
         console.log(e)
 
-    rms: float = None
+    rms: Option[float] = None
 
     if(time_report):
         timer.start("[yellow]RMS Calculation Execution time[/]")
@@ -336,7 +340,7 @@ def rms(frequency: float, Fs: float, number_of_samples: int, ch_input: str, max_
             voltages, number_of_samples, Fs)
 
     if(time_report):
-        timer.stop()
+        timer.stop(display=True)
 
     return rms
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from distutils.log import debug
 from rich.panel import Panel
 from nidaqmx import *
 from cDAQ.timer import Timer
@@ -45,4 +46,8 @@ def test_samp():
 
     console.print("Finished")
 
-plot("config/config_template.json")
+
+# plot("config/config_template.json")
+
+
+curva('test/basic.json', 'test/basic.csv', 'test/basic.png', debug=True)

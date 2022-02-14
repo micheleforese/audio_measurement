@@ -10,7 +10,7 @@ class LogaritmicScale():
     min_index: float
     max_index: float
 
-    points_for_decade: float
+    points_per_decade: float
     step: float
 
     step_max: float
@@ -24,20 +24,21 @@ class LogaritmicScale():
 
     def __init__(self,
                  min_Hz: float, max_Hz: float,
-                 step: float, points_for_decade: float
+                 step: float, points_per_decade: float
                  ) -> None:
 
         self.min_index = log10(min_Hz)
         self.max_index = log10(max_Hz)
 
-        self.points_for_decade = points_for_decade
+        self.points_per_decade = points_per_decade
         self.step = step
 
-        self.step_max = self.points_for_decade * self.max_index
-        self.step_min = self.points_for_decade * self.min_index
+        self.step_max = self.points_per_decade * self.max_index
+        self.step_min = self.points_per_decade * self.min_index
         self.step_total = self.step_max - self.step_min
 
         self.step_curr = 0
+        self.step_curr_Hz = 0
 
         frequency = pow(10, self.step_curr_Hz)
 
