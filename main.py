@@ -4,10 +4,13 @@ from distutils.log import debug
 from rich.panel import Panel
 from nidaqmx import *
 from cDAQ.timer import Timer
+from cDAQ.usbtmc import usbtmc_instr
 from cDAQ.utility import *
 from cDAQ.test import *
 from cDAQ.console import console
 from cDAQ.curva import *
+
+from cDAQ.console import console
 
 
 # 192.168.1.52 cDAQ
@@ -51,3 +54,16 @@ def test_samp():
 
 
 curva('test/basic.json', 'test/basic.csv', 'test/basic.png', debug=True)
+
+
+def boh():
+
+    # command_line(generator)
+    instr = usbtmc_instr("/dev/usbtmc0")
+    instr.write("*rst")
+    instr.write("*cls")
+    for n in range(0, 11):
+        console.log(instr.getName())
+
+
+# boh()

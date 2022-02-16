@@ -2,7 +2,6 @@
 
 > Be sure to read language syntax conventions. Commands or parameters shown in blue apply only to the 34465A/70A, all other commands/parameters apply to all Truevolt DMMs.
 
-
 ## Configuration Commands
 
 ```SCPI

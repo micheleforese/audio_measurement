@@ -32,7 +32,7 @@ from scipy.fft import fft, fftfreq, rfft
 from cDAQ.alghorithm import LogaritmicScale
 from cDAQ.config import Config
 from cDAQ.console import console
-from cDAQ.scpi import SCPI, Switch
+from cDAQ.scpi import SCPI, Bandwidth, Switch
 from cDAQ.UsbTmc import *
 from cDAQ.utility import *
 
@@ -77,10 +77,16 @@ def sampling_curve(
     """Sets the Configuration for the Voltmeter"""
     generator_configs: list = [
         SCPI.clear(),
+        SCPI.reset(),
         SCPI.set_output(1, Switch.OFF),
         SCPI.set_function_voltage_ac(),
+        SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
         SCPI.set_source_voltage_amplitude(1, round(config.amplitude_pp, 5)),
         SCPI.set_source_frequency(1, round(config.sampling.min_Hz, 5)),
+    ]
+
+    generator_configs: list = [
+        ":OUTPUT:TIMER 10,5"
     ]
 
     SCPI.exec_commands(generator, generator_configs)
@@ -90,6 +96,19 @@ def sampling_curve(
     ]
 
     SCPI.exec_commands(generator, generator_ac_curves)
+
+    console.log(generator.ask("*IDN?").strip())
+    console.log(generator.ask(":SOURce1:FREQ?").strip())
+
+    controls_commands: List[str] = [
+        "*IDN?",
+        ":SOURce1:FREQ?",
+        SCPI.ask_voltage_bandwidth()
+    ]
+
+    SCPI.exec_commands(generator, controls_commands)
+
+    return
 
     log_scale: LogaritmicScale = LogaritmicScale(
         config.sampling.min_Hz,
@@ -149,7 +168,7 @@ def sampling_curve(
         # Sets the Frequency
         generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
 
-        sleep(0.6)
+        # sleep(0.6)
 
         # GET MEASUREMENTS
         rms_value = rms(frequency=frequency, Fs=config.Fs,

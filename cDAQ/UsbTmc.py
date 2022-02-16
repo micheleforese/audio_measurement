@@ -169,7 +169,7 @@ class UsbTmc:
         self.instr.write(f":FREQuency:APERture {aperture}")
 
 
-def command_line():
+def command_line_():
     list_devices: list() = get_device_list()
 
     print_devices_list(list_devices)
@@ -491,7 +491,8 @@ def test_sampling(
     if(time_report):
         console.print(
             Panel(
-                "{}: {} s".format(timer_message.message, timer_message.elapsed_time),
+                "{}: {} s".format(timer_message.message,
+                                  timer_message.elapsed_time),
                 title="Execution Time"
             )
         )

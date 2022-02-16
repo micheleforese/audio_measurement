@@ -573,3 +573,32 @@ def diff_steps(file_path: str):
         prev_v = curr_v
 
     console.print(table)
+
+
+def command_line(instr: usbtmc.Instrument):
+    instr.open()
+
+    """Operations"""
+    isEnded = False
+    cmd: str = ""
+    console.print(
+        "Type the Device index followed by the command you want to execute")
+    console.print("Example: TRIG:COUN 3")
+    console.print("-" * 50)
+
+    while(isEnded != True):
+        cmd = input("scpi> ").strip()
+
+        if(cmd == "exit"):
+            isEnded = True
+            break
+
+        if(cmd.find("?") > 0):
+            # answer = instr.ask(cmd).strip()
+            instr.write(cmd)
+            sleep(1)
+            answer = instr.read().strip()
+
+            console.print("{}".format(answer))
+        else:
+            instr.write(cmd)

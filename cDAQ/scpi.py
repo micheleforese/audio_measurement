@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List
+from typing import List, Union
 from cDAQ.UsbTmc import UsbTmc
 from cDAQ.console import console
 import usbtmc
@@ -10,16 +10,22 @@ class Switch(Enum):
     ON = "ON"
 
 
+class Bandwidth(Enum):
+    MIN = "MIN"
+    MAX = "MAX"
+    DEF = "DEF"
+
+
 class SCPI:
 
     def exec_commands(
-        instr: usbtmc.Instrument,
+        instr: UsbTmc,
         commands: List[str],
         debug: bool = False
     ):
         for command in commands:
             if(command.find("?") > 0):
-                response = instr.ask(command)
+                response = instr.ask(command).strip()
 
                 if(response == ""):
                     response = "NULL"
@@ -34,8 +40,17 @@ class SCPI:
     def clear() -> str:
         return "*CLS"
 
+    def reset() -> str:
+        return "*RST"
+
     def set_function_voltage_ac() -> str:
         return ":FUNCtion:VOLTage:AC"
+
+    def set_voltage_ac_bandwidth(bandwidth: Union[Bandwidth, float]) -> str:
+        if (type(bandwidth) is Bandwidth):
+            return "VOLTage:AC:BANDwidth {}".format(bandwidth.value)
+        else:
+            return "VOLTage:AC:BANDwidth {}".format(bandwidth)
 
     def set_output(n_output: int, output: Switch) -> str:
         return ":OUTPut{0} {1}".format(n_output, output.value)
@@ -112,3 +127,6 @@ class SCPI:
             source = 0
 
         return ":SOURce{0}:PHASe {1}".format(source, phase)
+
+    def ask_voltage_bandwidth() -> str:
+        return "VOLTage:AC:BANDwidth?"
