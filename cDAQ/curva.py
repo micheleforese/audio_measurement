@@ -27,7 +27,9 @@ from rich.layout import Layout
 from rich.panel import Panel
 from rich.style import StyleType
 from rich.tree import Tree
+from rich.live import Live
 from scipy.fft import fft, fftfreq, rfft
+from sympy import numbered_symbols
 
 from cDAQ.alghorithm import LogaritmicScale
 from cDAQ.config import Config
@@ -85,30 +87,11 @@ def sampling_curve(
         SCPI.set_source_frequency(1, round(config.sampling.min_Hz, 5)),
     ]
 
-    generator_configs: list = [
-        ":OUTPUT:TIMER 10,5"
-    ]
-
-    SCPI.exec_commands(generator, generator_configs)
-
     generator_ac_curves: List[str] = [
         SCPI.set_output(1, Switch.ON),
     ]
 
     SCPI.exec_commands(generator, generator_ac_curves)
-
-    console.log(generator.ask("*IDN?").strip())
-    console.log(generator.ask(":SOURce1:FREQ?").strip())
-
-    controls_commands: List[str] = [
-        "*IDN?",
-        ":SOURce1:FREQ?",
-        SCPI.ask_voltage_bandwidth()
-    ]
-
-    SCPI.exec_commands(generator, controls_commands)
-
-    return
 
     log_scale: LogaritmicScale = LogaritmicScale(
         config.sampling.min_Hz,
@@ -128,62 +111,99 @@ def sampling_curve(
     interval_min: np.float = config.interval_min
 
     f = open(measurements_file_path, "w")
-    frequency: float
+    frequency: float = round(config.sampling.min_Hz, 5)
 
-    while log_scale.check():
-        log_scale.next()
-        # Frequency in Hz
-        frequency = log_scale.get_frequency()
+    table = Table(
+        Column(f"Frequency [Hz]", justify="right"),
+        Column(f"Number of samples", justify="right"),
+        Column(f"Rms Value [V]", justify="right"),
+        Column(f"Relative Error", justify="right"),
+        Column(f"Time [s]", justify="right"),
+    )
 
-        # Period in seconds
-        period = 1 / frequency
+    with Live(table, refresh_per_second=4, screen=False, console=console) as live:
 
-        # Delay in seconds
-        delay = period * 6
-        delay = 1
+        while log_scale.check():
+            log_scale.next()
+            # Frequency in Hz
+            frequency = log_scale.get_frequency()
 
-        # Aperture in seconds
-        aperture = period * 0.5
+            # Period in seconds
+            period = 1 / frequency
 
-        # Interval in seconds
-        # Interval is 10% more than aperture
-        interval = period * 0.5
+            # Delay in seconds
+            delay = period * 6
+            delay = 1
 
-        if(delay < delay_min):
-            delay = delay_min
+            # Aperture in seconds
+            aperture = period * 0.5
 
-        if(aperture < aperture_min):
-            aperture = aperture_min
+            # Interval in seconds
+            # Interval is 10% more than aperture
+            interval = period * 0.5
 
-        if(interval < interval_min):
-            interval = interval_min
+            if(delay < delay_min):
+                delay = delay_min
 
-        aperture *= 1.2
-        interval *= 5
+            if(aperture < aperture_min):
+                aperture = aperture_min
 
-        delay = round(delay, 4)
-        aperture = round(aperture, 4)
-        interval = round(interval, 4)
+            if(interval < interval_min):
+                interval = interval_min
 
-        # Sets the Frequency
-        generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
+            aperture *= 1.2
+            interval *= 5
 
-        # sleep(0.6)
+            delay = round(delay, 4)
+            aperture = round(aperture, 4)
+            interval = round(interval, 4)
 
-        # GET MEASUREMENTS
-        rms_value = rms(frequency=frequency, Fs=config.Fs,
-                        ch_input=config.nidaq.ch_input,
-                        max_voltage=config.nidaq.max_voltage,
-                        min_voltage=config.nidaq.min_voltage,
-                        number_of_samples=config.number_of_samples,
-                        time_report=True)
+            # Sets the Frequency
+            generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
 
-        if(debug):
-            console.log(
-                "Frequency - Rms Value: {} - {}".format(round(frequency, 5), rms_value))
+            # sleep(0.6)
 
-        """File Writing"""
-        f.write("{},{}\n".format(frequency, rms_value))
+            config.number_of_samples: int = int(
+                ((1/frequency) / (1/config.Fs)) * 0.2)
+            # live.console.log(config.number_of_samples)
+
+            time = Timer()
+            time.start()
+
+            # GET MEASUREMENTS
+            rms_value = rms(frequency=frequency, Fs=config.Fs,
+                            ch_input=config.nidaq.ch_input,
+                            max_voltage=config.nidaq.max_voltage,
+                            min_voltage=config.nidaq.min_voltage,
+                            number_of_samples=config.number_of_samples
+                            )
+
+            message: Timer_Message = time.stop()
+
+            perc_error = percentage_error(
+                exact=(config.amplitude_pp/2)/sqrt(2),
+                approx=rms_value
+            )
+            style_percentage_error = "cyan"
+
+            if(perc_error <= 0):
+                style_percentage_error = "red"
+
+            table.add_row(
+                "{}".format(frequency),
+                "{}".format(config.number_of_samples),
+                "{:.5f} ".format(round(rms_value, 5)),
+                "[{}]{:.3f}[/]".format(style_percentage_error,
+                                       round(perc_error, 3)),
+                "[cyan]{}[/]".format(message.elapsed_time)
+            )
+
+            # if(debug):
+            #     live.console.log(
+            #         "Frequency - Rms Value: {} - {}".format(round(frequency, 5), rms_value))
+
+            """File Writing"""
+            f.write("{},{}\n".format(frequency, rms_value))
 
     f.close()
 

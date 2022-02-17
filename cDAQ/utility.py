@@ -132,7 +132,7 @@ def print_supported_output_types(channel: AOChannel):
 
 
 def percentage_error(exact: float, approx: float) -> float:
-    return (abs(approx - exact)/exact)*100
+    return ((approx - exact)/exact)*100
 
 
 def integrate(y_values: List[float], delta) -> float:
@@ -241,10 +241,10 @@ def rms_fft(voltages: List[float], number_of_samples: int) -> float:
     """
     y = fft(voltages, number_of_samples)
 
-    sum: np.float = 0
+    sum: np.float64 = np.float64(0)
 
     for v in y:
-        sum += pow(np.abs(v) / len(voltages), 2)
+        sum += (np.abs(v) / len(voltages)) ** 2
 
     return math.sqrt(abs(sum))
 
@@ -315,6 +315,8 @@ def rms(frequency: float, Fs: float, number_of_samples: int, ch_input: str, max_
 
     if(time_report):
         timer = Timer()
+
+    # number_of_samples = 800
 
     # Pre allocate the array
     try:

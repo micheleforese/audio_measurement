@@ -134,10 +134,6 @@ class Config():
 
     step: float
 
-    delay_min: float = 0.001
-    aperture_min: float = 0.01
-    interval_min: float = 0.01
-
     def __init__(self, config_file_path: str) -> None:
         self.row_data = load_json_config(config_file_path)
         self._init_config()

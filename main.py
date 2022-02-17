@@ -67,3 +67,5 @@ def boh():
 
 
 # boh()
+
+# test_lettura_rigol()

@@ -42,6 +42,10 @@ import nidaqmx.system
 from rich.tree import Tree
 import numpy as np
 import math
+from cDAQ.scpi import *
+import time
+
+from rich.live import Live
 
 
 # 192.168.1.52 cDAQ
@@ -286,3 +290,80 @@ def test_rigol_rms_ni_output(
         console.print(Panel.fit("[yellow]Frequency[/]: {}".format(frequency)))
 
     gen.close()
+
+
+def test_lettura_rigol(
+    # config_file_path: os.path
+):
+    list_devices: List[Instrument] = get_device_list()
+    generator: usbtmc.Instrument = list_devices[0]
+
+    """Open the Instruments interfaces"""
+    # Auto Close with the destructor
+    generator.open()
+
+    amplitude: float = 2
+    frequency: float = 1000
+
+    """Sets the Configuration for the Voltmeter"""
+    generator_configs: list = [
+        SCPI.clear(),
+        SCPI.reset(),
+        SCPI.set_output(1, Switch.OFF),
+        SCPI.set_function_voltage_ac(),
+        SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
+        SCPI.set_source_voltage_amplitude(1, round(amplitude, 5)),
+        SCPI.set_source_frequency(1, round(frequency, 5)),
+    ]
+
+    SCPI.exec_commands(generator, generator_configs)
+
+    generator_ac_curves: List[str] = [
+        SCPI.set_output(1, Switch.ON),
+    ]
+
+    SCPI.exec_commands(generator, generator_ac_curves)
+
+    table = Table(
+        Column("Frequency [Hz]", justify="right"),
+        Column("Rms Value [V]", justify="right"),
+        Column("Relative Error", justify="right"),
+        Column("Time [s]", justify="right"),
+    )
+
+    with Live(table, refresh_per_second=4, screen=False, console=console) as live:
+        time = Timer()
+        for n in range(20):
+
+            time.start()
+
+            rms_value = rms(frequency=frequency, Fs=102000,
+                            ch_input="cDAQ9189-1CDBE0AMod1/ai1",
+                            max_voltage=4.0,
+                            min_voltage=-4.0,
+                            number_of_samples=100
+                            )
+
+            message: Timer_Message = time.stop()
+
+            perc_error = percentage_error(
+                exact=(amplitude/2)/sqrt(2),
+                approx=rms_value
+            )
+            style_percentage_error = "cyan"
+
+            if(perc_error <= 0):
+                style_percentage_error = "red"
+
+            if(n == 4):
+                live.console.log("ciao")
+
+            table.add_row(
+                "{}".format(frequency),
+                "{:.5f} ".format(round(rms_value, 5)),
+                "[{}]{:.3f}[/] %".format(style_percentage_error,
+                                         round(perc_error, 3)),
+                "[cyan]{}[/] s".format(message.elapsed_time)
+            )
+
+    # console.print(table)

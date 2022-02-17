@@ -31,7 +31,7 @@ class Timer:
 
     def start(self, message: Optional[str] = None):
         """Start a new timer"""
-        if self._start_time is not None:
+        if(self._start_time is not None):
             raise TimerError(f"Timer is running. Use .stop() to stop it")
 
         if(message is not None):
@@ -45,7 +45,8 @@ class Timer:
             raise TimerError(f"Timer is not running. Use start() to start it")
 
         message = self._message
-        elapsed_time = timedelta(time.perf_counter() - self._start_time)
+        elapsed_time: timedelta = timedelta(
+            seconds=time.perf_counter() - self._start_time)
 
         if(display):
             console.print(
