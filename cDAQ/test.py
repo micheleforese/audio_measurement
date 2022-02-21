@@ -53,25 +53,25 @@ console = Console(force_terminal=True, color_system="truecolor")
 
 
 def test_thermocouple():
-    task = nidaqmx.Task('Test Thermocouple')
+    task = nidaqmx.Task("Test Thermocouple")
 
-    task.ai_channels.add_ai_thrmcpl_chan('cDAQ9189-1CDBE0AMod3/ai0')
+    task.ai_channels.add_ai_thrmcpl_chan("cDAQ9189-1CDBE0AMod3/ai0")
     themperature = task.read()
-    console.print(Panel.fit(
-        "[bold yellow]Themperature[/]: {} °C".format(themperature)))
+    console.print(Panel.fit("[bold yellow]Themperature[/]: {} °C".format(themperature)))
     task.close()
 
 
 def test_ao_voltage():
     data: np.ndarray = np.ndarray((1,), dtype=float)
-    task: Task = nidaqmx.Task('Test Output Voltage')
+    task: Task = nidaqmx.Task("Test Output Voltage")
 
     channel: AOChannel = task.ao_channels.add_ao_voltage_chan(
-        'cDAQ9189-1CDBE0AMod2/ao0',
-        min_val=-4, max_val=4)
+        "cDAQ9189-1CDBE0AMod2/ao0", min_val=-4, max_val=4
+    )
 
     channel1_stream_writer = nidaqmx.stream_writers.AnalogSingleChannelWriter(
-        task.out_stream)
+        task.out_stream
+    )
     task.timing.cfg_samp_clk_timing(100000)
     voltages = np.ndarray(shape=100)
 
@@ -83,17 +83,18 @@ def test_ao_voltage():
         channel1_stream_writer.write_many_sample(voltages)
     except DaqError as e:
         console.print(
-            Panel.fit("[red]Error[/]: {} - {}".format(e.error_code, e.error_type.name)))
+            Panel.fit("[red]Error[/]: {} - {}".format(e.error_code, e.error_type.name))
+        )
 
     task.close()
 
 
 def test_ai_voltage(amplitude_pp, frequency, ch_input: int = 0, isLoop: bool = False):
 
-    task = nidaqmx.Task('Test Input Voltage')
+    task = nidaqmx.Task("Test Input Voltage")
     channel1: AIChannel = task.ai_channels.add_ai_voltage_chan(
-        'cDAQ9189-1CDBE0AMod1/ai{}'.format(ch_input),
-        min_val=-4, max_val=4)
+        "cDAQ9189-1CDBE0AMod1/ai{}".format(ch_input), min_val=-4, max_val=4
+    )
 
     task.timing.cfg_samp_clk_timing(102000)
 
@@ -102,21 +103,22 @@ def test_ai_voltage(amplitude_pp, frequency, ch_input: int = 0, isLoop: bool = F
     voltages = np.ndarray(shape=(number_of_samples))
 
     channel1_stream_reader = nidaqmx.stream_readers.AnalogSingleChannelReader(
-        task.in_stream)
+        task.in_stream
+    )
 
     console.print(voltages)
 
     channel1_stream_reader.read_many_sample(
-        voltages, number_of_samples_per_channel=number_of_samples)
+        voltages, number_of_samples_per_channel=number_of_samples
+    )
 
     # PLOT
     x: List[float] = list()
 
     for idx, v in enumerate(voltages):
-        x.append(idx * (1/102000))
+        x.append(idx * (1 / 102000))
 
-    plt.plot(x, voltages,
-             color='g')
+    plt.plot(x, voltages, color="g")
     plt.ylabel("Voltages")
     plt.title("Voltages over time.")
     plt.grid(plt.legend)
@@ -124,8 +126,7 @@ def test_ai_voltage(amplitude_pp, frequency, ch_input: int = 0, isLoop: bool = F
     plt.savefig("./data/cDAQ/plot.pdf")
 
     # REPORT
-    console.print(
-        Panel.fit("[yellow]Amplitude PP[/]: {}".format(amplitude_pp)))
+    console.print(Panel.fit("[yellow]Amplitude PP[/]: {}".format(amplitude_pp)))
     console.print(Panel.fit("[yellow]Frequency[/]: {}".format(frequency)))
     console.print(Panel.fit("[yellow]Max Value[/]: {}".format(max(voltages))))
     console.print(Panel.fit("[yellow]Min Value[/]: {}".format(min(voltages))))
@@ -180,10 +181,10 @@ def test_rigol_ni_output(amplitude_pp: float = 2, frequency: float = 1000):
 
 def read_rms_ai_voltage(ch_input: int = 0, isLoop: bool = False):
 
-    task = nidaqmx.Task('Test Input Voltage')
+    task = nidaqmx.Task("Test Input Voltage")
     channel1: AIChannel = task.ai_channels.add_ai_voltage_chan(
-        'cDAQ9189-1CDBE0AMod1/ai{}'.format(ch_input),
-        min_val=-4, max_val=4)
+        "cDAQ9189-1CDBE0AMod1/ai{}".format(ch_input), min_val=-4, max_val=4
+    )
 
     Fs = 102000
 
@@ -194,13 +195,13 @@ def read_rms_ai_voltage(ch_input: int = 0, isLoop: bool = False):
     voltages = np.ndarray(shape=number_of_samples)
 
     channel1_stream_reader = nidaqmx.stream_readers.AnalogSingleChannelReader(
-        task.in_stream)
+        task.in_stream
+    )
 
     # console.print(voltages, sep="\n")
 
     channel1_stream_reader.read_many_sample(
-        voltages,
-        number_of_samples_per_channel=number_of_samples
+        voltages, number_of_samples_per_channel=number_of_samples
     )
 
     # Plot Sine Wave
@@ -209,21 +210,29 @@ def read_rms_ai_voltage(ch_input: int = 0, isLoop: bool = False):
 
     rms_voltage_average: float = rms_average(voltages, number_of_samples)
     rms_voltage_fourier: float = rms_fft(voltages, number_of_samples)
-    rms_voltage_integrate: float = rms_integration(
-        voltages, number_of_samples, Fs)
+    rms_voltage_integrate: float = rms_integration(voltages, number_of_samples, Fs)
 
-    console.print(Panel.fit(
-        "[yellow]RMS Voltage (Avarage)[/]: [blue]{}[/] V"
-        .format(round(rms_voltage_average, 5))
-    ))
-    console.print(Panel.fit(
-        "[yellow]RMS Voltage (Fourier)[/]: [blue]{}[/] V"
-        .format(round(rms_voltage_fourier, 5))
-    ))
-    console.print(Panel.fit(
-        "[yellow]RMS Voltage (Integrate)[/]: [blue]{}[/] V"
-        .format(round(rms_voltage_integrate, 5))
-    ))
+    console.print(
+        Panel.fit(
+            "[yellow]RMS Voltage (Avarage)[/]: [blue]{}[/] V".format(
+                round(rms_voltage_average, 5)
+            )
+        )
+    )
+    console.print(
+        Panel.fit(
+            "[yellow]RMS Voltage (Fourier)[/]: [blue]{}[/] V".format(
+                round(rms_voltage_fourier, 5)
+            )
+        )
+    )
+    console.print(
+        Panel.fit(
+            "[yellow]RMS Voltage (Integrate)[/]: [blue]{}[/] V".format(
+                round(rms_voltage_integrate, 5)
+            )
+        )
+    )
 
     # REPORT
     console.print(Panel.fit("[yellow]Max Value[/]: {}".format(max(voltages))))
@@ -234,13 +243,14 @@ def read_rms_ai_voltage(ch_input: int = 0, isLoop: bool = False):
 
 
 def test_rigol_rms_ni_output(
-    amplitude_pp: float = 2, frequency: float = 1000,
+    amplitude_pp: float = 2,
+    frequency: float = 1000,
     debug: bool = False,
-    number_of_samples=1000
+    number_of_samples=1000,
 ):
     """Asks for the 2 instruments"""
     list_devices: List[Instrument] = get_device_list()
-    if(debug):
+    if debug:
         print_devices_list(list_devices)
 
     gen: usbtmc.Instrument = list_devices[0]
@@ -278,15 +288,18 @@ def test_rigol_rms_ni_output(
     gen.write(":OUTPut1 ON")
 
     for n in range(200, 1001, 10):
-        rms_value = rms(amplitude_pp=amplitude_pp, frequency=frequency,
-                        Fs=102000, number_of_samples=n, time_report=False)
+        rms_value = rms(
+            amplitude_pp=amplitude_pp,
+            frequency=frequency,
+            Fs=102000,
+            number_of_samples=n,
+            time_report=False,
+        )
 
-        console.print(
-            Panel.fit("[red]{} - RMS[/]: {} V".format(n, rms_value)))
+        console.print(Panel.fit("[red]{} - RMS[/]: {} V".format(n, rms_value)))
 
-    if(debug):
-        console.print(
-            Panel.fit("[yellow]Amplitude PP[/]: {}".format(amplitude_pp)))
+    if debug:
+        console.print(Panel.fit("[yellow]Amplitude PP[/]: {}".format(amplitude_pp)))
         console.print(Panel.fit("[yellow]Frequency[/]: {}".format(frequency)))
 
     gen.close()
@@ -337,33 +350,33 @@ def test_lettura_rigol(
 
             time.start()
 
-            rms_value = rms(frequency=frequency, Fs=102000,
-                            ch_input="cDAQ9189-1CDBE0AMod1/ai1",
-                            max_voltage=4.0,
-                            min_voltage=-4.0,
-                            number_of_samples=100
-                            )
+            rms_value = rms(
+                frequency=frequency,
+                Fs=102000,
+                ch_input="cDAQ9189-1CDBE0AMod1/ai1",
+                max_voltage=4.0,
+                min_voltage=-4.0,
+                number_of_samples=100,
+            )
 
             message: Timer_Message = time.stop()
 
             perc_error = percentage_error(
-                exact=(amplitude/2)/sqrt(2),
-                approx=rms_value
+                exact=(amplitude / 2) / sqrt(2), approx=rms_value
             )
             style_percentage_error = "cyan"
 
-            if(perc_error <= 0):
+            if perc_error <= 0:
                 style_percentage_error = "red"
 
-            if(n == 4):
+            if n == 4:
                 live.console.log("ciao")
 
             table.add_row(
                 "{}".format(frequency),
                 "{:.5f} ".format(round(rms_value, 5)),
-                "[{}]{:.3f}[/] %".format(style_percentage_error,
-                                         round(perc_error, 3)),
-                "[cyan]{}[/] s".format(message.elapsed_time)
+                "[{}]{:.3f}[/] %".format(style_percentage_error, round(perc_error, 3)),
+                "[cyan]{}[/] s".format(message.elapsed_time),
             )
 
     # console.print(table)

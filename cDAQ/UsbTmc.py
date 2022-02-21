@@ -24,30 +24,27 @@ console = Console()
 
 
 def print_info_instrument(instr: usbtmc.Instrument):
-    console.print("-"*80)
+    console.print("-" * 80)
     console.print(f"Device: {instr.device}")
-    console.print("-"*80)
+    console.print("-" * 80)
+
 
 ###########################################################
 
 
-def exec_commands(
-    instr: usbtmc.Instrument,
-    commands: List[str],
-    debug: bool = False
-):
+def exec_commands(instr: usbtmc.Instrument, commands: List[str], debug: bool = False):
     for command in commands:
-        if(command.find("?") > 0):
+        if command.find("?") > 0:
             response = instr.ask(command)
 
-            if(response == ""):
+            if response == "":
                 response = "NULL"
 
             console.print("{}:\t{}".format(command, response))
         else:
             instr.write(command)
 
-            if(debug):
+            if debug:
                 console.print(command)
 
 
@@ -97,7 +94,7 @@ def print_devices_list(list_devices: List[usbtmc.Instrument]):
 
             line: List[str] = device_line.strip().split()
 
-            if(line[0] == "iManufacturer"):
+            if line[0] == "iManufacturer":
                 # console.print(device_line)
                 # console.print([ord(c) for c in device_line])
 
@@ -105,7 +102,7 @@ def print_devices_list(list_devices: List[usbtmc.Instrument]):
                 for i in range(3, len(line)):
                     option = option + " " + line[i]
                 console.print(" " + option)
-            elif(line[0] == "iProduct"):
+            elif line[0] == "iProduct":
                 # console.print(device_line)
                 # console.print([ord(c) for c in device_line])
 
@@ -186,26 +183,25 @@ def command_line_():
     """Operations"""
     isEnded = False
     input_string: str = ""
-    console.print(
-        "Type the Device index followed by the command you want to execute")
+    console.print("Type the Device index followed by the command you want to execute")
     console.print("Example: 0 TRIG:COUN 3")
     console.print("-" * 50)
 
-    while(isEnded != True):
+    while isEnded != True:
         input_string = input("> ")
 
-        if(input_string == "exit"):
+        if input_string == "exit":
             isEnded = True
             break
 
         index: np.int = np.int(input_string[0])
 
-        if(index > len(list_devices)):
+        if index > len(list_devices):
             console.print("Index device out of range")
             console.print("-" * 50)
             continue
 
-        if(input_string.find("?") > 0):
+        if input_string.find("?") > 0:
             response = list_devices[index].ask(input_string[2:])
 
             console.print("{}:\t{}".format(input_string[2:], response))
@@ -219,7 +215,9 @@ def command_line_():
     reader.close()
 
 
-def algorthm(min_Hz: np.int = 10, max_Hz: np.int = 100000, points_for_decade: np.int = 10):
+def algorthm(
+    min_Hz: np.int = 10, max_Hz: np.int = 100000, points_for_decade: np.int = 10
+):
 
     step: np.float = 1 / points_for_decade
     frequency: np.float
@@ -233,8 +231,7 @@ def algorthm(min_Hz: np.int = 10, max_Hz: np.int = 100000, points_for_decade: np
     min_index: np.float = log10(min_Hz)
     max_index: np.float = log10(max_Hz)
 
-    steps_sum = (points_for_decade * max_index) - \
-        (points_for_decade * min_index)
+    steps_sum = (points_for_decade * max_index) - (points_for_decade * min_index)
 
     i = 0
     while i < steps_sum + 1:
@@ -242,8 +239,11 @@ def algorthm(min_Hz: np.int = 10, max_Hz: np.int = 100000, points_for_decade: np
         period = 1000 / frequency
         sample_time = period * sample_number
         f.write("{},{},{}\n".format(frequency, period, sample_time))
-        console.print("{:.15}:\t{},\t{},\t{}".format(
-            min_index + i * step, frequency, period, sample_time))
+        console.print(
+            "{:.15}:\t{},\t{},\t{}".format(
+                min_index + i * step, frequency, period, sample_time
+            )
+        )
 
         i += 1
     f.close()
@@ -254,14 +254,14 @@ def plot():
 
     # Note that even in the OO-style, we use `.pyplot.figure` to create the figure.
     fig, ax = plt.subplots()  # Create a figure and an axes.
-    ax.plot(x, x, label='linear')  # Plot some data on the axes.
-    ax.plot(x, x**2, label='quadratic')  # Plot more data on the axes...
-    ax.plot(x, x**3, label='cubic')  # ... and some more.
-    ax.set_xlabel('x label')  # Add an x-label to the axes.
-    ax.set_ylabel('y label')  # Add a y-label to the axes.
+    ax.plot(x, x, label="linear")  # Plot some data on the axes.
+    ax.plot(x, x**2, label="quadratic")  # Plot more data on the axes...
+    ax.plot(x, x**3, label="cubic")  # ... and some more.
+    ax.set_xlabel("x label")  # Add an x-label to the axes.
+    ax.set_ylabel("y label")  # Add a y-label to the axes.
     ax.set_title("Simple Plot")  # Add a title to the axes.
     ax.legend()  # Add a legend.
-    plt.savefig('foo.pdf')
+    plt.savefig("foo.pdf")
 
 
 def csv_to_plot():
@@ -275,8 +275,7 @@ def csv_to_plot():
             x.append(row[0])
             y.append(row[2])
 
-    plt.plot(x, y, color='g', linestyle='dashed',
-             marker='o', label="Sample Time")
+    plt.plot(x, y, color="g", linestyle="dashed", marker="o", label="Sample Time")
 
     plt.xlabel("Frequency")
     plt.ylabel("Sample Time")
@@ -287,10 +286,12 @@ def csv_to_plot():
 
 def test_sampling(
     file_path: str,
-    min_Hz: np.int = 10, max_Hz: np.int = 100,
+    min_Hz: np.int = 10,
+    max_Hz: np.int = 100,
     points_for_decade: np.int = 10,
     sample_number=1,
-    time_report: bool = False, debug: bool = False
+    time_report: bool = False,
+    debug: bool = False,
 ):
 
     table_config = Table(title="Configurations")
@@ -310,12 +311,9 @@ def test_sampling(
     aperture_min: np.float = 0.01
     interval_min: np.float = 0.01
 
-    table_config.add_row("Step", f"{step}",
-                         style="")
-    table_config.add_row("Sample Number", f"{sample_number}",
-                         style="")
-    table_config.add_row("Amplitude", f"{amplitude}",
-                         style="")
+    table_config.add_row("Step", f"{step}", style="")
+    table_config.add_row("Sample Number", f"{sample_number}", style="")
+    table_config.add_row("Amplitude", f"{amplitude}", style="")
 
     start: datetime = 0
     stop: datetime = 0
@@ -326,10 +324,8 @@ def test_sampling(
     index_generator: np.int = np.int(input("Which is the Generator? "))
     index_reader: np.int = np.int(input("Which is the Reader? "))
 
-    table_config.add_row("Generator Index", f"{index_generator}",
-                         style="")
-    table_config.add_row("Reader Index", f"{index_reader}",
-                         style="")
+    table_config.add_row("Generator Index", f"{index_generator}", style="")
+    table_config.add_row("Reader Index", f"{index_reader}", style="")
 
     """Generates the insttrument's interfaces"""
     gen: usbtmc.Instrument = list_devices[index_generator]
@@ -343,8 +339,7 @@ def test_sampling(
     configs_gen: List[str] = [
         "*CLS",
         ":FUNCtion:VOLTage:AC",
-        f":SOUR1:VOLTAGE:AMPLitude {amplitude}"
-        ":OUTPut1 OFF",
+        f":SOUR1:VOLTAGE:AMPLitude {amplitude}" ":OUTPut1 OFF",
         ":OUTPut1 ON",
     ]
 
@@ -365,31 +360,22 @@ def test_sampling(
     min_index: np.float = log10(min_Hz)
     max_index: np.float = log10(max_Hz)
 
-    table_config.add_row("min Hz", f"{min_Hz}",
-                         style="")
-    table_config.add_row("max Hz", f"{max_Hz}",
-                         style="")
+    table_config.add_row("min Hz", f"{min_Hz}", style="")
+    table_config.add_row("max Hz", f"{max_Hz}", style="")
 
-    table_config.add_row("min index", f"{min_index}",
-                         style="")
-    table_config.add_row("max index", f"{max_index}",
-                         style="")
+    table_config.add_row("min index", f"{min_index}", style="")
+    table_config.add_row("max index", f"{max_index}", style="")
 
-    table_config.add_row("Generator Config SCPI", "\n".join(configs_gen),
-                         style="")
-    table_config.add_row("Reader Config SCPI", "\n".join(configs_read),
-                         style="")
+    table_config.add_row("Generator Config SCPI", "\n".join(configs_gen), style="")
+    table_config.add_row("Reader Config SCPI", "\n".join(configs_read), style="")
 
     step_max = points_for_decade * max_index
     step_min = points_for_decade * min_index
     step_total = step_max - step_min
 
-    table_config.add_row("Step Max", f"{step_max}",
-                         style="")
-    table_config.add_row("Step Min", f"{step_min}",
-                         style="")
-    table_config.add_row("Step Total", f"{step_total}",
-                         style="")
+    table_config.add_row("Step Max", f"{step_max}", style="")
+    table_config.add_row("Step Min", f"{step_min}", style="")
+    table_config.add_row("Step Total", f"{step_total}", style="")
 
     console.print(table_config)
 
@@ -403,11 +389,7 @@ def test_sampling(
     step_curr = 0
     while step_curr < step_total + 1:
 
-        table_update = Table(
-            Column(),
-            Column(justify="right"),
-            show_header=False
-        )
+        table_update = Table(Column(), Column(justify="right"), show_header=False)
 
         step_curr_Hz = min_index + step_curr * step
         # Frequency in Hz
@@ -427,13 +409,13 @@ def test_sampling(
         # Interval is 10% more than aperture
         interval = period * 0.5
 
-        if(delay < delay_min):
+        if delay < delay_min:
             delay = delay_min
 
-        if(aperture < aperture_min):
+        if aperture < aperture_min:
             aperture = aperture_min
 
-        if(interval < interval_min):
+        if interval < interval_min:
             interval = interval_min
 
         aperture *= 1.2
@@ -457,7 +439,7 @@ def test_sampling(
 
         # Init the measurements
         read.write("INIT")
-        while(int(read.ask("*OPC?")) == 0):
+        while int(read.ask("*OPC?")) == 0:
             console.log("waiting")
             sleep(1)
         voltages_measurements = read.ask("FETCh?").split(",")
@@ -466,7 +448,7 @@ def test_sampling(
         f.write("{},{}\n".format(frequency, ",".join(voltages_measurements)))
 
         """PRINTING"""
-        if(debug):
+        if debug:
             error = float(read.ask("*ESR?"))
             table_update.add_row("Step Curr", f"{step_curr}")
             table_update.add_row("Step Curr in log Hz", f"{step_curr_Hz}")
@@ -476,7 +458,7 @@ def test_sampling(
             table_update.add_row("Aperture", f"{aperture}")
             table_update.add_row("Interval", f"{interval}")
             table_update.add_row("Voltages", "\n".join(voltages_measurements))
-            if(error != 0):
+            if error != 0:
                 table_update.add_row("ERROR", f"{error}")
 
             console.print(table_update)
@@ -488,12 +470,11 @@ def test_sampling(
     """Stop time"""
     timer_message: Timer_Message = timer.stop()
 
-    if(time_report):
+    if time_report:
         console.print(
             Panel(
-                "{}: {} s".format(timer_message.message,
-                                  timer_message.elapsed_time),
-                title="Execution Time"
+                "{}: {} s".format(timer_message.message, timer_message.elapsed_time),
+                title="Execution Time",
             )
         )
 
@@ -503,11 +484,14 @@ def test_sampling(
 
 
 def test_filter(
-    file_path: str, csv_file_path: str,
-    min_Hz: np.int = 10, max_Hz: np.int = 100,
+    file_path: str,
+    csv_file_path: str,
+    min_Hz: np.int = 10,
+    max_Hz: np.int = 100,
     points_for_decade: np.int = 10,
     csv_table_titles=False,
-    time_report: bool = False, debug: bool = False,
+    time_report: bool = False,
+    debug: bool = False,
 ):
 
     step: np.float = 1 / points_for_decade
@@ -561,8 +545,7 @@ def test_filter(
     min_index: np.float = log10(min_Hz)
     max_index: np.float = log10(max_Hz)
 
-    steps_sum = (points_for_decade * max_index) - \
-        (points_for_decade * min_index)
+    steps_sum = (points_for_decade * max_index) - (points_for_decade * min_index)
 
     i = 0
 
@@ -570,15 +553,21 @@ def test_filter(
     f = open(file_path, "w")
 
     # Only for Debugging
-    if(csv_table_titles):
+    if csv_table_titles:
         if os.stat(file_path).st_size == 0:
             f.write("min_Hz\t\t{}\n".format(min_Hz))
             f.write("max_Hz\t\t{}\n".format(max_Hz))
             f.write("points_for_decade\t{}\n".format(points_for_decade))
             f.write("Delay,Interval,Frequency,VoltageMeasurements\n")
 
-    csv_file = list(genfromtxt(csv_file_path, delimiter=",", names=[
-        "Frequency", "Voltage", "dBV"], dtype="f8,f8,f8"))
+    csv_file = list(
+        genfromtxt(
+            csv_file_path,
+            delimiter=",",
+            names=["Frequency", "Voltage", "dBV"],
+            dtype="f8,f8,f8",
+        )
+    )
 
     """Start time"""
     start = datetime.now()
@@ -606,13 +595,13 @@ def test_filter(
         aperture_min: np.float = 0.01
         interval_min: np.float = 0.01
 
-        if(delay < delay_min):
+        if delay < delay_min:
             delay = delay_min
 
-        if(aperture < aperture_min):
+        if aperture < aperture_min:
             aperture = aperture_min
 
-        if(interval < interval_min):
+        if interval < interval_min:
             interval = interval_min
 
         amplitude = csv_file[i][1] * 2 * sqrt(2)
@@ -634,7 +623,7 @@ def test_filter(
 
         # Init the measurements
         read.write("INIT")
-        while(read.ask("*OPC?") == 0):
+        while read.ask("*OPC?") == 0:
             console.print("waiting")
         voltages_measurements = read.ask("FETCh?").split(",")
 
@@ -642,17 +631,16 @@ def test_filter(
         f.write("{},{}\n".format(frequency, ",".join(voltages_measurements)))
 
         """PRINTING"""
-        if(debug):
+        if debug:
             error = read.ask("*ESR?")
 
-            console.print(
-                "[bold]Frequency[/]:\t{}".format(round(frequency, 5)))
+            console.print("[bold]Frequency[/]:\t{}".format(round(frequency, 5)))
             console.print("[bold]Amplitude[/]:\t{}".format(amplitude))
             console.print("[bold]Delay[/]:\t\t{}".format(delay))
             console.print("[bold]Aperture[/]:\t{}".format(aperture))
             console.print("[bold]Interval[/]:\t{}".format(interval))
-            if(error != 0):
-                console.print('[bold]ERROR[/]:\t\t{}'.format(error))
+            if error != 0:
+                console.print("[bold]ERROR[/]:\t\t{}".format(error))
             console.print("[bold]Voltages[/]:{}".format(voltages_measurements))
 
         i += 1
@@ -662,9 +650,9 @@ def test_filter(
     """Stop time"""
     stop = datetime.now()
 
-    if(time_report):
+    if time_report:
         console.print("-" * 100)
-        console.print("Exec Time: {}".format((stop-start).total_seconds()))
+        console.print("Exec Time: {}".format((stop - start).total_seconds()))
         console.print("-" * 100)
 
     """Closes the Instruments interfaces"""

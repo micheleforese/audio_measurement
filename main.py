@@ -37,11 +37,15 @@ def test_samp():
     csv_file = "data/filter/test_filter_{}.csv".format(number)
     png_file = "data/filter/test_filter_{}.png".format(number)
 
-    test_sampling(csv_file, min_Hz=800, max_Hz=1800,
-                  points_for_decade=100,
-                  sample_number=20,
-                  time_report=True, debug=True,
-                  )
+    test_sampling(
+        csv_file,
+        min_Hz=800,
+        max_Hz=1800,
+        points_for_decade=100,
+        sample_number=20,
+        time_report=True,
+        debug=True,
+    )
 
     plot_log_db(csv_file, png_file, number_voltages=20)
 
@@ -53,7 +57,7 @@ def test_samp():
 # plot("config/config_template.json")
 
 
-curva('test/basic.json', 'test/basic.csv', 'test/basic.png', debug=True)
+curva("test/basic.json", "test/basic.csv", "test/basic.png", debug=True)
 
 
 def boh():

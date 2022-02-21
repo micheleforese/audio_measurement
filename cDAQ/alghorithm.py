@@ -1,9 +1,7 @@
-
-
 from math import log10
 
 
-class LogaritmicScale():
+class LogaritmicScale:
     min_Hz: float
     max_Hz: float
 
@@ -22,10 +20,9 @@ class LogaritmicScale():
 
     frequency: float
 
-    def __init__(self,
-                 min_Hz: float, max_Hz: float,
-                 step: float, points_per_decade: float
-                 ) -> None:
+    def __init__(
+        self, min_Hz: float, max_Hz: float, step: float, points_per_decade: float
+    ) -> None:
 
         self.min_index = log10(min_Hz)
         self.max_index = log10(max_Hz)

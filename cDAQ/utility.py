@@ -52,6 +52,7 @@ class cDAQ:
     """
     Class for Initialize the nidaqmx driver connection
     """
+
     system: System
 
     def __init__(self) -> None:
@@ -66,13 +67,13 @@ class cDAQ:
             debug (bool): if true, prints the versions divided in a table
         """
 
-        if(not debug):
+        if not debug:
             console.print(
                 Panel.fit(
                     "Version: [blue]{}[/].[blue]{}[/].[blue]{}[/]".format(
                         self.system.driver_version.major_version,
                         self.system.driver_version.minor_version,
-                        self.system.driver_version.update_version
+                        self.system.driver_version.update_version,
                     )
                 )
             )
@@ -80,19 +81,24 @@ class cDAQ:
             table = Table(
                 Column(justify="left"),
                 Column(justify="right"),
-                title="cDAQ Driver info", show_header=False)
+                title="cDAQ Driver info",
+                show_header=False,
+            )
 
             # Major Version
-            table.add_row("Major Version", "{}".format(
-                self.system.driver_version.major_version))
+            table.add_row(
+                "Major Version", "{}".format(self.system.driver_version.major_version)
+            )
 
             # Minor Version
-            table.add_row("Minor Version", "{}".format(
-                self.system.driver_version.minor_version))
+            table.add_row(
+                "Minor Version", "{}".format(self.system.driver_version.minor_version)
+            )
 
             # Update Version
-            table.add_row("Update Version", "{}".format(
-                self.system.driver_version.update_version))
+            table.add_row(
+                "Update Version", "{}".format(self.system.driver_version.update_version)
+            )
             console.print(table)
 
     def _list_devices(self) -> DeviceCollection:
@@ -105,14 +111,10 @@ class cDAQ:
         return self.system.devices
 
     def print_list_devices(self):
-        """Prints the Devices connected to the machine
-        """
+        """Prints the Devices connected to the machine"""
 
         table = Table(title="Device List")
-        table.add_column(
-            "[yellow]Name[/]",
-            justify="left", style="blue", no_wrap=True
-        )
+        table.add_column("[yellow]Name[/]", justify="left", style="blue", no_wrap=True)
 
         for device in self._list_devices():
             table.add_row(device.name)
@@ -126,13 +128,14 @@ def print_supported_output_types(channel: AOChannel):
 
     for t in channel.physical_channel.ao_output_types:
         supported_types.add(
-            "[green]{}[/green]: [blue]{}[/blue]".format(t.name, int(t.value)))
+            "[green]{}[/green]: [blue]{}[/blue]".format(t.name, int(t.value))
+        )
 
     console.print(Panel.fit(supported_types))
 
 
 def percentage_error(exact: float, approx: float) -> float:
-    return ((approx - exact)/exact)*100
+    return ((approx - exact) / exact) * 100
 
 
 def integrate(y_values: List[float], delta) -> float:
@@ -141,7 +144,7 @@ def integrate(y_values: List[float], delta) -> float:
 
     for idx, y in enumerate(y_values):
         # If it's the last element then exit the loop
-        if(idx + 1 == len(y_values)):
+        if idx + 1 == len(y_values):
             break
         else:
             y_plus = y_values[idx + 1]
@@ -153,7 +156,7 @@ def integrate(y_values: List[float], delta) -> float:
             # input()
 
             # Make the calculations
-            if(y * y_plus < 0):
+            if y * y_plus < 0:
                 r_rec: np.float = abs(y) * delta / 4
                 l_rec: np.float = abs(y_plus) * delta / 4
                 volume += r_rec + l_rec
@@ -193,7 +196,10 @@ def voltage_rms(voltages: List[float]) -> float:
 
             if not idx < len(voltages):
                 console.log(
-                    Panel.fit("[red]Vector Lenght exceded with index: {}[/]".format(idx)))
+                    Panel.fit(
+                        "[red]Vector Lenght exceded with index: {}[/]".format(idx)
+                    )
+                )
                 break
 
         avg = sum_volts / n_volts
@@ -271,19 +277,21 @@ def sinc(x: float):
 
 
 def read_voltages(
-    frequency: float, Fs: float,
+    frequency: float,
+    Fs: float,
     number_of_samples: int,
-    ch_input: str = 'cDAQ9189-1CDBE0AMod1/ai1',
-    min_voltage: float = -4, max_voltage: float = 4
+    ch_input: str = "cDAQ9189-1CDBE0AMod1/ai1",
+    min_voltage: float = -4,
+    max_voltage: float = 4,
 ) -> float:
 
-    if(frequency > Fs / 2):
+    if frequency > Fs / 2:
         raise ValueError("The Sampling rate is low: Fs / 2 > frequency.")
 
-    task = nidaqmx.Task('Input Voltage')
+    task = nidaqmx.Task("Input Voltage")
     channel1: AIChannel = task.ai_channels.add_ai_voltage_chan(
-        ch_input,
-        min_val=min_voltage, max_val=max_voltage)
+        ch_input, min_val=min_voltage, max_val=max_voltage
+    )
 
     # Sets the Clock sampling rate
     task.timing.cfg_samp_clk_timing(Fs)
@@ -293,12 +301,12 @@ def read_voltages(
 
     # Sets the task for the stream_reader
     channel1_stream_reader = nidaqmx.stream_readers.AnalogSingleChannelReader(
-        task.in_stream)
+        task.in_stream
+    )
 
     # Sampling the voltages
     channel1_stream_reader.read_many_sample(
-        voltages,
-        number_of_samples_per_channel=number_of_samples
+        voltages, number_of_samples_per_channel=number_of_samples
     )
     task.close()
 
@@ -311,44 +319,56 @@ class RMS_MODE(enum.Enum):
     INTEGRATE = 3
 
 
-def rms(frequency: float, Fs: float, number_of_samples: int, ch_input: str, max_voltage: float, min_voltage: float, rms_mode: RMS_MODE = RMS_MODE.FFT, time_report: bool = False) -> float:
+def rms(
+    frequency: float,
+    Fs: float,
+    number_of_samples: int,
+    ch_input: str,
+    max_voltage: float,
+    min_voltage: float,
+    rms_mode: RMS_MODE = RMS_MODE.FFT,
+    time_report: bool = False,
+) -> float:
 
-    if(time_report):
+    if time_report:
         timer = Timer()
 
     # number_of_samples = 800
 
     # Pre allocate the array
     try:
-        voltages = read_voltages(frequency, Fs, number_of_samples,
-                                 ch_input=ch_input,
-                                 max_voltage=max_voltage,
-                                 min_voltage=min_voltage
-                                 )
+        voltages = read_voltages(
+            frequency,
+            Fs,
+            number_of_samples,
+            ch_input=ch_input,
+            max_voltage=max_voltage,
+            min_voltage=min_voltage,
+        )
     except Exception as e:
         console.log(e)
 
     rms: Option[float] = None
 
-    if(time_report):
+    if time_report:
         timer.start("[yellow]RMS Calculation Execution time[/]")
 
-    if (rms_mode == RMS_MODE.FFT):
+    if rms_mode == RMS_MODE.FFT:
         rms = rms_fft(voltages, number_of_samples)
-    elif (rms_mode == RMS_MODE.AVERAGE):
+    elif rms_mode == RMS_MODE.AVERAGE:
         rms = rms_average(voltages, number_of_samples)
-    elif (rms_mode == RMS_MODE.INTEGRATE):
-        rms = rms_integration(
-            voltages, number_of_samples, Fs)
+    elif rms_mode == RMS_MODE.INTEGRATE:
+        rms = rms_integration(voltages, number_of_samples, Fs)
 
-    if(time_report):
+    if time_report:
         timer.stop(display=True)
 
     return rms
 
 
-def plot_log_db(file_path: str = "test.csv", file_png_path: str = "test.png",
-                number_voltages=1):
+def plot_log_db(
+    file_path: str = "test.csv", file_png_path: str = "test.png", number_voltages=1
+):
     csvfile = genfromtxt(file_path, delimiter=",")
 
     Vpp = 2.0
@@ -367,7 +387,7 @@ def plot_log_db(file_path: str = "test.csv", file_png_path: str = "test.png",
 
         voltage_average /= 4
 
-        voltages.append((row[2] + row[3] + row[4])/3)
+        voltages.append((row[2] + row[3] + row[4]) / 3)
         dBV.append(20 * log10(row[1] * Vpp / (2 * sqrt(2))))
 
     plt.plot(frequencies, dBV)
@@ -379,10 +399,16 @@ def plot_log_db(file_path: str = "test.csv", file_png_path: str = "test.png",
     plt.savefig(file_png_path)
 
 
-def plot_V_out_filter(csv_file_path: str = "v_out_filter.csv", png_graph_file_path: str = "v_out_filter.png",
-                      min_Hz: np.float = 40, max_Hz: np.float = 10000, frequency_p: np.float = 5000,
-                      points_for_decade: np.int = 100,
-                      Vpp: np.float = 2.0, n=1):
+def plot_V_out_filter(
+    csv_file_path: str = "v_out_filter.csv",
+    png_graph_file_path: str = "v_out_filter.png",
+    min_Hz: np.float = 40,
+    max_Hz: np.float = 10000,
+    frequency_p: np.float = 5000,
+    points_for_decade: np.int = 100,
+    Vpp: np.float = 2.0,
+    n=1,
+):
 
     f = open(csv_file_path, "w")
 
@@ -394,17 +420,17 @@ def plot_V_out_filter(csv_file_path: str = "v_out_filter.csv", png_graph_file_pa
     min_index: np.float = log10(min_Hz)
     max_index: np.float = log10(max_Hz)
 
-    steps_sum = (points_for_decade * max_index) - \
-        (points_for_decade * min_index)
+    steps_sum = (points_for_decade * max_index) - (points_for_decade * min_index)
 
     i = 0
     while i < steps_sum + 1:
         frequency = pow(10, min_index + i * step)
 
-        V_in = Vpp / (2*sqrt(2))
+        V_in = Vpp / (2 * sqrt(2))
 
-        A = abs(1/sqrt(1+pow(frequency/frequency_p, 2 * n))) * \
-            abs(1/sqrt(1+pow(frequency_p/frequency, 2 * n)))
+        A = abs(1 / sqrt(1 + pow(frequency / frequency_p, 2 * n))) * abs(
+            1 / sqrt(1 + pow(frequency_p / frequency, 2 * n))
+        )
 
         voltage_out_temp = V_in * A
         dBV_temp = 20 * log10(voltage_out_temp * Vpp / (2 * sqrt(2)))
@@ -427,11 +453,23 @@ def plot_V_out_filter(csv_file_path: str = "v_out_filter.csv", png_graph_file_pa
     plt.savefig(png_graph_file_path)
 
 
-def plot_percentage_error(csv_expected_file_path: str, csv_result_file_path: str, csv_file_path, png_graph_file_path: str, debug: bool = False):
-    csv_expected = np.genfromtxt(csv_expected_file_path, delimiter=",",
-                                 dtype=[("Frequency", 'f8'), ('Voltage', 'f8'), ('dBV', 'f8')])
-    csv_result = np.genfromtxt(csv_result_file_path, delimiter=",",
-                               dtype=[("Frequency", 'f8'), ('Voltage', 'f8')])
+def plot_percentage_error(
+    csv_expected_file_path: str,
+    csv_result_file_path: str,
+    csv_file_path,
+    png_graph_file_path: str,
+    debug: bool = False,
+):
+    csv_expected = np.genfromtxt(
+        csv_expected_file_path,
+        delimiter=",",
+        dtype=[("Frequency", "f8"), ("Voltage", "f8"), ("dBV", "f8")],
+    )
+    csv_result = np.genfromtxt(
+        csv_result_file_path,
+        delimiter=",",
+        dtype=[("Frequency", "f8"), ("Voltage", "f8")],
+    )
 
     frequency: List[np.float] = []
     perc_error: List[np.float] = []
@@ -455,19 +493,22 @@ def plot_percentage_error(csv_expected_file_path: str, csv_result_file_path: str
             approx=approx_temp,
         )
 
-        if(debug):
-            table.add_row(f"{frequency_temp}",
-                          f"{expected_temp}", f"{approx_temp}",
-                          f"{perc_error_temp}")
+        if debug:
+            table.add_row(
+                f"{frequency_temp}",
+                f"{expected_temp}",
+                f"{approx_temp}",
+                f"{perc_error_temp}",
+            )
 
-        if(perc_error_temp > 100.0):
+        if perc_error_temp > 100.0:
             perc_error_temp = 100
 
         frequency.append(frequency_temp)
         perc_error.append(perc_error_temp)
         f.write("{},{}\n".format(frequency_temp, perc_error_temp))
 
-    if(debug):
+    if debug:
         console.print(table)
 
     plt.xticks(np.arange(0, 100, step=10))
@@ -479,11 +520,23 @@ def plot_percentage_error(csv_expected_file_path: str, csv_result_file_path: str
     plt.savefig(png_graph_file_path)
 
 
-def plot_percentage_error_temp(csv_expected_file_path: str, csv_result_file_path: str, csv_file_path, png_graph_file_path: str, debug: bool = False):
-    csv_expected = np.genfromtxt(csv_expected_file_path, delimiter=",",
-                                 dtype=[("Frequency", 'f8'), ('Voltage', 'f8'), ('dBV', 'f8')])
-    csv_result = np.genfromtxt(csv_result_file_path, delimiter=",",
-                               dtype=[("Frequency", 'f8'), ('Voltage', 'f8')])
+def plot_percentage_error_temp(
+    csv_expected_file_path: str,
+    csv_result_file_path: str,
+    csv_file_path,
+    png_graph_file_path: str,
+    debug: bool = False,
+):
+    csv_expected = np.genfromtxt(
+        csv_expected_file_path,
+        delimiter=",",
+        dtype=[("Frequency", "f8"), ("Voltage", "f8"), ("dBV", "f8")],
+    )
+    csv_result = np.genfromtxt(
+        csv_result_file_path,
+        delimiter=",",
+        dtype=[("Frequency", "f8"), ("Voltage", "f8")],
+    )
 
     frequency: List[np.float] = []
     perc_error: List[np.float] = []
@@ -507,19 +560,22 @@ def plot_percentage_error_temp(csv_expected_file_path: str, csv_result_file_path
             approx=approx_temp,
         )
 
-        if(debug):
-            table.add_row(f"{frequency_temp}",
-                          f"{expected_temp}", f"{approx_temp}",
-                          f"{perc_error_temp}")
+        if debug:
+            table.add_row(
+                f"{frequency_temp}",
+                f"{expected_temp}",
+                f"{approx_temp}",
+                f"{perc_error_temp}",
+            )
 
-        if(perc_error_temp > 100.0):
+        if perc_error_temp > 100.0:
             perc_error_temp = 100
 
         frequency.append(frequency_temp)
         perc_error.append(perc_error_temp)
         f.write("{},{}\n".format(frequency_temp, perc_error_temp))
 
-    if(debug):
+    if debug:
         console.print(table)
 
     plt.xticks(np.arange(0, 100, step=10))
@@ -533,8 +589,9 @@ def plot_percentage_error_temp(csv_expected_file_path: str, csv_result_file_path
 
 def diff_steps(file_path: str):
 
-    csvfile = genfromtxt(file_path, delimiter=",", names=[
-                         "Frequency", "Voltage"], dtype="f8,f8")
+    csvfile = genfromtxt(
+        file_path, delimiter=",", names=["Frequency", "Voltage"], dtype="f8,f8"
+    )
 
     list_f_v = list(csvfile)
 
@@ -551,7 +608,7 @@ def diff_steps(file_path: str):
         Column("Prev Voltage", justify="right"),
         Column("Curr Voltage", justify="right"),
         Column("Step Difference", justify="right"),
-        show_header=True
+        show_header=True,
     )
 
     for row in list_f_v:
@@ -562,14 +619,16 @@ def diff_steps(file_path: str):
 
         style_voltage = "green"
 
-        if(diff_v < 0):
+        if diff_v < 0:
             style_voltage = "red"
 
-        table.add_row("{}".format(prev_f),
-                      "{}".format(curr_f),
-                      "{}".format(prev_v),
-                      "{}".format(curr_v),
-                      "[{}]{}[/]".format(style_voltage, diff_v))
+        table.add_row(
+            "{}".format(prev_f),
+            "{}".format(curr_f),
+            "{}".format(prev_v),
+            "{}".format(curr_v),
+            "[{}]{}[/]".format(style_voltage, diff_v),
+        )
 
         prev_f = curr_f
         prev_v = curr_v
@@ -583,19 +642,18 @@ def command_line(instr: usbtmc.Instrument):
     """Operations"""
     isEnded = False
     cmd: str = ""
-    console.print(
-        "Type the Device index followed by the command you want to execute")
+    console.print("Type the Device index followed by the command you want to execute")
     console.print("Example: TRIG:COUN 3")
     console.print("-" * 50)
 
-    while(isEnded != True):
+    while isEnded != True:
         cmd = input("scpi> ").strip()
 
-        if(cmd == "exit"):
+        if cmd == "exit":
             isEnded = True
             break
 
-        if(cmd.find("?") > 0):
+        if cmd.find("?") > 0:
             # answer = instr.ask(cmd).strip()
             instr.write(cmd)
             sleep(1)

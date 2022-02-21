@@ -1,8 +1,12 @@
-
-
-def test_sampling(file_path: str, min_Hz: np.int = 10, max_Hz: np.int = 100, points_for_decade: np.int = 10,
-                  sample_number=1,
-                  time_report: bool = False, debug: bool = False):
+def test_sampling(
+    file_path: str,
+    min_Hz: np.int = 10,
+    max_Hz: np.int = 100,
+    points_for_decade: np.int = 10,
+    sample_number=1,
+    time_report: bool = False,
+    debug: bool = False,
+):
 
     table_config = Table(title="Configurations")
     table_config.add_column("Configuration", style="cyan", no_wrap=True)
@@ -21,12 +25,9 @@ def test_sampling(file_path: str, min_Hz: np.int = 10, max_Hz: np.int = 100, poi
     aperture_min: np.float = 0.01
     interval_min: np.float = 0.01
 
-    table_config.add_row("Step", f"{step}",
-                         style="")
-    table_config.add_row("Sample Number", f"{sample_number}",
-                         style="")
-    table_config.add_row("Amplitude", f"{amplitude}",
-                         style="")
+    table_config.add_row("Step", f"{step}", style="")
+    table_config.add_row("Sample Number", f"{sample_number}", style="")
+    table_config.add_row("Amplitude", f"{amplitude}", style="")
 
     start: datetime = 0
     stop: datetime = 0
@@ -37,10 +38,8 @@ def test_sampling(file_path: str, min_Hz: np.int = 10, max_Hz: np.int = 100, poi
     index_generator: np.int = np.int(input("Which is the Generator? "))
     index_reader: np.int = np.int(input("Which is the Reader? "))
 
-    table_config.add_row("Generator Index", f"{index_generator}",
-                         style="")
-    table_config.add_row("Reader Index", f"{index_reader}",
-                         style="")
+    table_config.add_row("Generator Index", f"{index_generator}", style="")
+    table_config.add_row("Reader Index", f"{index_reader}", style="")
 
     """Generates the insttrument's interfaces"""
     gen: usbtmc.Instrument = list_devices[index_generator]
@@ -54,8 +53,7 @@ def test_sampling(file_path: str, min_Hz: np.int = 10, max_Hz: np.int = 100, poi
     configs_gen: List[str] = [
         "*CLS",
         ":FUNCtion:VOLTage:AC",
-        f":SOUR1:VOLTAGE:AMPLitude {amplitude}"
-        ":OUTPut1 OFF",
+        f":SOUR1:VOLTAGE:AMPLitude {amplitude}" ":OUTPut1 OFF",
         ":OUTPut1 ON",
     ]
 
@@ -76,31 +74,22 @@ def test_sampling(file_path: str, min_Hz: np.int = 10, max_Hz: np.int = 100, poi
     min_index: np.float = log10(min_Hz)
     max_index: np.float = log10(max_Hz)
 
-    table_config.add_row("min Hz", f"{min_Hz}",
-                         style="")
-    table_config.add_row("max Hz", f"{max_Hz}",
-                         style="")
+    table_config.add_row("min Hz", f"{min_Hz}", style="")
+    table_config.add_row("max Hz", f"{max_Hz}", style="")
 
-    table_config.add_row("min index", f"{min_index}",
-                         style="")
-    table_config.add_row("max index", f"{max_index}",
-                         style="")
+    table_config.add_row("min index", f"{min_index}", style="")
+    table_config.add_row("max index", f"{max_index}", style="")
 
-    table_config.add_row("Generator Config SCPI", "\n".join(configs_gen),
-                         style="")
-    table_config.add_row("Reader Config SCPI", "\n".join(configs_read),
-                         style="")
+    table_config.add_row("Generator Config SCPI", "\n".join(configs_gen), style="")
+    table_config.add_row("Reader Config SCPI", "\n".join(configs_read), style="")
 
     step_max = points_for_decade * max_index
     step_min = points_for_decade * min_index
     step_total = step_max - step_min
 
-    table_config.add_row("Step Max", f"{step_max}",
-                         style="")
-    table_config.add_row("Step Min", f"{step_min}",
-                         style="")
-    table_config.add_row("Step Total", f"{step_total}",
-                         style="")
+    table_config.add_row("Step Max", f"{step_max}", style="")
+    table_config.add_row("Step Min", f"{step_min}", style="")
+    table_config.add_row("Step Total", f"{step_total}", style="")
 
     console.print(table_config)
 
@@ -113,11 +102,7 @@ def test_sampling(file_path: str, min_Hz: np.int = 10, max_Hz: np.int = 100, poi
     step_curr = 0
     while step_curr < step_total + 1:
 
-        table_update = Table(
-            Column(),
-            Column(justify="right"),
-            show_header=False
-        )
+        table_update = Table(Column(), Column(justify="right"), show_header=False)
 
         step_curr_Hz = min_index + step_curr * step
         # Frequency in Hz
@@ -137,13 +122,13 @@ def test_sampling(file_path: str, min_Hz: np.int = 10, max_Hz: np.int = 100, poi
         # Interval is 10% more than aperture
         interval = period * 0.5
 
-        if(delay < delay_min):
+        if delay < delay_min:
             delay = delay_min
 
-        if(aperture < aperture_min):
+        if aperture < aperture_min:
             aperture = aperture_min
 
-        if(interval < interval_min):
+        if interval < interval_min:
             interval = interval_min
 
         aperture *= 1.2
@@ -167,7 +152,7 @@ def test_sampling(file_path: str, min_Hz: np.int = 10, max_Hz: np.int = 100, poi
 
         # Init the measurements
         read.write("INIT")
-        while(int(read.ask("*OPC?")) == 0):
+        while int(read.ask("*OPC?")) == 0:
             console.log("waiting")
             sleep(1)
         voltages_measurements = read.ask("FETCh?").split(",")
@@ -176,7 +161,7 @@ def test_sampling(file_path: str, min_Hz: np.int = 10, max_Hz: np.int = 100, poi
         f.write("{},{}\n".format(frequency, ",".join(voltages_measurements)))
 
         """PRINTING"""
-        if(debug):
+        if debug:
             error = float(read.ask("*ESR?"))
             table_update.add_row("Step Curr", f"{step_curr}")
             table_update.add_row("Step Curr in log Hz", f"{step_curr_Hz}")
@@ -186,7 +171,7 @@ def test_sampling(file_path: str, min_Hz: np.int = 10, max_Hz: np.int = 100, poi
             table_update.add_row("Aperture", f"{aperture}")
             table_update.add_row("Interval", f"{interval}")
             table_update.add_row("Voltages", "\n".join(voltages_measurements))
-            if(error != 0):
+            if error != 0:
                 table_update.add_row("ERROR", f"{error}")
 
             console.print(table_update)
@@ -198,12 +183,9 @@ def test_sampling(file_path: str, min_Hz: np.int = 10, max_Hz: np.int = 100, poi
     """Stop time"""
     stop = datetime.now()
 
-    if(time_report):
+    if time_report:
         console.print(
-            Panel(
-                f"{(stop-start).total_seconds()} s",
-                title="Execution Time"
-            )
+            Panel(f"{(stop-start).total_seconds()} s", title="Execution Time")
         )
 
     """Closes the Instruments interfaces"""

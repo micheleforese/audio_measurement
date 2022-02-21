@@ -18,7 +18,7 @@ class usbtmc_instr:
     #     self.serial.close()
 
     def write(self, command: str):
-        command += '\0'
+        command += "\0"
         # self.serial.write(bytes(command, "utf-8"))
         console.log(bytes(command, "utf-8"), style="info")
         os.write(self.FILE, bytes(command, "utf-8"))

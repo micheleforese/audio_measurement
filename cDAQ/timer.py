@@ -12,7 +12,7 @@ class TimerError(Exception):
     """A custom exception used to report errors in use of Timer class"""
 
 
-class Timer_Message():
+class Timer_Message:
     elapsed_time: timedelta
     message: str
 
@@ -31,10 +31,10 @@ class Timer:
 
     def start(self, message: Optional[str] = None):
         """Start a new timer"""
-        if(self._start_time is not None):
+        if self._start_time is not None:
             raise TimerError(f"Timer is running. Use .stop() to stop it")
 
-        if(message is not None):
+        if message is not None:
             self._message = message
 
         self._start_time = time.perf_counter()
@@ -46,11 +46,11 @@ class Timer:
 
         message = self._message
         elapsed_time: timedelta = timedelta(
-            seconds=time.perf_counter() - self._start_time)
+            seconds=time.perf_counter() - self._start_time
+        )
 
-        if(display):
-            console.print(
-                Panel.fit("{}: {} s".format(self._message, elapsed_time)))
+        if display:
+            console.print(Panel.fit("{}: {} s".format(self._message, elapsed_time)))
 
         self._start_time = None
         self._message = ""

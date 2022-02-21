@@ -17,24 +17,19 @@ class Bandwidth(Enum):
 
 
 class SCPI:
-
-    def exec_commands(
-        instr: UsbTmc,
-        commands: List[str],
-        debug: bool = False
-    ):
+    def exec_commands(instr: UsbTmc, commands: List[str], debug: bool = False):
         for command in commands:
-            if(command.find("?") > 0):
+            if command.find("?") > 0:
                 response = instr.ask(command).strip()
 
-                if(response == ""):
+                if response == "":
                     response = "NULL"
 
                 console.print("{}:\t{}".format(command, response))
             else:
                 instr.write(command)
 
-                if(debug):
+                if debug:
                     console.print(command)
 
     def clear() -> str:
@@ -47,7 +42,7 @@ class SCPI:
         return ":FUNCtion:VOLTage:AC"
 
     def set_voltage_ac_bandwidth(bandwidth: Union[Bandwidth, float]) -> str:
-        if (type(bandwidth) is Bandwidth):
+        if type(bandwidth) is Bandwidth:
             return "VOLTage:AC:BANDwidth {}".format(bandwidth.value)
         else:
             return "VOLTage:AC:BANDwidth {}".format(bandwidth)
@@ -74,55 +69,55 @@ class SCPI:
         return ":SAMP:COUN {}".format(count)
 
     def check_source(source: int) -> bool:
-        if(source < 0):
+        if source < 0:
             console.print(
-                "Invalid number for Source: {}.\nMust be 0 or above".format(
-                    source),
-                style="error")
+                "Invalid number for Source: {}.\nMust be 0 or above".format(source),
+                style="error",
+            )
             return 1
         else:
             return 0
 
     def check_output(output: int) -> bool:
-        if(output < 0):
+        if output < 0:
             console.print(
-                "Invalid number for Output: {}.\nMust be 0 or above".format(
-                    output),
-                style="error")
+                "Invalid number for Output: {}.\nMust be 0 or above".format(output),
+                style="error",
+            )
             return 1
         else:
             return 0
 
     def set_source_voltage_amplitude(source: int, amplitude_pp: float) -> str:
-        if(SCPI.check_source(source)):
+        if SCPI.check_source(source):
             console.print("Setting Source to 0", style="warning")
             source = 0
 
         return ":SOURce{0}:VOLTAGE:AMPLitude {1}".format(source, amplitude_pp)
 
     def set_source_frequency(source: int, frequency: float) -> str:
-        if(SCPI.check_source(source)):
+        if SCPI.check_source(source):
             console.print("Setting Source to 0", style="warning")
             source = 0
 
         return ":SOURce{0}:FREQ {1}".format(source, frequency)
 
     def set_output_impedance(output: int, impedance: float) -> str:
-        if(SCPI.check_output(output)):
+        if SCPI.check_output(output):
             console.print("Setting output to 0", style="warning")
             source = 0
 
         return ":OUTPut{0}:IMPedance {1}".format(output, impedance)
 
     def set_output_load(output: int, load: str) -> str:
-        if(SCPI.check_output(output)):
+        if SCPI.check_output(output):
             console.print("Setting output to 0", style="warning")
             source = 0
 
         return ":OUTPut{0}:LOAD {1}".format(output, load)
 
     def set_source_phase(source: int, phase: float) -> str:
-        if(SCPI.check_source(source)):
+        if SCPI.check_source(source):
             console.print("Setting source to 0", style="warning")
             source = 0
 
