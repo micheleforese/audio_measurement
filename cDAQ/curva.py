@@ -107,9 +107,9 @@ def sampling_curve(
     aperture: np.float = 0.0
     interval: np.float = 0.0
 
-    delay_min: np.float = config.delay_min
-    aperture_min: np.float = config.aperture_min
-    interval_min: np.float = config.interval_min
+    delay_min: np.float = config.limits.delay_min
+    aperture_min: np.float = config.limits.aperture_min
+    interval_min: np.float = config.limits.interval_min
 
     f = open(measurements_file_path, "w")
     frequency: float = round(config.sampling.min_Hz, 5)
@@ -164,7 +164,7 @@ def sampling_curve(
 
             # sleep(0.6)
 
-            config.number_of_samples: int = int(
+            config.number_of_samples = int(
                 ((1 / frequency) / (1 / config.Fs)) * 0.2
             )
             # live.console.log(config.number_of_samples)

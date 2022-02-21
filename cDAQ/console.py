@@ -4,9 +4,10 @@ from rich.console import Console
 from rich import pretty
 from rich.traceback import install
 from rich.theme import Theme
+from rich import traceback
 
 pretty.install()
-install(show_locals=True)
+traceback.install(show_locals=True)
 
 custom_theme = Theme(
     {
@@ -17,4 +18,4 @@ custom_theme = Theme(
 )
 
 
-console = Console(theme=custom_theme)
+console = Console(theme=custom_theme, force_terminal=True)

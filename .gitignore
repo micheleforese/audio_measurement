@@ -12,3 +12,5 @@ config/*
 # Tests
 test/**/*.csv
 test/**/*.png
+
+.pytest_cache
