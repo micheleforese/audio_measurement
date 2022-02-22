@@ -1,5 +1,5 @@
 {
-  "number_of_samples": 200,
+  "number_of_samples": 800,
   "Fs": 102000,
   "amplitude_pp": 2,
   "nidaq": {

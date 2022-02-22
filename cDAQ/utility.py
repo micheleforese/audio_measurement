@@ -22,10 +22,7 @@ import nidaqmx.constants
 import nidaqmx.stream_readers
 import nidaqmx.stream_writers
 import numpy as np
-from cDAQ.utility import *
-from cDAQ.UsbTmc import *
 from pathlib import Path
-from .utility import *
 from scipy.fft import fft
 from typing import List
 from nidaqmx._task_modules.channels.ao_channel import AOChannel
@@ -44,8 +41,9 @@ from rich.tree import Tree
 import numpy as np
 import math
 import time
-from .timer import Timer
-from .console import console
+from cDAQ.timer import Timer
+from cDAQ.console import console
+import usbtmc
 
 
 class cDAQ:
@@ -348,7 +346,7 @@ def rms(
     except Exception as e:
         console.log(e)
 
-    rms: Option[float] = None
+    rms: Optional[float] = None
 
     if time_report:
         timer.start("[yellow]RMS Calculation Execution time[/]")

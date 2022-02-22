@@ -10,7 +10,7 @@ config/*
 !config/config_template.json
 
 # Tests
-test/**/*.csv
-test/**/*.png
+tests/**/*.csv
+tests/**/*.png
 
 .pytest_cache

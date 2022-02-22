@@ -1,12 +1,12 @@
 import enum
 from curses.ascii import FS
-from os import read
 from pathlib import Path
 from platform import system
 from re import A
 from time import clock
 from typing import List
 
+import matplotlib.pyplot as plt
 import nidaqmx
 import nidaqmx.constants
 import nidaqmx.stream_readers
@@ -22,27 +22,31 @@ from nidaqmx.task import Task
 from nidaqmx.types import CtrFreq
 from numpy.lib.function_base import average
 from numpy.ma.core import shape
-from rich import table
+from numpy.matlib import log10, sqrt
 from rich.layout import Layout
+from rich.live import Live
 from rich.panel import Panel
 from rich.style import StyleType
+from rich.table import Column, Table
 from rich.tree import Tree
-from rich.live import Live
 from scipy.fft import fft, fftfreq, rfft
 from sympy import numbered_symbols
 
+import usbtmc
 from cDAQ.alghorithm import LogaritmicScale
 from cDAQ.config import Config
 from cDAQ.console import console
 from cDAQ.scpi import SCPI, Bandwidth, Switch
-from cDAQ.UsbTmc import *
-from cDAQ.utility import *
+from cDAQ.timer import Timer, Timer_Message
+from cDAQ.UsbTmc import get_device_list, print_devices_list
+from cDAQ.utility import percentage_error, rms
+from usbtmc import Instrument
 
 
 def curva(
-    config_file_path: os.path,
-    measurements_file_path: os.path,
-    plot_file_path: os.path,
+    config_file_path: Path,
+    measurements_file_path: Path,
+    plot_file_path: Path,
     debug: bool = False,
 ):
     """Load JSON config"""
@@ -63,7 +67,7 @@ def curva(
 
 def sampling_curve(
     config: Config,
-    measurements_file_path: os.path,
+    measurements_file_path: Path,
     debug: bool = False,
 ):
     """Asks for the 2 instruments"""
@@ -88,6 +92,8 @@ def sampling_curve(
         SCPI.set_source_frequency(1, round(config.sampling.min_Hz, 5)),
     ]
 
+    SCPI.exec_commands(generator, generator_configs)
+
     generator_ac_curves: List[str] = [
         SCPI.set_output(1, Switch.ON),
     ]
@@ -101,16 +107,6 @@ def sampling_curve(
         config.sampling.points_per_decade,
     )
 
-    period: np.float = 0.0
-
-    delay: np.float = 0.0
-    aperture: np.float = 0.0
-    interval: np.float = 0.0
-
-    delay_min: np.float = config.limits.delay_min
-    aperture_min: np.float = config.limits.aperture_min
-    interval_min: np.float = config.limits.interval_min
-
     f = open(measurements_file_path, "w")
     frequency: float = round(config.sampling.min_Hz, 5)
 
@@ -118,6 +114,7 @@ def sampling_curve(
         Column(f"Frequency [Hz]", justify="right"),
         Column(f"Number of samples", justify="right"),
         Column(f"Rms Value [V]", justify="right"),
+        Column("Voltage Expected", justify="right"),
         Column(f"Relative Error", justify="right"),
         Column(f"Time [s]", justify="right"),
     )
@@ -129,45 +126,17 @@ def sampling_curve(
             # Frequency in Hz
             frequency = log_scale.get_frequency()
 
-            # Period in seconds
-            period = 1 / frequency
-
-            # Delay in seconds
-            delay = period * 6
-            delay = 1
-
-            # Aperture in seconds
-            aperture = period * 0.5
-
-            # Interval in seconds
-            # Interval is 10% more than aperture
-            interval = period * 0.5
-
-            if delay < delay_min:
-                delay = delay_min
-
-            if aperture < aperture_min:
-                aperture = aperture_min
-
-            if interval < interval_min:
-                interval = interval_min
-
-            aperture *= 1.2
-            interval *= 5
-
-            delay = round(delay, 4)
-            aperture = round(aperture, 4)
-            interval = round(interval, 4)
-
             # Sets the Frequency
             generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
 
-            # sleep(0.6)
+            config.number_of_samples = 200
 
-            config.number_of_samples = int(
-                ((1 / frequency) / (1 / config.Fs)) * 0.2
-            )
-            # live.console.log(config.number_of_samples)
+            if frequency <= 100:
+                config.Fs = 1000
+            elif frequency <= 1000:
+                config.Fs = 10000
+            elif frequency <= 10000:
+                config.Fs = 102000
 
             time = Timer()
             time.start()
@@ -184,6 +153,10 @@ def sampling_curve(
 
             message: Timer_Message = time.stop()
 
+            # live.console.log(
+            #     "Voltage espected: {}".format((config.amplitude_pp / 2) / sqrt(2))
+            # )
+
             perc_error = percentage_error(
                 exact=(config.amplitude_pp / 2) / sqrt(2), approx=rms_value
             )
@@ -193,9 +166,10 @@ def sampling_curve(
                 style_percentage_error = "red"
 
             table.add_row(
-                "{}".format(frequency),
+                "{:.5f}".format(frequency),
                 "{}".format(config.number_of_samples),
                 "{:.5f} ".format(round(rms_value, 5)),
+                "{:.5f} ".format(round((config.amplitude_pp / 2) / sqrt(2), 5)),
                 "[{}]{:.3f}[/]".format(style_percentage_error, round(perc_error, 3)),
                 "[cyan]{}[/]".format(message.elapsed_time),
             )
@@ -212,8 +186,8 @@ def sampling_curve(
 
 def plot(
     config: Config,
-    measurements_file_path: os.path,
-    plot_file_path: os.path,
+    measurements_file_path: Path,
+    plot_file_path: Path,
     debug: bool = False,
 ):
     if debug:
@@ -222,7 +196,7 @@ def plot(
     x_frequency: List[float] = []
     y_dBV: List[float] = []
 
-    csvfile = genfromtxt(measurements_file_path, delimiter=",")
+    csvfile = np.genfromtxt(measurements_file_path, delimiter=",")
 
     for row in list(csvfile):
         y_dBV.append(20 * log10(row[1] * 2 * sqrt(2) / config.amplitude_pp))
