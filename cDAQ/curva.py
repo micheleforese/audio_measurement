@@ -129,14 +129,25 @@ def sampling_curve(
             # Sets the Frequency
             generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
 
-            config.number_of_samples = 200
+            # config.number_of_samples = 200
+
+            number_of_periods = 5
 
             if frequency <= 100:
                 config.Fs = 1000
+                config.number_of_samples = int(
+                    (config.Fs / frequency) * number_of_periods
+                )
             elif frequency <= 1000:
                 config.Fs = 10000
+                config.number_of_samples = int(
+                    (config.Fs / frequency) * number_of_periods
+                )
             elif frequency <= 10000:
                 config.Fs = 102000
+                config.number_of_samples = int(
+                    (config.Fs / frequency) * number_of_periods
+                )
 
             time = Timer()
             time.start()
@@ -207,5 +218,6 @@ def plot(
     plt.title("Frequency response graph")
     plt.xlabel("Frequency")
     plt.ylabel("Vout/Vin dB")
+    plt.ylim(-10, 10)
     # plt.yticks(np.arange(start=-10.0, stop=11.0, step=5.0))
     plt.savefig(plot_file_path)
