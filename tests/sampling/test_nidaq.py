@@ -1,55 +1,32 @@
-import enum
-from os import read
-from platform import system
-from re import A
-from time import clock
+from audioop import rms
+from pathlib import Path
 from typing import List
-from nidaqmx._task_modules.channels.ai_channel import AIChannel
-from nidaqmx._task_modules.channels.ao_channel import AOChannel
-from nidaqmx.errors import DaqError, Error
-from nidaqmx.task import Task
-from nidaqmx.types import CtrFreq
-from numpy.ma.core import shape
-from rich.console import Console
-from rich.panel import Panel
-from rich.layout import Layout
-from rich.style import StyleType
-from rich.tree import Tree
+
 import nidaqmx
-import nidaqmx.system
 import nidaqmx.constants
 import nidaqmx.stream_readers
 import nidaqmx.stream_writers
+import nidaqmx.system
 import numpy as np
-from cDAQ.utility import *
-from cDAQ.UsbTmc import *
-from pathlib import Path
-from .utility import *
-from scipy.fft import fft, fftfreq, rfft
-from typing import List
-from nidaqmx._task_modules.channels.ao_channel import AOChannel
-from nidaqmx.system._collections.device_collection import DeviceCollection
-from nidaqmx.system.system import System
-from numpy.lib.function_base import average
-from numpy.ma.core import sin, sqrt
-from rich import table
-from rich.console import Console
-from rich import inspect, pretty
+import usbtmc
+from cDAQ.console import console
+from cDAQ.scpi import SCPI, Bandwidth, Switch
+from cDAQ.timer import Timer, Timer_Message
+from cDAQ.UsbTmc import Instrument, exec_commands, get_device_list, print_devices_list
+from cDAQ.utility import (
+    percentage_error,
+    print_supported_output_types,
+    rms_average,
+    rms_fft,
+    rms_integration,
+)
+from matplotlib import pyplot as plt
+from nidaqmx.errors import DaqError
+from nidaqmx.task import Task
+from numpy.ma.core import log10, sqrt
+from rich.live import Live
 from rich.panel import Panel
 from rich.table import Column, Table
-import nidaqmx
-import nidaqmx.system
-from rich.tree import Tree
-import numpy as np
-import math
-from cDAQ.scpi import *
-import time
-
-from rich.live import Live
-
-
-# 192.168.1.52 cDAQ
-console = Console(force_terminal=True, color_system="truecolor")
 
 
 def test_thermocouple():
@@ -65,10 +42,6 @@ def test_ao_voltage():
     data: np.ndarray = np.ndarray((1,), dtype=float)
     task: Task = nidaqmx.Task("Test Output Voltage")
 
-    channel: AOChannel = task.ao_channels.add_ao_voltage_chan(
-        "cDAQ9189-1CDBE0AMod2/ao0", min_val=-4, max_val=4
-    )
-
     channel1_stream_writer = nidaqmx.stream_writers.AnalogSingleChannelWriter(
         task.out_stream
     )
@@ -76,8 +49,6 @@ def test_ao_voltage():
     voltages = np.ndarray(shape=100)
 
     try:
-        print_supported_output_types(channel)
-
         # TODO: Figure it out how to control the buffer
         task.write([-2, 3, 2], auto_start=True)
         channel1_stream_writer.write_many_sample(voltages)
@@ -92,9 +63,6 @@ def test_ao_voltage():
 def test_ai_voltage(amplitude_pp, frequency, ch_input: int = 0, isLoop: bool = False):
 
     task = nidaqmx.Task("Test Input Voltage")
-    channel1: AIChannel = task.ai_channels.add_ai_voltage_chan(
-        "cDAQ9189-1CDBE0AMod1/ai{}".format(ch_input), min_val=-4, max_val=4
-    )
 
     task.timing.cfg_samp_clk_timing(102000)
 
@@ -182,9 +150,6 @@ def test_rigol_ni_output(amplitude_pp: float = 2, frequency: float = 1000):
 def read_rms_ai_voltage(ch_input: int = 0, isLoop: bool = False):
 
     task = nidaqmx.Task("Test Input Voltage")
-    channel1: AIChannel = task.ai_channels.add_ai_voltage_chan(
-        "cDAQ9189-1CDBE0AMod1/ai{}".format(ch_input), min_val=-4, max_val=4
-    )
 
     Fs = 102000
 

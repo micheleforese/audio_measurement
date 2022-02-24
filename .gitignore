@@ -14,3 +14,4 @@ tests/**/*.csv
 tests/**/*.png
 
 .pytest_cache
+env
