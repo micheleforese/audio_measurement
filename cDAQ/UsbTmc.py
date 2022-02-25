@@ -125,6 +125,15 @@ class UsbTmc:
         """
         self.instr = instrument
 
+    def __del__(self):
+        self.close()
+
+    def open(self):
+        self.instr.open()
+
+    def close(self):
+        self.instr.close()
+
     def write(self, command):
         """Execute a command."""
         self.instr.write(command)

@@ -11,7 +11,7 @@ from cDAQ.config import Config
 from cDAQ.console import console
 from cDAQ.scpi import SCPI, Bandwidth, Switch
 from cDAQ.timer import Timer, Timer_Message
-from cDAQ.UsbTmc import get_device_list, print_devices_list
+from cDAQ.UsbTmc import UsbTmc, get_device_list, print_devices_list
 from cDAQ.utility import percentage_error, rms
 from rich.live import Live
 from rich.table import Column, Table
@@ -51,7 +51,7 @@ def sampling_curve(
     if debug:
         print_devices_list(list_devices)
 
-    generator: usbtmc.Instrument = list_devices[0]
+    generator: UsbTmc = UsbTmc(list_devices[0])
 
     """Open the Instruments interfaces"""
     # Auto Close with the destructor
@@ -124,11 +124,11 @@ def sampling_curve(
             if config.Fs > 102000:
                 config.Fs = 102000
 
-            live.console.log(
-                "number_of_samples, Fs: {} - {}".format(
-                    config.number_of_samples, config.Fs
-                )
-            )
+            # live.console.log(
+            #     "number_of_samples, Fs: {} - {}".format(
+            #         config.number_of_samples, config.Fs
+            #     )
+            # )
 
             time = Timer()
             time.start()
@@ -146,14 +146,14 @@ def sampling_curve(
             message: Timer_Message = time.stop()
 
             perc_error = percentage_error(
-                exact=(config.amplitude_pp / 2) / np.sqrt(2), approx=rms_value
+                exact=(config.amplitude_pp / 2) / np.math.sqrt(2), approx=rms_value
             )
 
             table.add_row(
                 "{:.5f}".format(frequency),
                 "{}".format(config.number_of_samples),
                 "{:.5f} ".format(round(rms_value, 5)),
-                "{:.5f} ".format(round((config.amplitude_pp / 2) / np.sqrt(2), 5)),
+                "{:.5f} ".format(round((config.amplitude_pp / 2) / np.math.sqrt(2), 5)),
                 "[{}]{:.3f}[/]".format(
                     "cyan" if perc_error <= 0 else "red", round(perc_error, 3)
                 ),
@@ -188,7 +188,9 @@ def plot(
     console.print(measurements)
 
     for row in list(csvfile):
-        y_dBV.append(20 * np.log10(row[1] * 2 * np.sqrt(2) / config.amplitude_pp))
+        y_dBV.append(
+            20 * np.math.log10(row[1] * 2 * np.math.sqrt(2) / config.amplitude_pp)
+        )
         x_frequency.append(row[0])
 
     plt.plot(x_frequency, y_dBV)
@@ -213,7 +215,10 @@ def test_curva():
 
 
 def test_error_sampling():
-
+    """
+    Remember to set ENV variable PYTHONIOENCODING to utf8
+    export PYTHONIOENCODING=utf8
+    """
     THIS_PATH = Path(__file__).parent
 
     config: Config = Config(THIS_PATH / "basic.json")
@@ -226,7 +231,7 @@ def test_error_sampling():
     if debug:
         print_devices_list(list_devices)
 
-    generator: usbtmc.Instrument = list_devices[0]
+    generator: UsbTmc = UsbTmc(list_devices[0])
 
     """Open the Instruments interfaces"""
     # Auto Close with the destructor
@@ -239,7 +244,7 @@ def test_error_sampling():
         SCPI.set_output(1, Switch.OFF),
         SCPI.set_function_voltage_ac(),
         SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
-        SCPI.set_source_voltage_amplitude(1, round(config.amplitude_pp, 5)),
+        SCPI.set_source_voltage_amplitude(1, round(2, 5)),
     ]
 
     SCPI.exec_commands(generator, generator_configs)
@@ -251,16 +256,20 @@ def test_error_sampling():
         config.sampling.points_per_decade,
     )
 
-    f = open(measurements_file_path, "w")
-    frequency: float = round(config.sampling.min_Hz, 5)
+    # f = open(measurements_file_path, "w")
 
     table = Table(
+        Column(f"Check", justify="center"),
         Column(f"Frequency [Hz]", justify="right"),
-        Column(f"Number of samples", justify="right"),
+        Column(f"Fs [Hz]", justify="right"),
+        Column(f"Samples", justify="right"),
+        Column(f"Samples x period", justify="right"),
+        Column(f"Periods", justify="right"),
         Column(f"Rms Value [V]", justify="right"),
-        Column("Voltage Expected", justify="right"),
-        Column(f"Relative Error", justify="right"),
+        Column(f"Real Voltage", justify="right"),
+        Column(f"R.E.", justify="right"),
         Column(f"Time [s]", justify="right"),
+        title_justify="center",
     )
 
     generator_ac_curves: List[str] = [
@@ -270,9 +279,15 @@ def test_error_sampling():
 
     SCPI.exec_commands(generator, generator_ac_curves)
 
-    with Live(table, screen=False, console=console, auto_refresh=True) as live:
+    with Live(
+        table,
+        screen=False,
+        console=console,
+        vertical_overflow="visible",
+        auto_refresh=True,
+    ) as live:
 
-        frequency = [
+        frequency: List[float] = [
             10,
             50,
             100,
@@ -282,70 +297,105 @@ def test_error_sampling():
             10000,
         ]
 
-        max_n_sample: int = 1000
+        max_n_sample_constant: float = 1000
+        max_Fs_constant = 102000
+
+        min_n_sample_per_period_constant: float = 2
+        max_n_samples_per_period_constant: float = 10
 
         for freq in frequency:
-            generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
+            generator.write(SCPI.set_source_frequency(1, round(freq, 5)))
             sleep(0.4)
 
-            max_Fs = 102000
-            max_n_samples_per_period = max_Fs / max(frequency)
+            # Algorithm Constant DO NOT TOUCH
+            min_Fs_constant = freq * 2
 
-            Fs_min: float = freq * 2
+            Fs: float = min_Fs_constant
+            max_Fs: float = 0
 
-            Fs: float = Fs_min
+            max_Fs_relative: float = max_n_samples_per_period_constant * freq
 
-            while Fs > max_Fs:
+            if max_Fs_relative > max_Fs_constant:
+                max_Fs = max_Fs_constant
+            else:
+                max_Fs = max_Fs_relative
 
-                is_max_sample: bool = False
+            # live.console.log(
+            #     "Fs",
+            #     np.logspace(
+            #         np.math.log10(min_Fs_constant),
+            #         np.math.log10(max_Fs),
+            #         10,
+            #     ),
+            # )
 
-            while is_max_sample:
+            for Fs in np.logspace(
+                np.math.log10(min_Fs_constant),
+                np.math.log10(max_Fs),
+                10,
+            ):
+                if Fs > max_Fs:
+                    Fs = max_Fs
 
-                number_of_periods: int = 10
+                # live.console.log(
+                #     "n_sample",
+                #     np.logspace(
+                #         np.math.log10(min_n_sample_per_period_constant),
+                #         np.math.log10(max_n_sample_constant),
+                #         10,
+                #     ),
+                # )
 
-                samples_per_period = range(2, 10, 1)
+                for n_sample in np.logspace(
+                    np.math.log10(min_n_sample_per_period_constant),
+                    np.math.log10(max_n_sample_constant),
+                    10,
+                ):
+                    n_sample = int(round(n_sample))
 
-                for spp in samples_per_period:
-                    config.Fs = samples_per_period
+                    if n_sample > max_n_sample_constant:
+                        n_sample = max_n_sample_constant
 
-                config.Fs = config.number_of_samples / number_of_periods * frequency
-                if config.Fs > 102000:
-                    config.Fs = 102000
+                    n_sample_per_period = Fs / freq
+                    n_periods = n_sample / n_sample_per_period
 
-                live.console.log(
-                    "number_of_samples, Fs: {} - {}".format(
-                        config.number_of_samples, config.Fs
+                    time = Timer()
+                    time.start()
+
+                    # GET MEASUREMENTS
+                    rms_value = rms(
+                        frequency=freq,
+                        Fs=Fs,
+                        ch_input=config.nidaq.ch_input,
+                        max_voltage=config.nidaq.max_voltage,
+                        min_voltage=config.nidaq.min_voltage,
+                        number_of_samples=n_sample,
                     )
-                )
 
-                time = Timer()
-                time.start()
+                    message: Timer_Message = time.stop()
 
-                # GET MEASUREMENTS
-                rms_value = rms(
-                    frequency=frequency,
-                    Fs=config.Fs,
-                    ch_input=config.nidaq.ch_input,
-                    max_voltage=config.nidaq.max_voltage,
-                    min_voltage=config.nidaq.min_voltage,
-                    number_of_samples=config.number_of_samples,
-                )
+                    perc_error = percentage_error(
+                        exact=(config.amplitude_pp / 2) / np.math.sqrt(2),
+                        approx=rms_value,
+                    )
 
-                message: Timer_Message = time.stop()
+                    table.add_row(
+                        ":white_heavy_check_mark-emoji:"
+                        if abs(perc_error) < 1.2
+                        else ":cross_mark-emoji:",
+                        "{:.5f}".format(freq),
+                        "{:.5f}".format(Fs),
+                        "{}".format(n_sample),
+                        "{:.3}".format(n_sample_per_period),
+                        "{:.3f}".format(n_periods),
+                        "{:.5f} ".format(round(rms_value, 5)),
+                        "{:.5f} ".format(
+                            round((config.amplitude_pp / 2) / np.math.sqrt(2), 5)
+                        ),
+                        "[{}]{:.3f}[/]".format(
+                            "cyan" if perc_error <= 0 else "red", round(perc_error, 3)
+                        ),
+                        "[cyan]{}[/]".format(message.elapsed_time),
+                    )
 
-                perc_error = percentage_error(
-                    exact=(config.amplitude_pp / 2) / np.sqrt(2), approx=rms_value
-                )
-
-                table.add_row(
-                    "{:.5f}".format(frequency),
-                    "{}".format(config.number_of_samples),
-                    "{:.5f} ".format(round(rms_value, 5)),
-                    "{:.5f} ".format(round((config.amplitude_pp / 2) / np.sqrt(2), 5)),
-                    "[{}]{:.3f}[/]".format(
-                        "cyan" if perc_error <= 0 else "red", round(perc_error, 3)
-                    ),
-                    "[cyan]{}[/]".format(message.elapsed_time),
-                )
-
-    f.close()
+    # f.close()

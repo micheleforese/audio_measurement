@@ -6,6 +6,7 @@ import jstyleson
 from rich.table import Table, Column
 from rich.tree import Tree
 from rich.panel import Panel
+from pathlib import Path
 
 
 def load_json_config(config_file_path):
@@ -55,7 +56,7 @@ class Sampling(Config_Class):
 
     def __init__(
         self,
-        points_per_decade: float,
+        points_per_decade: int,
         min_Hz: float,
         max_Hz: float,
         amplitude_pp: float,
@@ -120,7 +121,7 @@ class Config:
     row_data: Any
 
     number_of_samples: int
-    Fs: int
+    Fs: float
     amplitude_pp: float
     nidaq: Nidaq
     sampling: Sampling
@@ -128,14 +129,14 @@ class Config:
 
     step: float
 
-    def __init__(self, config_file_path: str) -> None:
+    def __init__(self, config_file_path: Path) -> None:
         self.row_data = load_json_config(config_file_path)
         self._init_config()
 
     def _init_config(self):
 
         self.number_of_samples = int(self.row_data["number_of_samples"])
-        self.Fs = int(self.row_data["Fs"])
+        self.Fs = float(self.row_data["Fs"])
         self.amplitude_pp = float(self.row_data["amplitude_pp"])
 
         # Nidaq Class
