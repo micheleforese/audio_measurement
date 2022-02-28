@@ -256,7 +256,21 @@ def test_error_sampling():
         config.sampling.points_per_decade,
     )
 
-    # f = open(measurements_file_path, "w")
+    f = open(measurements_file_path, "w")
+
+    f.write(
+        "{},{},{},{},{},{},{},{},{}\n".format(
+            "Frequency [Hz]",
+            "Fs [Hz]",
+            "Samples",
+            "Samples x period",
+            "Periods",
+            "Rms Value [V]",
+            "Real Voltage",
+            "R.E.",
+            "Time [s]",
+        )
+    )
 
     table = Table(
         Column(f"Check", justify="center"),
@@ -398,4 +412,20 @@ def test_error_sampling():
                         "[cyan]{}[/]".format(message.elapsed_time),
                     )
 
-    # f.close()
+                    f.write(
+                        "{},{},{},{},{},{},{},{},{}\n".format(
+                            "{:.5f}".format(freq),
+                            "{:.5f}".format(Fs),
+                            "{}".format(n_sample),
+                            "{:.3}".format(n_sample_per_period),
+                            "{:.3f}".format(n_periods),
+                            "{:.5f} ".format(round(rms_value, 5)),
+                            "{:.5f} ".format(
+                                round((config.amplitude_pp / 2) / np.math.sqrt(2), 5)
+                            ),
+                            "{:.3f}".format(round(perc_error, 3)),
+                            "{}".format(message.elapsed_time),
+                        )
+                    )
+
+    f.close()
