@@ -1,7 +1,9 @@
 from curses.ascii import FS
+from datetime import datetime
 from pathlib import Path
 from time import sleep
 from typing import List
+from matplotlib.figure import Figure
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -84,6 +86,8 @@ def sampling_curve(
     )
 
     f = open(measurements_file_path, "w")
+    f.write("{},{}\n".format("Frequency", "RMS Value"))
+
     frequency: float = round(config.sampling.min_Hz, 5)
 
     table = Table(
@@ -95,7 +99,13 @@ def sampling_curve(
         Column(f"Time [s]", justify="right"),
     )
 
-    with Live(table, screen=False, console=console, auto_refresh=True) as live:
+    with Live(
+        table,
+        screen=False,
+        console=console,
+        vertical_overflow="visible",
+        auto_refresh=True,
+    ) as live:
 
         while log_scale.check():
             log_scale.next()
@@ -107,28 +117,20 @@ def sampling_curve(
 
             sleep(0.4)
 
-            number_of_periods = 10
-
-            samples_per_period = 10
-
             if frequency <= 100:
-                config.number_of_samples = 10 * number_of_periods
+                config.Fs = frequency * 8
             elif frequency <= 1000:
-                config.number_of_samples = 20 * number_of_periods
+                config.Fs = frequency * 3
+                config.number_of_samples = 800
             elif frequency <= 10000:
-                config.number_of_samples = 30 * number_of_periods
+                config.Fs = frequency * 6
+                config.number_of_samples = 800
             else:
-                config.number_of_samples = 30 * number_of_periods
+                config.Fs = frequency * 3
+                config.number_of_samples = 800
 
-            config.Fs = config.number_of_samples / number_of_periods * frequency
             if config.Fs > 102000:
                 config.Fs = 102000
-
-            # live.console.log(
-            #     "number_of_samples, Fs: {} - {}".format(
-            #         config.number_of_samples, config.Fs
-            #     )
-            # )
 
             time = Timer()
             time.start()
@@ -182,7 +184,7 @@ def plot(
     x_frequency: List[float] = []
     y_dBV: List[float] = []
 
-    csvfile = np.genfromtxt(measurements_file_path, delimiter=",")
+    csvfile = np.genfromtxt(measurements_file_path, delimiter=",", skip_header=1)
 
     measurements = pd.read_csv(measurements_file_path)
     console.print(measurements)
@@ -193,12 +195,15 @@ def plot(
         )
         x_frequency.append(row[0])
 
-    plt.plot(x_frequency, y_dBV)
-    plt.xscale("log")
-    plt.title("Frequency response")
-    plt.xlabel("Frequency")
-    plt.ylabel(r"$\frac{V_out}{V_int} dB$", rotation=90)
-    plt.ylim(-5, 5)
+    fig1, ax = plt.subplots(figsize=(16, 9), dpi=200)
+
+    ax.plot(x_frequency, y_dBV, ".-")
+    ax.set_xscale("log")
+    ax.set_title("Frequency response")
+    ax.set_xlabel("Frequency")
+    ax.set_ylabel(r"$\frac{V_out}{V_int} dB$", rotation=90)
+    ax.set_ylim(-1, 1)
+
     plt.savefig(plot_file_path)
 
 
@@ -207,9 +212,11 @@ def test_curva():
     THIS_PATH = Path(__file__).parent
 
     curva(
-        config_file_path=THIS_PATH / "basic.json",
-        measurements_file_path=THIS_PATH / "basic.csv",
-        plot_file_path=THIS_PATH / "basic.png",
+        config_file_path=THIS_PATH / "test_curva.json",
+        measurements_file_path=THIS_PATH
+        / "test_curva-[{}].csv".format(datetime.now().strftime(f"%Y-%m-%d--%H-%M-%f")),
+        plot_file_path=THIS_PATH
+        / "test_curva-[{}].png".format(datetime.now().strftime(f"%Y-%m-%d--%H-%M-%f")),
         debug=True,
     )
 

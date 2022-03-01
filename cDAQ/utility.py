@@ -243,14 +243,14 @@ def rms_fft(voltages: List[float], number_of_samples: int) -> float:
     Returns:
         float: The RMS Voltage
     """
-    y = fft(voltages, number_of_samples)
+    voltages_fft = fft(voltages, number_of_samples, workers=-1)
 
-    sum: np.float64 = np.float64(0)
+    sum: float = float(0)
 
-    for v in y:
+    for v in voltages_fft:
         sum += (np.abs(v) / len(voltages)) ** 2
 
-    return math.sqrt(abs(sum))
+    return np.math.sqrt(abs(sum))
 
 
 def rms_integration(voltages: List[float], N: int, Fs: float) -> float:
@@ -281,7 +281,7 @@ def read_voltages(
     ch_input: str = "cDAQ9189-1CDBE0AMod1/ai1",
     min_voltage: float = -4,
     max_voltage: float = 4,
-) -> float:
+) -> np.ndarray:
 
     if frequency > Fs / 2:
         raise ValueError("The Sampling rate is low: Fs / 2 > frequency.")
