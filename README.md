@@ -6,51 +6,38 @@
 git pull
 ```
 
-## Basics - [HERE](https://wiki.epfl.ch/me412-emem-2020/documents/34460-90901.pdf#page=194)
+## How to Use it
 
-Chain commands
+### Install
 
-```
-TRIG:SOUR EXT;COUNT 10
-
-TRIG:SOUR EXT
-TRIG:COUNT 10
+```console
+python3 -m pip install --editable .
 ```
 
-```
-TRIG:COUN MIN;:SAMP:COUN MIN
+### Use it
 
-TRIG:COUN MIN
-SAMP:COUN MIN
-```
+1. Create a folder for containing the measurements and plot files
 
-Display Text
+   ```console
+   cd ~
+   mkdir audio
+   ```
 
-```
-DISP:TEXT "WAITING..."
-```
+2. Create the configuration file, starting from the template: `audio_measurements/config/config_template.json`
+3. Run the cli script
 
-To Terminate a measurement
+   ```console
+   audio_measurement <config.json file>
+   ```
 
-```
-ABORt
-```
+   For Example:
 
-Commands by Subsystem: [here](https://wiki.epfl.ch/me412-emem-2020/documents/34460-90901.pdf#page=194)
+   ```console
+   audio_measurement config.json
+   ```
 
-## FETCh - [HERE](https://wiki.epfl.ch/me412-emem-2020/documents/34460-90901.pdf#page=201)
-
-```
-CONF:VOLT:DC 10,0.003
-TRIG:SOUR EXT
-SAMP:COUN 4
-INIT
-FETC?
-```
-
-USE `DATA:REMove?` to read and erase all memory
-use `ABORt` to return idle
+   Will be created the `.csv` and the `.png` files inside the current directory
 
 ## NI-DRIVER
 
-Nella cartella `driver` ci sono i pacchetti da installare.
+In the `driver` there are all the packages for installing the ni-daqmx driver.

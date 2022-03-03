@@ -1,25 +1,43 @@
+from abc import ABC, abstractmethod
+from asyncio.windows_events import NULL
 from audioop import add
-from typing import Any, List
-from sympy import And
+from optparse import Option
+from typing import Any, List, Optional
 from cDAQ.console import console
 import jstyleson
 from rich.table import Table, Column
 from rich.tree import Tree
 from rich.panel import Panel
+from rich.syntax import Syntax
 from pathlib import Path
+import pyjson5
 
 
 def load_json_config(config_file_path):
     with open(config_file_path) as config_file:
-        config = jstyleson.loads(config_file.read())
+        # config = jstyleson.loads(config_file.read())
+        config = pyjson5.decode(config_file.read())
+
+        console.print(config)
+
         return config
 
 
-class Config_Class:
-    pass
+class IConfig_Class(ABC):
+    @abstractmethod
+    def set_tree_name(self, name: str):
+        raise Exception("NotImplementedException")
+
+    @abstractmethod
+    def get_tree_name(self) -> str:
+        raise Exception("NotImplementedException")
+
+    @abstractmethod
+    def tree(self) -> Tree:
+        raise Exception("NotImplementedException")
 
 
-class Nidaq(Config_Class):
+class Nidaq(IConfig_Class):
     _tree_name: str = "nidaq"
 
     max_voltage: float
@@ -46,7 +64,7 @@ class Nidaq(Config_Class):
         return tree
 
 
-class Sampling(Config_Class):
+class Sampling(IConfig_Class):
     _tree_name: str = "sampling"
 
     points_per_decade: int
@@ -90,7 +108,7 @@ class Sampling(Config_Class):
         return tree
 
 
-class Limits(Config_Class):
+class Limits(IConfig_Class):
     _tree_name: str = "limits"
 
     delay_min: float
@@ -105,7 +123,7 @@ class Limits(Config_Class):
     def set_tree_name(self, name: str):
         self._tree_name = name
 
-    def get_tree_name(self, name: str) -> str:
+    def get_tree_name(self) -> str:
         return self._tree_name
 
     def tree(self) -> Tree:
@@ -113,6 +131,42 @@ class Limits(Config_Class):
         tree.add("[yellow]{}[/]: [blue]{}[/]".format("Delay min", self.delay_min))
         tree.add("[yellow]{}[/]: [blue]{}[/]".format("Aperture min", self.aperture_min))
         tree.add("[yellow]{}[/]: [blue]{}[/]".format("Interval min", self.interval_min))
+
+        return tree
+
+
+class Plot(IConfig_Class):
+    _tree_name: str = "plot"
+
+    x_limit = Optional[List[float]]
+    y_limit = Optional[List[float]]
+
+    def __init__(
+        self,
+        x_limit: Optional[List[float]] = None,
+        y_limit: Optional[List[float]] = None,
+    ):
+        self.x_limit = x_limit
+        self.y_limit = y_limit
+
+    def set_tree_name(self, name: str):
+        self._tree_name = name
+
+    def get_tree_name(self) -> str:
+        return self._tree_name
+
+    def tree(self) -> Tree:
+        tree = Tree("[red]{}[/]:".format(self._tree_name))
+        tree.add(
+            "[yellow]{}[/]: [blue]{}[/]".format(
+                "x_limit", self.x_limit if self.x_limit != None else "None"
+            )
+        )
+        tree.add(
+            "[yellow]{}[/]: [blue]{}[/]".format(
+                "y_limit", self.y_limit if self.y_limit != None else "None"
+            )
+        )
 
         return tree
 
@@ -126,6 +180,7 @@ class Config:
     nidaq: Nidaq
     sampling: Sampling
     limits: Limits
+    plot: Plot
 
     step: float
 
@@ -139,9 +194,20 @@ class Config:
         self.Fs = float(self.row_data["Fs"])
         self.amplitude_pp = float(self.row_data["amplitude_pp"])
 
+        try:
+            nidaq_max_voltage = float(self.row_data["nidaq"]["max_voltage"])
+        except KeyError:
+            code = Syntax(
+                'nidaq_max_voltage = float(self.row_data["nidaq"]["max_voltage"])',
+                "python",
+                theme="monokai",
+            )
+            console.print(Panel(code), style="error")
+            console.print("nidaq/max_voltage must be provided", style="error")
+
         # Nidaq Class
         self.nidaq = Nidaq(
-            max_voltage=float(self.row_data["nidaq"]["max_voltage"]),
+            max_voltage=nidaq_max_voltage,
             min_voltage=float(self.row_data["nidaq"]["min_voltage"]),
             ch_input=str(self.row_data["nidaq"]["ch_input"]),
         )
@@ -159,6 +225,25 @@ class Config:
             delay_min=float(self.row_data["limits"]["delay_min"]),
             aperture_min=float(self.row_data["limits"]["aperture_min"]),
             interval_min=float(self.row_data["limits"]["interval_min"]),
+        )
+
+        plot_x_limit: Optional[List[float]] = None
+        plot_y_limit: Optional[List[float]] = None
+
+        try:
+            plot_x_limit = self.row_data["plot"]["x_limit"]
+        except KeyError:
+            plot_x_limit = None
+
+        try:
+            plot_y_limit = self.row_data["plot"]["y_limit"]
+        except KeyError:
+            plot_y_limit = None
+
+        # Plot Class
+        self.plot = Plot(
+            x_limit=plot_x_limit,
+            y_limit=plot_y_limit,
         )
 
         # Calculations
@@ -183,6 +268,7 @@ class Config:
         tree.add(self.nidaq.tree())
         tree.add(self.sampling.tree())
         tree.add(self.limits.tree())
+        tree.add(self.plot.tree())
 
         return tree
 

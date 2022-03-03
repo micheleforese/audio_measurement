@@ -15,3 +15,5 @@ tests/**/*.png
 
 .pytest_cache
 env
+
+**/*.egg-info

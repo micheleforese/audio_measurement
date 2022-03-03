@@ -1,11 +1,9 @@
+from importlib.metadata import entry_points
 from setuptools import setup, find_packages
 
 
 with open("README.md") as f:
     readme = f.read()
-
-with open("requirements.txt", "r") as f:
-    install_requires = f.read().splitlines()
 
 setup(
     name="audio_measurements",
@@ -16,6 +14,12 @@ setup(
     author_email="michele.forese.personal@gmail.com",
     url="https://github.com/micheleforesedev/audio_measurement",
     # license=license,
-    packages=find_packages(exclude=("test", "doc")),
-    install_requires=install_requires,
+    packages=find_packages(exclude=("tests", "doc", "driver", "data", "config")),
+    install_requires=[
+        "Click",
+    ],
+    entry_points="""
+        [console_scripts]
+        audio_measurements=cDAQ.script.cli:cli
+    """,
 )

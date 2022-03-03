@@ -1,20 +1,11 @@
 import enum
-from optparse import Option
-from os import read
-from platform import system
-from re import A
-from time import clock
 from typing import List, Optional
 from nidaqmx._task_modules.channels.ai_channel import AIChannel
 from nidaqmx._task_modules.channels.ao_channel import AOChannel
 from nidaqmx.errors import DaqError, Error
 from nidaqmx.task import Task
 from nidaqmx.types import CtrFreq
-from numpy.ma.core import shape
-from rich.console import Console
 from rich.panel import Panel
-from rich.layout import Layout
-from rich.style import StyleType
 from rich.tree import Tree
 import nidaqmx
 import nidaqmx.system
