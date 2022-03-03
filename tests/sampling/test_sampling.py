@@ -13,7 +13,7 @@ from cDAQ.config import Config
 from cDAQ.console import console
 from cDAQ.scpi import SCPI, Bandwidth, Switch
 from cDAQ.timer import Timer, Timer_Message
-from cDAQ.UsbTmc import UsbTmc, get_device_list, print_devices_list
+from cDAQ.UsbTmc_temp import UsbTmc, get_device_list, print_devices_list
 from cDAQ.utility import percentage_error, rms
 from rich.live import Live
 from rich.table import Column, Table
