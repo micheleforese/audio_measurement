@@ -1,16 +1,12 @@
 from abc import ABC, abstractmethod
-from asyncio.windows_events import NULL
-from audioop import add
-from optparse import Option
-from typing import Any, List, Optional
-from cDAQ.console import console
-import jstyleson
-from rich.table import Table, Column
-from rich.tree import Tree
-from rich.panel import Panel
-from rich.syntax import Syntax
 from pathlib import Path
+from typing import Any, List, Optional
+
 import pyjson5
+from rich.panel import Panel
+from rich.tree import Tree
+
+from cDAQ.console import console
 
 
 def load_json_config(config_file_path):
@@ -70,19 +66,16 @@ class Sampling(IConfig_Class):
     points_per_decade: int
     min_Hz: float
     max_Hz: float
-    amplitude_pp: float
 
     def __init__(
         self,
         points_per_decade: int,
         min_Hz: float,
         max_Hz: float,
-        amplitude_pp: float,
     ):
         self.points_per_decade = points_per_decade
         self.min_Hz = min_Hz
         self.max_Hz = max_Hz
-        self.amplitude_pp = amplitude_pp
 
     def set_tree_name(self, name: str):
         self._tree_name = name
@@ -99,11 +92,6 @@ class Sampling(IConfig_Class):
         )
         tree.add("[yellow]{}[/]: [blue]{}[/]".format("Min Hz", self.min_Hz))
         tree.add("[yellow]{}[/]: [blue]{}[/]".format("Max Hz", self.max_Hz))
-        tree.add(
-            "[yellow]{}[/]: [blue]{}[/]".format(
-                "Amplitude pick-to-pick", self.amplitude_pp
-            )
-        )
 
         return tree
 
@@ -256,19 +244,10 @@ class Config:
             console.print("Config sampling/max_Hz must be provided", style="error")
             exit()
 
-        try:
-            sampling_amplitude_pp = float(self.row_data["sampling"]["amplitude_pp"])
-        except KeyError:
-            console.print(
-                "Config sampling/amplitude_pp must be provided", style="error"
-            )
-            exit()
-
         self.sampling = Sampling(
             points_per_decade=sampling_points_per_decade,
             min_Hz=sampling_min_Hz,
             max_Hz=sampling_max_Hz,
-            amplitude_pp=sampling_amplitude_pp,
         )
 
         # Limits Class

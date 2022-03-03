@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
 
-from datetime import datetime
-from time import sleep
-from numpy.lib.npyio import genfromtxt
-from numpy.ma.core import sin, log10, sqrt
-from re import split
-from rich import style
-from rich.console import Console
-from rich.table import Column, Table
-from rich.panel import Panel
-from typing import Any, List, Tuple, Union
 import csv
+import os
+from datetime import datetime
+from re import split
+from time import sleep
+from typing import Any, List, Tuple, Union
+
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 import usbtmc
+from numpy.lib.npyio import genfromtxt
+from numpy.ma.core import log10, sqrt
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Column, Table
 from usbtmc.usbtmc import Instrument
+
 from cDAQ.timer import Timer, Timer_Message
 
 console = Console()

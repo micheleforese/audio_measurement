@@ -1,9 +1,9 @@
-from email.errors import MessageParseError
-from typing import Optional
-from rich.console import Console
-from rich.panel import Panel
 import time
 from datetime import timedelta
+from typing import Optional
+
+from rich.console import Console
+from rich.panel import Panel
 
 console = Console()
 

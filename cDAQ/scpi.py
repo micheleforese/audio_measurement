@@ -1,8 +1,8 @@
 from enum import Enum
 from typing import List, Union
-from cDAQ.UsbTmc import UsbTmc
+
 from cDAQ.console import console
-import usbtmc
+from cDAQ.UsbTmc import UsbTmc
 
 
 class Switch(Enum):

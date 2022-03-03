@@ -1,40 +1,27 @@
 import enum
+import math
 from typing import List, Optional
-from nidaqmx._task_modules.channels.ai_channel import AIChannel
-from nidaqmx._task_modules.channels.ao_channel import AOChannel
-from nidaqmx.errors import DaqError, Error
-from nidaqmx.task import Task
-from nidaqmx.types import CtrFreq
-from rich.panel import Panel
-from rich.tree import Tree
+
 import nidaqmx
-import nidaqmx.system
 import nidaqmx.constants
 import nidaqmx.stream_readers
 import nidaqmx.stream_writers
+import nidaqmx.system
 import numpy as np
-from pathlib import Path
-from scipy.fft import fft
-from typing import List
+import usbtmc
+from nidaqmx._task_modules.channels.ai_channel import AIChannel
 from nidaqmx._task_modules.channels.ao_channel import AOChannel
 from nidaqmx.system._collections.device_collection import DeviceCollection
 from nidaqmx.system.system import System
 from numpy.lib.function_base import average
 from numpy.ma.core import sin, sqrt
-from rich import table
-from rich.console import Console
-from rich import inspect, pretty
 from rich.panel import Panel
 from rich.table import Column, Table
-import nidaqmx
-import nidaqmx.system
 from rich.tree import Tree
-import numpy as np
-import math
-import time
-from cDAQ.timer import Timer
+from scipy.fft import fft
+
 from cDAQ.console import console
-import usbtmc
+from cDAQ.timer import Timer
 
 
 class cDAQ:

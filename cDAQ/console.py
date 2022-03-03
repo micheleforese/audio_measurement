@@ -1,10 +1,6 @@
-from os import curdir
-from xml.dom.expatbuilder import theDOMImplementation
+from rich import pretty, traceback
 from rich.console import Console
-from rich import pretty
-from rich.traceback import install
 from rich.theme import Theme
-from rich import traceback
 
 pretty.install()
 traceback.install(show_locals=True)

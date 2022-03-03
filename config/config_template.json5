@@ -14,7 +14,6 @@
     points_per_decade: 10,
     min_Hz: 10,
     max_Hz: 1000,
-    amplitude_pp: 4.47,
   },
   limits: {
     // Mandatory

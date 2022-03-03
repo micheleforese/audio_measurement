@@ -1,5 +1,6 @@
-from datetime import datetime
 import pathlib
+from datetime import datetime
+
 import click
 from cDAQ.console import console
 from cDAQ.sampling import curva
@@ -11,10 +12,6 @@ from cDAQ.sampling import curva
 @click.option("--debug", is_flag=True, help="Will print verbose messages.")
 @click.argument("config", type=pathlib.Path)
 def cli(debug: bool, config: pathlib.Path):
-    console.print("helloooo")
-    console.print("Config: [blue]{}[/]".format(config.absolute()))
-    console.print("Parent: [blue]{}[/]".format(config.absolute().parent))
-    console.print("Parent: [blue]{}[/]".format(config.absolute().name))
 
     home_path = config.absolute().parent
 
