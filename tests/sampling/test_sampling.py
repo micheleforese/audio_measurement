@@ -27,7 +27,7 @@ def test_curva():
     THIS_PATH = Path(__file__).parent
 
     curva(
-        config_file_path=THIS_PATH / "test_curva.json",
+        config_file_path=THIS_PATH / "test_curva.json5",
         measurements_file_path=THIS_PATH
         / "test_curva-[{}].csv".format(datetime.now().strftime(f"%Y-%m-%d--%H-%M-%f")),
         plot_file_path=THIS_PATH
@@ -43,7 +43,7 @@ def test_error_sampling():
     """
     THIS_PATH = Path(__file__).parent
 
-    config: Config = Config(THIS_PATH / "basic.json")
+    config: Config = Config(THIS_PATH / "basic.json5")
 
     measurements_file_path: Path = THIS_PATH / "basic.csv"
     debug = True
