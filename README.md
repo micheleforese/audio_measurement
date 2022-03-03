@@ -21,6 +21,7 @@ python3 -m pip install --editable .
    ```console
    cd ~
    mkdir audio
+   cd audio
    ```
 
 2. Create the configuration file, starting from the template: `audio_measurements/config/config_template.json5`

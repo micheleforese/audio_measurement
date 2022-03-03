@@ -190,53 +190,119 @@ class Config:
 
     def _init_config(self):
 
-        self.number_of_samples = int(self.row_data["number_of_samples"])
-        self.Fs = float(self.row_data["Fs"])
-        self.amplitude_pp = float(self.row_data["amplitude_pp"])
+        try:
+            self.number_of_samples = int(self.row_data["number_of_samples"])
+        except KeyError:
+            console.print("Config number_of_samples must be provided", style="error")
+            exit()
 
+        try:
+            self.Fs = float(self.row_data["Fs"])
+        except KeyError:
+            console.print("Config Fs must be provided", style="error")
+            exit()
+
+        try:
+            self.amplitude_pp = float(self.row_data["amplitude_pp"])
+        except KeyError:
+            console.print("Config amplitude_pp must be provided", style="error")
+            exit()
+
+        # Nidaq Class
         try:
             nidaq_max_voltage = float(self.row_data["nidaq"]["max_voltage"])
         except KeyError:
-            code = Syntax(
-                'nidaq_max_voltage = float(self.row_data["nidaq"]["max_voltage"])',
-                "python",
-                theme="monokai",
-            )
-            console.print(Panel(code), style="error")
-            console.print("nidaq/max_voltage must be provided", style="error")
+            console.print("Config nidaq/max_voltage must be provided", style="error")
+            exit()
 
-        # Nidaq Class
+        try:
+            nidaq_min_voltage = float(self.row_data["nidaq"]["min_voltage"])
+        except KeyError:
+            console.print("Config nidaq/min_voltage must be provided", style="error")
+            exit()
+
+        try:
+            nidaq_ch_input = str(self.row_data["nidaq"]["ch_input"])
+        except KeyError:
+            console.print("Config nidaq/ch_input must be provided", style="error")
+            exit()
+
         self.nidaq = Nidaq(
             max_voltage=nidaq_max_voltage,
-            min_voltage=float(self.row_data["nidaq"]["min_voltage"]),
-            ch_input=str(self.row_data["nidaq"]["ch_input"]),
+            min_voltage=nidaq_min_voltage,
+            ch_input=nidaq_ch_input,
         )
 
         # Sampling Class
+        try:
+            sampling_points_per_decade = int(
+                self.row_data["sampling"]["points_per_decade"]
+            )
+        except KeyError:
+            console.print(
+                "Config sampling/points_per_decade must be provided", style="error"
+            )
+            exit()
+
+        try:
+            sampling_min_Hz = float(self.row_data["sampling"]["min_Hz"])
+        except KeyError:
+            console.print("Config sampling/min_Hz must be provided", style="error")
+            exit()
+
+        try:
+            sampling_max_Hz = float(self.row_data["sampling"]["max_Hz"])
+        except KeyError:
+            console.print("Config sampling/max_Hz must be provided", style="error")
+            exit()
+
+        try:
+            sampling_amplitude_pp = float(self.row_data["sampling"]["amplitude_pp"])
+        except KeyError:
+            console.print(
+                "Config sampling/amplitude_pp must be provided", style="error"
+            )
+            exit()
+
         self.sampling = Sampling(
-            points_per_decade=int(self.row_data["sampling"]["points_per_decade"]),
-            min_Hz=float(self.row_data["sampling"]["min_Hz"]),
-            max_Hz=float(self.row_data["sampling"]["max_Hz"]),
-            amplitude_pp=float(self.row_data["sampling"]["amplitude_pp"]),
+            points_per_decade=sampling_points_per_decade,
+            min_Hz=sampling_min_Hz,
+            max_Hz=sampling_max_Hz,
+            amplitude_pp=sampling_amplitude_pp,
         )
 
         # Limits Class
-        self.limits = Limits(
-            delay_min=float(self.row_data["limits"]["delay_min"]),
-            aperture_min=float(self.row_data["limits"]["aperture_min"]),
-            interval_min=float(self.row_data["limits"]["interval_min"]),
-        )
-
-        plot_x_limit: Optional[List[float]] = None
-        plot_y_limit: Optional[List[float]] = None
+        try:
+            limits_delay_min = float(self.row_data["limits"]["delay_min"])
+        except KeyError:
+            console.print("Config limits/delay_min must be provided", style="error")
+            exit()
 
         try:
-            plot_x_limit = self.row_data["plot"]["x_limit"]
+            limits_aperture_min = float(self.row_data["limits"]["aperture_min"])
+        except KeyError:
+            console.print("Config limits/aperture_min must be provided", style="error")
+            exit()
+
+        try:
+            limits_interval_min = float(self.row_data["limits"]["interval_min"])
+        except KeyError:
+            console.print("Config limits/interval_min must be provided", style="error")
+            exit()
+
+        self.limits = Limits(
+            delay_min=limits_delay_min,
+            aperture_min=limits_aperture_min,
+            interval_min=limits_interval_min,
+        )
+
+        try:
+            plot_x_limit: Optional[List[float]] = self.row_data["plot"]["x_limit"]
         except KeyError:
             plot_x_limit = None
 
         try:
-            plot_y_limit = self.row_data["plot"]["y_limit"]
+            plot_y_limit: Optional[List[float]] = self.row_data["plot"]["y_limit"]
         except KeyError:
             plot_y_limit = None
 
