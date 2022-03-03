@@ -7,7 +7,7 @@
 
 # Configs
 config/*
-!config/config_template.json
+!config/config_template.json5
 
 # Tests
 tests/**/*.csv
