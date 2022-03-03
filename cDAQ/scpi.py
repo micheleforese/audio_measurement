@@ -2,7 +2,7 @@ from enum import Enum
 from typing import List, Union
 
 from cDAQ.console import console
-from cDAQ.UsbTmc_temp import UsbTmc
+from cDAQ.usbtmc import UsbTmc
 
 
 class Switch(Enum):
