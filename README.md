@@ -23,17 +23,17 @@ python3 -m pip install --editable .
    mkdir audio
    ```
 
-2. Create the configuration file, starting from the template: `audio_measurements/config/config_template.json`
+2. Create the configuration file, starting from the template: `audio_measurements/config/config_template.json5`
 3. Run the cli script
 
    ```console
-   audio_measurement <config.json file>
+   audio_measurement <config.json5 file>
    ```
 
    For Example:
 
    ```console
-   audio_measurement config.json
+   audio_measurement config.json5
    ```
 
    Will be created the `.csv` and the `.png` files inside the current directory
