@@ -1,6 +1,8 @@
 import enum
 import math
+from time import sleep
 from typing import List, Optional
+from matplotlib import pyplot as plt
 
 import nidaqmx
 import nidaqmx.constants
@@ -22,6 +24,7 @@ from scipy.fft import fft
 
 from cDAQ.console import console
 from cDAQ.timer import Timer
+from cDAQ import utility
 
 
 class cDAQ:
@@ -147,49 +150,6 @@ def integrate(y_values: List[float], delta) -> float:
                 # console.print("Volume: {}".format(round(volume, 9)))
 
     return volume
-
-
-def voltage_rms(voltages: List[float]) -> float:
-
-    idx = 0
-
-    volts_average_list = list()
-
-    while idx < len(voltages):
-        curr_half = unit_normalization(voltages[idx])
-        n_volts = 0
-        sum_volts = 0.0
-
-        console.print(Panel.fit("Index: {}".format(idx)))
-
-        while curr_half == unit_normalization(voltages[idx]):
-
-            n_volts += 1
-            sum_volts += voltages[idx]
-
-            # Step the index
-            idx += 1
-
-            if not idx < len(voltages):
-                console.log(
-                    Panel.fit(
-                        "[red]Vector Lenght exceded with index: {}[/]".format(idx)
-                    )
-                )
-                break
-
-        avg = sum_volts / n_volts
-
-        volts_average_list.append(abs(avg))
-
-        console.log("Number Measurments in Half Cicle: {}".format(n_volts))
-        console.log("Volts Sum in Half Cicle: {}".format(sum_volts))
-        console.log("Volt Average: {}".format(avg))
-
-    console.log(volts_average_list)
-    rms_voltage = (average(volts_average_list) * math.pi) / (2 * sqrt(2))
-
-    return rms_voltage
 
 
 def rms_average(voltages: List[float], number_of_samples: int) -> float:
@@ -345,7 +305,7 @@ def rms(
 def plot_log_db(
     file_path: str = "test.csv", file_png_path: str = "test.png", number_voltages=1
 ):
-    csvfile = genfromtxt(file_path, delimiter=",")
+    csvfile = np.genfromtxt(file_path, delimiter=",")
 
     Vpp = 2.0
     frequencies = []
@@ -364,7 +324,7 @@ def plot_log_db(
         voltage_average /= 4
 
         voltages.append((row[2] + row[3] + row[4]) / 3)
-        dBV.append(20 * log10(row[1] * Vpp / (2 * sqrt(2))))
+        dBV.append(20 * math.log10(row[1] * Vpp / (2 * sqrt(2))))
 
     plt.plot(frequencies, dBV)
     plt.xscale("log")
@@ -393,8 +353,8 @@ def plot_V_out_filter(
     voltages_out = []
     dBV = []
 
-    min_index: np.float = log10(min_Hz)
-    max_index: np.float = log10(max_Hz)
+    min_index: np.float = math.log10(min_Hz)
+    max_index: np.float = math.log10(max_Hz)
 
     steps_sum = (points_for_decade * max_index) - (points_for_decade * min_index)
 
@@ -409,7 +369,7 @@ def plot_V_out_filter(
         )
 
         voltage_out_temp = V_in * A
-        dBV_temp = 20 * log10(voltage_out_temp * Vpp / (2 * sqrt(2)))
+        dBV_temp = 20 * math.log10(voltage_out_temp * Vpp / (2 * sqrt(2)))
 
         frequencies.append(frequency)
         voltages_out.append(voltage_out_temp)
@@ -528,7 +488,7 @@ def plot_percentage_error_temp(
     for expected, result in zip(csv_expected, csv_result):
 
         frequency_temp: np.float = expected[0]
-        expected_temp: np.float = 1 / sqrt(2)
+        expected_temp: np.float = 1 / math.sqrt(2)
         approx_temp: np.float = result[1]
 
         perc_error_temp: np.float = percentage_error(
@@ -565,7 +525,7 @@ def plot_percentage_error_temp(
 
 def diff_steps(file_path: str):
 
-    csvfile = genfromtxt(
+    csvfile = np.genfromtxt(
         file_path, delimiter=",", names=["Frequency", "Voltage"], dtype="f8,f8"
     )
 

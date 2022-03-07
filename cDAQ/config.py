@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
 
 import pyjson5
 from rich.panel import Panel
@@ -126,13 +126,13 @@ class Limits(IConfig_Class):
 class Plot(IConfig_Class):
     _tree_name: str = "plot"
 
-    x_limit = Optional[List[float]]
-    y_limit = Optional[List[float]]
+    x_limit = Optional[Tuple[float, float]]
+    y_limit = Optional[Tuple[float, float]]
 
     def __init__(
         self,
-        x_limit: Optional[List[float]] = None,
-        y_limit: Optional[List[float]] = None,
+        x_limit: Optional[Tuple[float, float]] = None,
+        y_limit: Optional[Tuple[float, float]] = None,
     ):
         self.x_limit = x_limit
         self.y_limit = y_limit
@@ -276,12 +276,16 @@ class Config:
         )
 
         try:
-            plot_x_limit: Optional[List[float]] = self.row_data["plot"]["x_limit"]
+            plot_x_limit: Optional[Tuple[float, float]] = self.row_data["plot"][
+                "x_limit"
+            ]
         except KeyError:
             plot_x_limit = None
 
         try:
-            plot_y_limit: Optional[List[float]] = self.row_data["plot"]["y_limit"]
+            plot_y_limit: Optional[Tuple[float, float]] = self.row_data["plot"][
+                "y_limit"
+            ]
         except KeyError:
             plot_y_limit = None
 

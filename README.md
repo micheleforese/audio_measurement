@@ -1,20 +1,12 @@
 # Common Commands
 
-## Update the repository
-
-```console
-git pull
-```
-
-## How to Use it
-
-### Install
+## Install
 
 ```console
 python3 -m pip install --editable .
 ```
 
-### Use it
+## Use it
 
 1. Create a folder for containing the measurements and plot files
 
@@ -24,20 +16,7 @@ python3 -m pip install --editable .
    cd audio
    ```
 
-2. Create the configuration file, starting from the template: `audio_measurements/config/config_template.json5`
-3. Run the cli script
-
-   ```console
-   audio_measurement <config.json5 file>
-   ```
-
-   For Example:
-
-   ```console
-   audio_measurement config.json5
-   ```
-
-   Will be created the `.csv` and the `.png` files inside the current directory
+2. For more information on the CLI go [here](./doc/cli.md)
 
 ## NI-DRIVER
 

@@ -22,7 +22,7 @@
     interval_min: 0.01,
   },
   plot: {
-    // Optional
+    // Mandatory
     y_limit: [-1, 1],
     // x_limit: [-1, 1],
   },

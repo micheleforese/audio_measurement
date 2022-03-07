@@ -1,6 +1,6 @@
 from pathlib import Path
 from time import sleep
-from typing import List
+from typing import List, Tuple, Type
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -35,10 +35,11 @@ def curva(
         config=config, measurements_file_path=measurements_file_path, debug=debug
     )
 
-    plot(
-        config=config,
+    plot_from_csv(
         measurements_file_path=measurements_file_path,
         plot_file_path=plot_file_path,
+        y_lim_min=config.plot.y_limit[0],
+        y_lim_max=config.plot.y_limit[1],
         debug=debug,
     )
 
@@ -86,7 +87,7 @@ def sampling_curve(
     )
 
     f = open(measurements_file_path, "w")
-    f.write("{},{}\n".format("Frequency", "RMS Value"))
+    f.write("{},{},{}\n".format("Frequency", "RMS Value", "dbV"))
 
     frequency: float = round(config.sampling.min_Hz, 5)
 
@@ -118,16 +119,17 @@ def sampling_curve(
             sleep(0.4)
 
             if frequency <= 100:
-                config.Fs = frequency * 8
+                config.Fs = frequency * 4
+                config.number_of_samples = 400
             elif frequency <= 1000:
                 config.Fs = frequency * 3
-                config.number_of_samples = 800
+                config.number_of_samples = 400
             elif frequency <= 10000:
                 config.Fs = frequency * 6
-                config.number_of_samples = 800
+                config.number_of_samples = 400
             else:
                 config.Fs = frequency * 3
-                config.number_of_samples = 800
+                config.number_of_samples = 400
 
             if config.Fs > 102000:
                 config.Fs = 102000
@@ -167,15 +169,25 @@ def sampling_curve(
             #         "Frequency - Rms Value: {} - {}".format(round(frequency, 5), rms_value))
 
             """File Writing"""
-            f.write("{},{}\n".format(frequency, rms_value))
+            f.write(
+                "{},{},{}\n".format(
+                    frequency,
+                    rms_value,
+                    20
+                    * np.math.log10(
+                        rms_value * 2 * np.math.sqrt(2) / config.amplitude_pp
+                    ),
+                )
+            )
 
     f.close()
 
 
-def plot(
-    config: Config,
+def plot_from_csv(
     measurements_file_path: Path,
     plot_file_path: Path,
+    y_lim_min: float,
+    y_lim_max: float,
     debug: bool = False,
 ):
     if debug:
@@ -190,9 +202,7 @@ def plot(
     console.print(measurements)
 
     for row in list(csvfile):
-        y_dBV.append(
-            20 * np.math.log10(row[1] * 2 * np.math.sqrt(2) / config.amplitude_pp)
-        )
+        y_dBV.append(row[2])
         x_frequency.append(row[0])
 
     fig1, ax = plt.subplots(figsize=(16, 9), dpi=200)
@@ -203,9 +213,7 @@ def plot(
     ax.set_xlabel("Frequency")
     ax.set_ylabel(r"$\frac{V_out}{V_int} dB$", rotation=90)
 
-    if config.plot.y_limit != None:
-        y_lim: List[float] = config.plot.y_limit
-        ax.set_ylim(y_lim[0], y_lim[1])
+    ax.set_ylim(y_lim_min, y_lim_max)
 
     # ax.set_ylim(-1, 1)
 

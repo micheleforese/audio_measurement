@@ -1,4 +1,4 @@
-from importlib.metadata import entry_points
+from importlib_metadata import entry_points
 from setuptools import setup, find_packages
 
 
@@ -18,8 +18,9 @@ setup(
     install_requires=[
         "Click",
     ],
-    entry_points="""
-        [console_scripts]
-        audio_measurements=cDAQ.script.cli:cli
-    """,
+    entry_points={
+        "console_scripts": [
+            "audio_measurements = cDAQ.script.cli:cli",
+        ],
+    },
 )
