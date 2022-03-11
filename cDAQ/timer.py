@@ -1,3 +1,4 @@
+from email import message
 import time
 from datetime import timedelta
 from typing import Optional
@@ -20,6 +21,15 @@ class Timer_Message:
         self.elapsed_time = elapsed_time
         self.message = message
 
+    def print(self):
+        console.print(
+            Panel(
+                "[green]{}[/green]: [blue]{}[/blue]".format(
+                    self.message, self.elapsed_time
+                )
+            )
+        )
+
 
 class Timer:
     _start_time = None
@@ -39,7 +49,7 @@ class Timer:
 
         self._start_time = time.perf_counter()
 
-    def stop(self, display: bool = False) -> Timer_Message:
+    def stop(self) -> Timer_Message:
         """Stop the timer, and report the elapsed time"""
         if self._start_time is None:
             raise TimerError(f"Timer is not running. Use start() to start it")
@@ -48,9 +58,6 @@ class Timer:
         elapsed_time: timedelta = timedelta(
             seconds=time.perf_counter() - self._start_time
         )
-
-        if display:
-            console.print(Panel.fit("{}: {} s".format(self._message, elapsed_time)))
 
         self._start_time = None
         self._message = ""

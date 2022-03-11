@@ -35,11 +35,17 @@ def curva(
         config=config, measurements_file_path=measurements_file_path, debug=debug
     )
 
+    y_lim_min: Optional[float] = None
+    y_lim_max: Optional[float] = None
+
+    if config.plot.y_limit:
+        y_lim_min, y_lim_max = config.plot.y_limit
+
     plot_from_csv(
         measurements_file_path=measurements_file_path,
         plot_file_path=plot_file_path,
-        y_lim_min=config.plot.y_limit[0],
-        y_lim_max=config.plot.y_limit[1],
+        y_lim_min=y_lim_min,
+        y_lim_max=y_lim_max,
         debug=debug,
     )
 
@@ -116,23 +122,25 @@ def sampling_curve(
             # Sets the Frequency
             generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
 
-            sleep(0.4)
+            sleep(0.2)
+
+            Fs = config.sampling.Fs
 
             if frequency <= 100:
-                config.Fs = frequency * 4
-                config.number_of_samples = 400
+                Fs = frequency * 3
+                config.number_of_samples = 800
             elif frequency <= 1000:
-                config.Fs = frequency * 3
+                Fs = frequency * 3
                 config.number_of_samples = 400
             elif frequency <= 10000:
-                config.Fs = frequency * 6
+                Fs = frequency * 6
                 config.number_of_samples = 400
             else:
-                config.Fs = frequency * 3
+                Fs = frequency * 3
                 config.number_of_samples = 400
 
-            if config.Fs > 102000:
-                config.Fs = 102000
+            if Fs > config.sampling.Fs:
+                Fs = config.sampling.Fs
 
             time = Timer()
             time.start()
@@ -140,7 +148,7 @@ def sampling_curve(
             # GET MEASUREMENTS
             rms_value: Optional[float] = rms(
                 frequency=frequency,
-                Fs=config.Fs,
+                Fs=Fs,
                 ch_input=config.nidaq.ch_input,
                 max_voltage=config.nidaq.max_voltage,
                 min_voltage=config.nidaq.min_voltage,
@@ -162,14 +170,10 @@ def sampling_curve(
                         round((config.amplitude_pp / 2) / np.math.sqrt(2), 5)
                     ),
                     "[{}]{:.3f}[/]".format(
-                        "cyan" if perc_error <= 0 else "red", round(perc_error, 3)
+                        "red" if perc_error <= 0 else "green", round(perc_error, 3)
                     ),
                     "[cyan]{}[/]".format(message.elapsed_time),
                 )
-
-                # if(debug):
-                #     live.console.log(
-                #         "Frequency - Rms Value: {} - {}".format(round(frequency, 5), rms_value))
 
                 """File Writing"""
                 f.write(
@@ -189,8 +193,8 @@ def sampling_curve(
 def plot_from_csv(
     measurements_file_path: Path,
     plot_file_path: Path,
-    y_lim_min: float,
-    y_lim_max: float,
+    y_lim_min: Optional[float] = None,
+    y_lim_max: Optional[float] = None,
     debug: bool = False,
 ):
     if debug:
@@ -199,24 +203,28 @@ def plot_from_csv(
     x_frequency: List[float] = []
     y_dBV: List[float] = []
 
-    csvfile = np.genfromtxt(measurements_file_path, delimiter=",", skip_header=1)
-
-    measurements = pd.read_csv(measurements_file_path)
+    measurements = pd.read_csv(
+        measurements_file_path, header=0, names=["Frequency", "RMS Value", "dbV"]
+    )
     console.print(measurements)
 
-    for row in list(csvfile):
-        y_dBV.append(row[2])
-        x_frequency.append(row[0])
+    for i, row in measurements.iterrows():
+        y_dBV.append(row["dbV"])
+        x_frequency.append(row["Frequency"])
 
-    fig1, ax = plt.subplots(figsize=(16, 9), dpi=200)
+    fig1, ax = plt.subplots(figsize=(16 * 2, 9 * 2), dpi=600)
 
-    ax.plot(x_frequency, y_dBV, ".-")
+    ax.plot(x_frequency, y_dBV)
     ax.set_xscale("log")
     ax.set_title("Frequency response")
     ax.set_xlabel("Frequency")
-    ax.set_ylabel(r"$\frac{V_out}{V_int} dB$", rotation=90)
+    ax.set_ylabel(r"$\frac{V_out}{V_int} dB$")
 
-    ax.set_ylim(y_lim_min, y_lim_max)
+    if y_lim_min is None and y_lim_max is None:
+        ax.set_ylim(y_lim_min, y_lim_max)
+    else:
+        ax.set_ylim(min(y_dBV), max(y_dBV))
+
     ax.grid(True, linestyle="-")
 
     # ax.set_ylim(-1, 1)

@@ -17,3 +17,6 @@ tests/**/*.png
 env
 
 **/*.egg-info
+
+# Test script
+audio/**

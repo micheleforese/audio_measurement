@@ -266,8 +266,7 @@ def rms(
     time_report: bool = False,
 ) -> Optional[float]:
 
-    if time_report:
-        timer = Timer()
+    timer = Timer()
 
     # number_of_samples = 800
 
@@ -294,7 +293,7 @@ def rms(
             rms = rms_integration(voltages, number_of_samples, Fs)
 
         if time_report:
-            timer.stop(display=True)
+            timer.stop().print()
 
         return rms
     except Exception as e:

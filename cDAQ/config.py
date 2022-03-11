@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from curses.ascii import FS
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
@@ -63,16 +64,19 @@ class Nidaq(IConfig_Class):
 class Sampling(IConfig_Class):
     _tree_name: str = "sampling"
 
+    Fs: float
     points_per_decade: int
     min_Hz: float
     max_Hz: float
 
     def __init__(
         self,
+        Fs: float,
         points_per_decade: int,
         min_Hz: float,
         max_Hz: float,
     ):
+        self.Fs = Fs
         self.points_per_decade = points_per_decade
         self.min_Hz = min_Hz
         self.max_Hz = max_Hz
@@ -80,11 +84,12 @@ class Sampling(IConfig_Class):
     def set_tree_name(self, name: str):
         self._tree_name = name
 
-    def get_tree_name(self, name: str) -> str:
+    def get_tree_name(self) -> str:
         return self._tree_name
 
     def tree(self) -> Tree:
         tree = Tree("[red]{}[/]:".format(self._tree_name))
+        tree.add("[yellow]{}[/]: [blue]{}[/]".format("Fs", self.Fs))
         tree.add(
             "[yellow]{}[/]: [blue]{}[/]".format(
                 "Points per Decade", self.points_per_decade
@@ -163,12 +168,11 @@ class Config:
     row_data: Any
 
     number_of_samples: int
-    Fs: float
     amplitude_pp: float
     nidaq: Nidaq
     sampling: Sampling
     limits: Limits
-    plot: Plot
+    plot: Optional[Plot] = None
 
     step: float
 
@@ -182,12 +186,6 @@ class Config:
             self.number_of_samples = int(self.row_data["number_of_samples"])
         except KeyError:
             console.print("Config number_of_samples must be provided", style="error")
-            exit()
-
-        try:
-            self.Fs = float(self.row_data["Fs"])
-        except KeyError:
-            console.print("Config Fs must be provided", style="error")
             exit()
 
         try:
@@ -223,6 +221,12 @@ class Config:
 
         # Sampling Class
         try:
+            sampling_Fs = float(self.row_data["sampling"]["Fs"])
+        except KeyError:
+            console.print("Config sampling/Fs must be provided", style="error")
+            exit()
+
+        try:
             sampling_points_per_decade = int(
                 self.row_data["sampling"]["points_per_decade"]
             )
@@ -245,6 +249,7 @@ class Config:
             exit()
 
         self.sampling = Sampling(
+            Fs=sampling_Fs,
             points_per_decade=sampling_points_per_decade,
             min_Hz=sampling_min_Hz,
             max_Hz=sampling_max_Hz,
@@ -306,9 +311,6 @@ class Config:
             )
         )
         tree.add(
-            "[yellow]{}[/]: [blue]{}[/]".format("Sampling Frequency (Fs)", self.Fs)
-        )
-        tree.add(
             "[yellow]{}[/]: [blue]{}[/]".format(
                 "Amplitude pick-to-pick", self.amplitude_pp
             )
@@ -317,7 +319,8 @@ class Config:
         tree.add(self.nidaq.tree())
         tree.add(self.sampling.tree())
         tree.add(self.limits.tree())
-        tree.add(self.plot.tree())
+        if self.plot:
+            tree.add(self.plot.tree())
 
         return tree
 

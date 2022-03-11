@@ -1,7 +1,6 @@
 {
   // Mandatory
   number_of_samples: 100,
-  Fs: 102000,
   amplitude_pp: 2,
   nidaq: {
     // Mandatory
@@ -11,6 +10,7 @@
   },
   sampling: {
     // Mandatory
+    Fs: 102000,
     points_per_decade: 10,
     min_Hz: 10,
     max_Hz: 1000,
