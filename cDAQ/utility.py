@@ -264,7 +264,7 @@ def rms(
     min_voltage: float,
     rms_mode: RMS_MODE = RMS_MODE.FFT,
     time_report: bool = False,
-) -> float:
+) -> Optional[float]:
 
     if time_report:
         timer = Timer()
@@ -281,25 +281,24 @@ def rms(
             max_voltage=max_voltage,
             min_voltage=min_voltage,
         )
+        rms: Optional[float] = None
+
+        if time_report:
+            timer.start("[yellow]RMS Calculation Execution time[/]")
+
+        if rms_mode == RMS_MODE.FFT:
+            rms = rms_fft(voltages, number_of_samples)
+        elif rms_mode == RMS_MODE.AVERAGE:
+            rms = rms_average(voltages, number_of_samples)
+        elif rms_mode == RMS_MODE.INTEGRATE:
+            rms = rms_integration(voltages, number_of_samples, Fs)
+
+        if time_report:
+            timer.stop(display=True)
+
+        return rms
     except Exception as e:
         console.log(e)
-
-    rms: Optional[float] = None
-
-    if time_report:
-        timer.start("[yellow]RMS Calculation Execution time[/]")
-
-    if rms_mode == RMS_MODE.FFT:
-        rms = rms_fft(voltages, number_of_samples)
-    elif rms_mode == RMS_MODE.AVERAGE:
-        rms = rms_average(voltages, number_of_samples)
-    elif rms_mode == RMS_MODE.INTEGRATE:
-        rms = rms_integration(voltages, number_of_samples, Fs)
-
-    if time_report:
-        timer.stop(display=True)
-
-    return rms
 
 
 def plot_log_db(
@@ -399,12 +398,10 @@ def plot_percentage_error(
     csv_expected = np.genfromtxt(
         csv_expected_file_path,
         delimiter=",",
-        dtype=[("Frequency", "f8"), ("Voltage", "f8"), ("dBV", "f8")],
     )
     csv_result = np.genfromtxt(
         csv_result_file_path,
         delimiter=",",
-        dtype=[("Frequency", "f8"), ("Voltage", "f8")],
     )
 
     frequency: List[np.float] = []
@@ -466,12 +463,10 @@ def plot_percentage_error_temp(
     csv_expected = np.genfromtxt(
         csv_expected_file_path,
         delimiter=",",
-        dtype=[("Frequency", "f8"), ("Voltage", "f8"), ("dBV", "f8")],
     )
     csv_result = np.genfromtxt(
         csv_result_file_path,
         delimiter=",",
-        dtype=[("Frequency", "f8"), ("Voltage", "f8")],
     )
 
     frequency: List[np.float] = []
@@ -525,9 +520,7 @@ def plot_percentage_error_temp(
 
 def diff_steps(file_path: str):
 
-    csvfile = np.genfromtxt(
-        file_path, delimiter=",", names=["Frequency", "Voltage"], dtype="f8,f8"
-    )
+    csvfile = np.genfromtxt(file_path, delimiter=",", names=["Frequency", "Voltage"])
 
     list_f_v = list(csvfile)
 

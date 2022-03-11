@@ -1,6 +1,6 @@
 from pathlib import Path
 from time import sleep
-from typing import List, Tuple, Type
+from typing import List, Optional, Tuple, Type
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -138,7 +138,7 @@ def sampling_curve(
             time.start()
 
             # GET MEASUREMENTS
-            rms_value = rms(
+            rms_value: Optional[float] = rms(
                 frequency=frequency,
                 Fs=config.Fs,
                 ch_input=config.nidaq.ch_input,
@@ -147,38 +147,41 @@ def sampling_curve(
                 number_of_samples=config.number_of_samples,
             )
 
-            message: Timer_Message = time.stop()
+            if rms_value:
+                message: Timer_Message = time.stop()
 
-            perc_error = percentage_error(
-                exact=(config.amplitude_pp / 2) / np.math.sqrt(2), approx=rms_value
-            )
-
-            table.add_row(
-                "{:.5f}".format(frequency),
-                "{}".format(config.number_of_samples),
-                "{:.5f} ".format(round(rms_value, 5)),
-                "{:.5f} ".format(round((config.amplitude_pp / 2) / np.math.sqrt(2), 5)),
-                "[{}]{:.3f}[/]".format(
-                    "cyan" if perc_error <= 0 else "red", round(perc_error, 3)
-                ),
-                "[cyan]{}[/]".format(message.elapsed_time),
-            )
-
-            # if(debug):
-            #     live.console.log(
-            #         "Frequency - Rms Value: {} - {}".format(round(frequency, 5), rms_value))
-
-            """File Writing"""
-            f.write(
-                "{},{},{}\n".format(
-                    frequency,
-                    rms_value,
-                    20
-                    * np.math.log10(
-                        rms_value * 2 * np.math.sqrt(2) / config.amplitude_pp
-                    ),
+                perc_error = percentage_error(
+                    exact=(config.amplitude_pp / 2) / np.math.sqrt(2), approx=rms_value
                 )
-            )
+
+                table.add_row(
+                    "{:.5f}".format(frequency),
+                    "{}".format(config.number_of_samples),
+                    "{:.5f} ".format(round(rms_value, 5)),
+                    "{:.5f} ".format(
+                        round((config.amplitude_pp / 2) / np.math.sqrt(2), 5)
+                    ),
+                    "[{}]{:.3f}[/]".format(
+                        "cyan" if perc_error <= 0 else "red", round(perc_error, 3)
+                    ),
+                    "[cyan]{}[/]".format(message.elapsed_time),
+                )
+
+                # if(debug):
+                #     live.console.log(
+                #         "Frequency - Rms Value: {} - {}".format(round(frequency, 5), rms_value))
+
+                """File Writing"""
+                f.write(
+                    "{},{},{}\n".format(
+                        frequency,
+                        rms_value,
+                        20
+                        * np.math.log10(
+                            rms_value * 2 * np.math.sqrt(2) / config.amplitude_pp
+                        ),
+                    )
+                )
 
     f.close()
 
@@ -214,6 +217,7 @@ def plot_from_csv(
     ax.set_ylabel(r"$\frac{V_out}{V_int} dB$", rotation=90)
 
     ax.set_ylim(y_lim_min, y_lim_max)
+    ax.grid(True, linestyle="-")
 
     # ax.set_ylim(-1, 1)
 
