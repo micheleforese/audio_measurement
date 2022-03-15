@@ -1,9 +1,7 @@
-from typing import Optional
 import enum
 import math
 from time import sleep
 from typing import List, Optional
-from matplotlib import pyplot as plt
 
 import nidaqmx
 import nidaqmx.constants
@@ -11,20 +9,11 @@ import nidaqmx.stream_readers
 import nidaqmx.stream_writers
 import nidaqmx.system
 import numpy as np
-import usbtmc
-from nidaqmx._task_modules.channels.ai_channel import AIChannel
-from nidaqmx._task_modules.channels.ao_channel import AOChannel
-from nidaqmx.system._collections.device_collection import DeviceCollection
-from nidaqmx.system.system import System
-from numpy.ma.core import sin, sqrt
-from rich.panel import Panel
-from rich.table import Column, Table
-from rich.tree import Tree
-from scipy.fft import fft
+from matplotlib import pyplot as plt
 
+from cDAQ import utility
 from cDAQ.console import console
 from cDAQ.timer import Timer
-from cDAQ import utility
 
 
 class ni9251:

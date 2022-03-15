@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from curses.ascii import FS
 from pathlib import Path
+import pathlib
 from typing import Any, List, Optional, Tuple
 
 import pyjson5
@@ -34,14 +35,43 @@ class IConfig_Class(ABC):
         raise Exception("NotImplementedException")
 
 
+class Rigol(IConfig_Class):
+    _tree_name: str = "rigol"
+
+    amplitude_pp: float
+
+    def __init__(self, amplitude_pp: float) -> None:
+        self.amplitude_pp = amplitude_pp
+
+    def set_tree_name(self, name: str):
+        self._tree_name = name
+
+    def get_tree_name(self, name: str) -> str:
+        return self._tree_name
+
+    def tree(self) -> Tree:
+        tree = Tree("[red]{}[/]:".format(self._tree_name))
+        tree.add(
+            "[yellow]{}[/]: [blue]{}[/]".format(
+                "Amplitude pick-to-pick", self.amplitude_pp
+            )
+        )
+
+        return tree
+
+
 class Nidaq(IConfig_Class):
     _tree_name: str = "nidaq"
 
+    max_Fs: float
     max_voltage: float
     min_voltage: float
     ch_input: str
 
-    def __init__(self, max_voltage: float, min_voltage: float, ch_input: str) -> None:
+    def __init__(
+        self, max_Fs: float, max_voltage: float, min_voltage: float, ch_input: str
+    ) -> None:
+        self.max_Fs = max_Fs
         self.max_voltage = max_voltage
         self.min_voltage = min_voltage
         self.ch_input = ch_input
@@ -54,6 +84,7 @@ class Nidaq(IConfig_Class):
 
     def tree(self) -> Tree:
         tree = Tree("[red]{}[/]:".format(self._tree_name))
+        tree.add("[yellow]{}[/]: [blue]{}[/]".format("Max Fs", self.max_Fs))
         tree.add("[yellow]{}[/]: [blue]{}[/]".format("Max Voltage", self.max_voltage))
         tree.add("[yellow]{}[/]: [blue]{}[/]".format("Min Voltage", self.min_voltage))
         tree.add("[yellow]{}[/]: [blue]{}[/]".format("Input Channel", self.ch_input))
@@ -64,20 +95,20 @@ class Nidaq(IConfig_Class):
 class Sampling(IConfig_Class):
     _tree_name: str = "sampling"
 
-    Fs: float
-    points_per_decade: int
+    points_per_decade: float
+    number_of_samples: int
     min_Hz: float
     max_Hz: float
 
     def __init__(
         self,
-        Fs: float,
-        points_per_decade: int,
+        points_per_decade: float,
+        number_of_samples: int,
         min_Hz: float,
         max_Hz: float,
     ):
-        self.Fs = Fs
         self.points_per_decade = points_per_decade
+        self.number_of_samples = number_of_samples
         self.min_Hz = min_Hz
         self.max_Hz = max_Hz
 
@@ -89,41 +120,18 @@ class Sampling(IConfig_Class):
 
     def tree(self) -> Tree:
         tree = Tree("[red]{}[/]:".format(self._tree_name))
-        tree.add("[yellow]{}[/]: [blue]{}[/]".format("Fs", self.Fs))
         tree.add(
             "[yellow]{}[/]: [blue]{}[/]".format(
                 "Points per Decade", self.points_per_decade
             )
         )
+        tree.add(
+            "[yellow]{}[/]: [blue]{}[/]".format(
+                "Number of Samples", self.number_of_samples
+            )
+        )
         tree.add("[yellow]{}[/]: [blue]{}[/]".format("Min Hz", self.min_Hz))
         tree.add("[yellow]{}[/]: [blue]{}[/]".format("Max Hz", self.max_Hz))
-
-        return tree
-
-
-class Limits(IConfig_Class):
-    _tree_name: str = "limits"
-
-    delay_min: float
-    aperture_min: float
-    interval_min: float
-
-    def __init__(self, delay_min: float, aperture_min: float, interval_min: float):
-        self.delay_min = delay_min
-        self.aperture_min = aperture_min
-        self.interval_min = interval_min
-
-    def set_tree_name(self, name: str):
-        self._tree_name = name
-
-    def get_tree_name(self) -> str:
-        return self._tree_name
-
-    def tree(self) -> Tree:
-        tree = Tree("[red]{}[/]:".format(self._tree_name))
-        tree.add("[yellow]{}[/]: [blue]{}[/]".format("Delay min", self.delay_min))
-        tree.add("[yellow]{}[/]: [blue]{}[/]".format("Aperture min", self.aperture_min))
-        tree.add("[yellow]{}[/]: [blue]{}[/]".format("Interval min", self.interval_min))
 
         return tree
 
@@ -165,55 +173,59 @@ class Plot(IConfig_Class):
 
 
 class Config:
-    row_data: Any
 
-    number_of_samples: int
-    amplitude_pp: float
+    rigol: Rigol
     nidaq: Nidaq
     sampling: Sampling
-    limits: Limits
     plot: Optional[Plot] = None
 
     step: float
 
-    def __init__(self, config_file_path: Path) -> None:
-        self.row_data = load_json_config(config_file_path)
-        self._init_config()
+    def __init__(self) -> None:
+        pass
 
-    def _init_config(self):
+    def from_file(self, config_file_path: pathlib.Path):
+        load_json_config(config_file_path)
+        self._init_config_from_file(load_json_config(config_file_path))
 
+    def _init_config_from_file(self, data):
+
+        # Rigol Class
         try:
-            self.number_of_samples = int(self.row_data["number_of_samples"])
+            rigol_amplitude_pp = float(data["rigol"]["amplitude_pp"])
         except KeyError:
-            console.print("Config number_of_samples must be provided", style="error")
+            console.print("Config rigol/amplitude_pp must be provided", style="error")
             exit()
 
-        try:
-            self.amplitude_pp = float(self.row_data["amplitude_pp"])
-        except KeyError:
-            console.print("Config amplitude_pp must be provided", style="error")
-            exit()
+        self.rigol = Rigol(rigol_amplitude_pp)
 
         # Nidaq Class
         try:
-            nidaq_max_voltage = float(self.row_data["nidaq"]["max_voltage"])
+            nidaq_max_Fs = float(data["nidaq"]["max_Fs"])
+        except KeyError:
+            console.print("Config nidaq/max_Fs must be provided", style="error")
+            exit()
+
+        try:
+            nidaq_max_voltage = float(data["nidaq"]["max_voltage"])
         except KeyError:
             console.print("Config nidaq/max_voltage must be provided", style="error")
             exit()
 
         try:
-            nidaq_min_voltage = float(self.row_data["nidaq"]["min_voltage"])
+            nidaq_min_voltage = float(data["nidaq"]["min_voltage"])
         except KeyError:
             console.print("Config nidaq/min_voltage must be provided", style="error")
             exit()
 
         try:
-            nidaq_ch_input = str(self.row_data["nidaq"]["ch_input"])
+            nidaq_ch_input = str(data["nidaq"]["ch_input"])
         except KeyError:
             console.print("Config nidaq/ch_input must be provided", style="error")
             exit()
 
         self.nidaq = Nidaq(
+            max_Fs=nidaq_max_Fs,
             max_voltage=nidaq_max_voltage,
             min_voltage=nidaq_min_voltage,
             ch_input=nidaq_ch_input,
@@ -221,15 +233,7 @@ class Config:
 
         # Sampling Class
         try:
-            sampling_Fs = float(self.row_data["sampling"]["Fs"])
-        except KeyError:
-            console.print("Config sampling/Fs must be provided", style="error")
-            exit()
-
-        try:
-            sampling_points_per_decade = int(
-                self.row_data["sampling"]["points_per_decade"]
-            )
+            sampling_points_per_decade = float(data["sampling"]["points_per_decade"])
         except KeyError:
             console.print(
                 "Config sampling/points_per_decade must be provided", style="error"
@@ -237,88 +241,63 @@ class Config:
             exit()
 
         try:
-            sampling_min_Hz = float(self.row_data["sampling"]["min_Hz"])
+            sampling_number_of_samples = int(data["number_of_samples"])
+        except KeyError:
+            console.print(
+                "Config sampling/number_of_samples must be provided", style="error"
+            )
+            exit()
+
+        try:
+            sampling_min_Hz = float(data["sampling"]["min_Hz"])
         except KeyError:
             console.print("Config sampling/min_Hz must be provided", style="error")
             exit()
 
         try:
-            sampling_max_Hz = float(self.row_data["sampling"]["max_Hz"])
+            sampling_max_Hz = float(data["sampling"]["max_Hz"])
         except KeyError:
             console.print("Config sampling/max_Hz must be provided", style="error")
             exit()
 
         self.sampling = Sampling(
-            Fs=sampling_Fs,
             points_per_decade=sampling_points_per_decade,
+            number_of_samples=sampling_number_of_samples,
             min_Hz=sampling_min_Hz,
             max_Hz=sampling_max_Hz,
         )
 
-        # Limits Class
-        try:
-            limits_delay_min = float(self.row_data["limits"]["delay_min"])
-        except KeyError:
-            console.print("Config limits/delay_min must be provided", style="error")
-            exit()
-
-        try:
-            limits_aperture_min = float(self.row_data["limits"]["aperture_min"])
-        except KeyError:
-            console.print("Config limits/aperture_min must be provided", style="error")
-            exit()
-
-        try:
-            limits_interval_min = float(self.row_data["limits"]["interval_min"])
-        except KeyError:
-            console.print("Config limits/interval_min must be provided", style="error")
-            exit()
-
-        self.limits = Limits(
-            delay_min=limits_delay_min,
-            aperture_min=limits_aperture_min,
-            interval_min=limits_interval_min,
-        )
-
-        try:
-            plot_x_limit: Optional[Tuple[float, float]] = self.row_data["plot"][
-                "x_limit"
-            ]
-        except KeyError:
-            plot_x_limit = None
-
-        try:
-            plot_y_limit: Optional[Tuple[float, float]] = self.row_data["plot"][
-                "y_limit"
-            ]
-        except KeyError:
-            plot_y_limit = None
-
         # Plot Class
-        self.plot = Plot(
-            x_limit=plot_x_limit,
-            y_limit=plot_y_limit,
-        )
+        try:
+            plot_index: Optional[Any] = data["plot"]
+        except KeyError:
+            plot_index = None
+
+        if plot_index:
+            try:
+                plot_x_limit: Optional[Tuple[float, float]] = data["plot"]["x_limit"]
+            except KeyError:
+                plot_x_limit = None
+
+            try:
+                plot_y_limit: Optional[Tuple[float, float]] = data["plot"]["y_limit"]
+            except KeyError:
+                plot_y_limit = None
+
+            self.plot = Plot(
+                x_limit=plot_x_limit,
+                y_limit=plot_y_limit,
+            )
 
         # Calculations
         self.step = 1 / self.sampling.points_per_decade
 
     def tree(self) -> Tree:
         tree = Tree("Configuration JSON", style="bold")
-        tree.add(
-            "[yellow]{}[/]: [blue]{}[/]".format(
-                "number of samples", self.number_of_samples
-            )
-        )
-        tree.add(
-            "[yellow]{}[/]: [blue]{}[/]".format(
-                "Amplitude pick-to-pick", self.amplitude_pp
-            )
-        )
 
+        tree.add(self.rigol.tree())
         tree.add(self.nidaq.tree())
         tree.add(self.sampling.tree())
-        tree.add(self.limits.tree())
         if self.plot:
             tree.add(self.plot.tree())
 

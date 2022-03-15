@@ -117,6 +117,10 @@ def percentage_error(exact: float, approx: float) -> float:
     return ((approx - exact) / exact) * 100
 
 
+def transfer_function(rms: float, input_rms: float) -> float:
+    return 20 * np.math.log10(rms / input_rms)
+
+
 def integrate(y_values: List[float], delta) -> float:
 
     volume: np.float = 0.0
