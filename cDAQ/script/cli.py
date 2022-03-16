@@ -27,10 +27,11 @@ def cli():
 @click.option("--spd", type=float, help="Samples per decade.", default=50)
 @click.option("--n_samp", type=int, help="Number of samples.", default=140)
 @click.option(
-    "--f_min", type=float, help="Range Minimum Samples Frequency.", default=20
-)
-@click.option(
-    "--f_max", type=float, help="Range Maximum Samples Frequency.", default=20000
+    "--f_range",
+    nargs=2,
+    type=Optional[Tuple[float, float]],
+    help="Samples Frequency Range.",
+    default=None,
 )
 @click.option(
     "--debug", is_flag=True, help="Will print verbose messages.", default=False
@@ -43,30 +44,32 @@ def sweep(
     n_fs: float,
     spd: float,
     n_samp: int,
-    f_min: float,
-    f_max: float,
+    f_range: Optional[Tuple[float, float]],
     debug: bool,
 ):
     HOME_PATH = home.absolute()
 
     datetime_now = datetime.now().strftime(f"%Y-%m-%d--%H-%M-%f")
 
-    timer = Timer("Sweep time")
-    if time:
-        timer.start()
-
-    """Load JSON config"""
+    # Load JSON config
     config_obj: Config = Config()
 
     if config is not None:
         config_file = config.absolute()
         config_obj.from_file(config_file)
 
-    config_obj.sampling.min_Hz = f_min
-    config_obj.sampling.max_Hz = f_max
+    if f_range is not None:
+        f_min, f_max = f_range
+
+        config_obj.sampling.f_min = f_min
+        config_obj.sampling.f_max = f_max
 
     if debug:
         config_obj.print()
+
+    timer = Timer("Sweep time")
+    if time:
+        timer.start()
 
     sampling_curve(
         config=config_obj,
@@ -77,6 +80,9 @@ def sweep(
         n_samp=n_samp,
         debug=debug,
     )
+
+    if time:
+        timer.stop().print()
 
     y_lim_min: Optional[float] = None
     y_lim_max: Optional[float] = None
@@ -91,9 +97,6 @@ def sweep(
         y_lim_max=y_lim_max,
         debug=debug,
     )
-
-    if time:
-        timer.stop().print()
 
 
 @cli.command()

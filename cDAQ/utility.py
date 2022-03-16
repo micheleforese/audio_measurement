@@ -123,7 +123,7 @@ def transfer_function(rms: float, input_rms: float) -> float:
 
 def integrate(y_values: List[float], delta) -> float:
 
-    volume: np.float = 0.0
+    volume: float = 0.0
 
     for idx, y in enumerate(y_values):
         # If it's the last element then exit the loop
@@ -140,14 +140,14 @@ def integrate(y_values: List[float], delta) -> float:
 
             # Make the calculations
             if y * y_plus < 0:
-                r_rec: np.float = abs(y) * delta / 4
-                l_rec: np.float = abs(y_plus) * delta / 4
+                r_rec: float = abs(y) * delta / 4
+                l_rec: float = abs(y_plus) * delta / 4
                 volume += r_rec + l_rec
                 # console.print("Volume: {}".format(round(volume, 9)))
             else:
-                r_rec: np.float = abs(y) * delta
-                l_rec: np.float = abs(y_plus) * delta
-                triangle: np.float = abs(r_rec - l_rec) / 2
+                r_rec: float = abs(y) * delta
+                l_rec: float = abs(y_plus) * delta
+                triangle: float = abs(r_rec - l_rec) / 2
 
                 volume += min([r_rec, l_rec]) + triangle
 
@@ -340,23 +340,23 @@ def plot_log_db(
 def plot_V_out_filter(
     csv_file_path: str = "v_out_filter.csv",
     png_graph_file_path: str = "v_out_filter.png",
-    min_Hz: np.float = 40,
-    max_Hz: np.float = 10000,
-    frequency_p: np.float = 5000,
-    points_for_decade: np.int = 100,
-    Vpp: np.float = 2.0,
+    min_Hz: float = 40,
+    max_Hz: float = 10000,
+    frequency_p: float = 5000,
+    points_for_decade: int = 100,
+    Vpp: float = 2.0,
     n=1,
 ):
 
     f = open(csv_file_path, "w")
 
-    step: np.float = 1 / points_for_decade
+    step: float = 1 / points_for_decade
     frequencies = []
     voltages_out = []
     dBV = []
 
-    min_index: np.float = math.log10(min_Hz)
-    max_index: np.float = math.log10(max_Hz)
+    min_index: float = math.log10(min_Hz)
+    max_index: float = math.log10(max_Hz)
 
     steps_sum = (points_for_decade * max_index) - (points_for_decade * min_index)
 
@@ -407,8 +407,8 @@ def plot_percentage_error(
         delimiter=",",
     )
 
-    frequency: List[np.float] = []
-    perc_error: List[np.float] = []
+    frequency: List[float] = []
+    perc_error: List[float] = []
 
     table = Table(show_header=True, header_style="bold magenta")
     table.add_column("Frequency")
@@ -420,11 +420,11 @@ def plot_percentage_error(
 
     for expected, result in zip(csv_expected, csv_result):
 
-        frequency_temp: np.float = expected[0]
-        expected_temp: np.float = expected[1]
-        approx_temp: np.float = result[1]
+        frequency_temp: float = expected[0]
+        expected_temp: float = expected[1]
+        approx_temp: float = result[1]
 
-        perc_error_temp: np.float = percentage_error(
+        perc_error_temp: float = percentage_error(
             exact=expected_temp,
             approx=approx_temp,
         )
@@ -472,8 +472,8 @@ def plot_percentage_error_temp(
         delimiter=",",
     )
 
-    frequency: List[np.float] = []
-    perc_error: List[np.float] = []
+    frequency: List[float] = []
+    perc_error: List[float] = []
 
     table = Table(show_header=True, header_style="bold magenta")
     table.add_column("Frequency")
@@ -485,11 +485,11 @@ def plot_percentage_error_temp(
 
     for expected, result in zip(csv_expected, csv_result):
 
-        frequency_temp: np.float = expected[0]
-        expected_temp: np.float = 1 / math.sqrt(2)
-        approx_temp: np.float = result[1]
+        frequency_temp: float = expected[0]
+        expected_temp: float = 1 / math.sqrt(2)
+        approx_temp: float = result[1]
 
-        perc_error_temp: np.float = percentage_error(
+        perc_error_temp: float = percentage_error(
             exact=expected_temp,
             approx=approx_temp,
         )

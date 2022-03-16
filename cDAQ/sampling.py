@@ -51,7 +51,7 @@ def sampling_curve(
         SCPI.set_function_voltage_ac(),
         SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
         SCPI.set_source_voltage_amplitude(1, round(amplitude_pp, 5)),
-        SCPI.set_source_frequency(1, round(config.sampling.min_Hz, 5)),
+        SCPI.set_source_frequency(1, round(config.sampling.f_min, 5)),
     ]
 
     SCPI.exec_commands(generator, generator_configs)
@@ -63,8 +63,8 @@ def sampling_curve(
     SCPI.exec_commands(generator, generator_ac_curves)
 
     log_scale: LogaritmicScale = LogaritmicScale(
-        config.sampling.min_Hz,
-        config.sampling.max_Hz,
+        config.sampling.f_min,
+        config.sampling.f_max,
         config.step,
         spd,
     )
@@ -72,7 +72,7 @@ def sampling_curve(
     f = open(measurements_file_path, "w")
     f.write("{},{},{}\n".format("Frequency", "RMS Value", "dbV"))
 
-    frequency: float = round(config.sampling.min_Hz, 5)
+    frequency: float = round(config.sampling.f_min, 5)
 
     table = Table(
         Column(f"Frequency [Hz]", justify="right"),

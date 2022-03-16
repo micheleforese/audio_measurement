@@ -72,8 +72,8 @@ def test_error_sampling():
     SCPI.exec_commands(generator, generator_configs)
 
     log_scale: LogaritmicScale = LogaritmicScale(
-        config.sampling.min_Hz,
-        config.sampling.max_Hz,
+        config.sampling.f_min,
+        config.sampling.f_max,
         config.step,
         config.sampling.points_per_decade,
     )

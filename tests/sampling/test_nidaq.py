@@ -12,8 +12,7 @@ import usbtmc
 from cDAQ.console import console
 from cDAQ.scpi import SCPI, Bandwidth, Switch
 from cDAQ.timer import Timer, Timer_Message
-from cDAQ.UsbTmc_temp import (
-    Instrument,
+from cDAQ.usbtmc import (
     exec_commands,
     get_device_list,
     print_devices_list,
