@@ -1,7 +1,4 @@
-import enum
-import math
-from time import sleep
-from typing import List, Optional
+from typing import Optional
 
 import nidaqmx
 import nidaqmx.constants
@@ -9,11 +6,8 @@ import nidaqmx.stream_readers
 import nidaqmx.stream_writers
 import nidaqmx.system
 import numpy as np
-from matplotlib import pyplot as plt
 
-from cDAQ import utility
 from cDAQ.console import console
-from cDAQ.timer import Timer
 
 
 class ni9251:

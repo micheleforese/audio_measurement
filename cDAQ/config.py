@@ -1,12 +1,8 @@
-from abc import ABC, abstractmethod
-from asyncio import subprocess
-from curses.ascii import FS
-from pathlib import Path
 import pathlib
+from abc import ABC, abstractmethod
 from typing import Any, List, Optional, Tuple, Type, TypeVar
 
 import pyjson5
-from rich.panel import Panel
 from rich.tree import Tree
 
 from cDAQ.console import console
@@ -362,10 +358,10 @@ class Plot(IConfig_Class):
     def tree(self) -> Tree:
         tree = Tree(self.tree_pattern_main(self._tree_name))
         tree.add(
-            self.tree_pattern_sub("x_limit", self.x_limit if self.x_limit else "None")
+            self.tree_pattern_sub("x_limit", self.x_limit if self.x_limit else "Auto")
         )
         tree.add(
-            self.tree_pattern_sub("y_limit", self.y_limit if self.y_limit else "None")
+            self.tree_pattern_sub("y_limit", self.y_limit if self.y_limit else "Auto")
         )
 
         return tree

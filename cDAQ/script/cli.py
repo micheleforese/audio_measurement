@@ -1,17 +1,14 @@
-from ctypes import Union
-from email.policy import default
-from heapq import nsmallest
 import pathlib
 from datetime import datetime
 from typing import List, Optional, Tuple
 
 import click
-from rich.panel import Panel
 from cDAQ.config import Config
 from cDAQ.console import console
 from cDAQ.sampling import plot_from_csv, sampling_curve
 from cDAQ.timer import Timer
-from rich.prompt import Prompt, Confirm
+from rich.panel import Panel
+from rich.prompt import Confirm
 
 
 @click.group()
@@ -21,7 +18,7 @@ def cli():
 
 @cli.command()
 @click.option("--home", type=pathlib.Path, default=pathlib.Path.cwd())
-@click.option("--config", type=pathlib.Path)
+@click.option("--config", "config_path", type=pathlib.Path)
 @click.option(
     "--amplitude_pp",
     type=float,
@@ -58,7 +55,7 @@ def cli():
 )
 def sweep(
     home: pathlib.Path,
-    config: Optional[pathlib.Path],
+    config_path: Optional[pathlib.Path],
     amplitude_pp: Optional[float],
     n_fs: Optional[float],
     spd: Optional[float],
@@ -74,53 +71,53 @@ def sweep(
     datetime_now = datetime.now().strftime(f"%Y-%m-%d--%H-%M-%f")
 
     # Load JSON config
-    config_obj: Config = Config()
+    config: Config = Config()
 
     # Check Config
+    if config_path is not None:
+        config_file = config_path.absolute()
+        config.from_file(config_file)
+
     if amplitude_pp:
-        config_obj.rigol.amplitude_pp = amplitude_pp
+        config.rigol.amplitude_pp = amplitude_pp
 
     if n_fs:
-        config_obj.sampling.n_fs = n_fs
-
-    if config is not None:
-        config_file = config.absolute()
-        config_obj.from_file(config_file)
+        config.sampling.n_fs = n_fs
 
     if n_samp:
-        config_obj.sampling.number_of_samples = n_samp
+        config.sampling.number_of_samples = n_samp
 
     if f_range:
         f_min, f_max = f_range
 
-        config_obj.sampling.f_min = f_min
-        config_obj.sampling.f_max = f_max
+        config.sampling.f_min = f_min
+        config.sampling.f_max = f_max
 
     if spd:
-        config_obj.sampling.points_per_decade = spd
+        config.sampling.points_per_decade = spd
 
     if y_lim:
-        config_obj.plot.y_limit = y_lim
+        config.plot.y_limit = y_lim
 
     if x_lim:
-        config_obj.plot.x_limit = x_lim
+        config.plot.x_limit = x_lim
 
     # TODO: Implement Configuration validation
     # if not config_obj.validate():
     #     console.print("Config Error.")
     #     exit()
 
-    config_obj.calculate_step()
+    config.calculate_step()
 
     if debug:
-        config_obj.print()
+        config.print()
 
     timer = Timer("Sweep time")
     if time:
         timer.start()
 
     sampling_curve(
-        config=config_obj,
+        config=config,
         measurements_file_path=HOME_PATH / "audio-[{}].csv".format(datetime_now),
         debug=debug,
     )
@@ -131,8 +128,8 @@ def sweep(
     plot_from_csv(
         measurements_file_path=HOME_PATH / "audio-[{}].csv".format(datetime_now),
         plot_file_path=HOME_PATH / "audio-[{}].png".format(datetime_now),
-        y_lim=config_obj.plot.y_limit,
-        x_lim=config_obj.plot.x_limit,
+        y_lim=config.plot.y_limit,
+        x_lim=config.plot.x_limit,
         debug=debug,
     )
 

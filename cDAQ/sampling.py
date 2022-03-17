@@ -1,15 +1,13 @@
 from pathlib import Path
 from time import sleep
-from typing import List, Optional, Tuple, Type
+from typing import List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
 from rich.live import Live
 from rich.panel import Panel
 from rich.table import Column, Table
-from usbtmc import Instrument
 
 from cDAQ.alghorithm import LogaritmicScale
 from cDAQ.config import Config
@@ -18,6 +16,7 @@ from cDAQ.scpi import SCPI, Bandwidth, Switch
 from cDAQ.timer import Timer, Timer_Message
 from cDAQ.usbtmc import UsbTmc, get_device_list, print_devices_list
 from cDAQ.utility import percentage_error, rms, transfer_function
+from usbtmc import Instrument
 
 
 def sampling_curve(

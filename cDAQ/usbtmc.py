@@ -1,21 +1,10 @@
-#!/usr/bin/env python3
-
-import csv
-import os
-from datetime import datetime
 from re import split
-from time import sleep
 from typing import Any, List, Tuple, Union
 
-import matplotlib.pyplot as plt
 import numpy as np
+
 import usbtmc
-from numpy.lib.npyio import genfromtxt
-from numpy.ma.core import log10, sqrt
-
-from cDAQ.timer import Timer, Timer_Message
 from cDAQ.console import console
-
 
 ###########################################################
 
