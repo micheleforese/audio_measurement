@@ -23,10 +23,9 @@
     aperture_min: 0.01,
     interval_min: 0.01,
   },
-  // Mandatory
-  // plot: {
-  //   // Mandatory
-  //   // y_limit: [-1, 1],
-  //   // x_limit: [-1, 1],
-  // },
+  plot: {
+    // Mandatory
+    y_limit: [-1, 1],
+    x_limit: [-1, 1],
+  },
 }
