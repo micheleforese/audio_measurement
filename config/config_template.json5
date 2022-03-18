@@ -12,19 +12,15 @@
   },
   sampling: {
     // Mandatory
+    n_fs: 6,
     points_per_decade: 10,
     number_of_samples: 100,
     f_min: 10,
     f_max: 1000,
   },
-  limits: {
-    // Mandatory
-    delay_min: 0.0,
-    aperture_min: 0.01,
-    interval_min: 0.01,
-  },
   plot: {
     // Mandatory
+    y_offset: 0,
     y_limit: [-1, 1],
     x_limit: [-1, 1],
   },

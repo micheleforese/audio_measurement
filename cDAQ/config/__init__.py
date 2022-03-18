@@ -1,20 +1,47 @@
+from ctypes import resize
 import pathlib
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Tuple, Type, TypeVar
+from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar
+from click import option
+from matplotlib.pyplot import xlim
 
 import pyjson5
+from rich.panel import Panel
 from rich.tree import Tree
+from rich.json import JSON
+from cDAQ.config.type import Range
 
 from cDAQ.console import console
+from cDAQ.config.exception import (
+    ConfigError,
+    ConfigNoneValueError,
+    ConfigNoneValueException,
+)
 
 
 def load_json_config(config_file_path):
     with open(config_file_path) as config_file:
-        config = pyjson5.decode(config_file.read())
+        file_content: str = config_file.read()
+
+        config = pyjson5.decode(file_content)
 
         console.print(config)
 
         return config
+
+
+class NotInitializedError(RuntimeError):
+    def __init__(self, salary, message="Salary is not in (5000, 15000) range"):
+        self.salary = salary
+        self.message = message
+        super().__init__(self.message)
+
+    def __str__(self):
+        return f"{self.salary} -> {self.message}"
+
+
+class NotInitializedWarning(RuntimeWarning):
+    pass
 
 
 class Config_Dict:
@@ -25,9 +52,7 @@ class Config_Dict:
 
     T = TypeVar("T")
 
-    def get_rvalue(
-        self, path: List[str], type: Type[T] = Any, required: bool = True
-    ) -> T:
+    def get_rvalue(self, path: List[str], type: Type[T] = Any) -> T:
 
         value: Any = self.data
 
@@ -39,16 +64,13 @@ class Config_Dict:
                     "Config [blue][{}][/blue] must be provided".format("/".join(path)),
                     style="error",
                 )
-                raise KeyError
                 exit()
 
-        return type(value)
+        return value
 
     T = TypeVar("T")
 
-    def get_value(
-        self, path: List[str], type: Type[T] = Any, required: bool = True
-    ) -> Optional[T]:
+    def get_value(self, path: List[str], type: Type[T] = Any) -> Optional[T]:
         value: Any = self.data
 
         for p in path:
@@ -57,7 +79,7 @@ class Config_Dict:
             except KeyError:
                 return None
 
-        return type(value)
+        return value
 
 
 class IConfig_Class(ABC):
@@ -149,6 +171,10 @@ class IConfig_Class(ABC):
         )
 
     @abstractmethod
+    def validate() -> bool:
+        raise NotImplementedError
+
+    @abstractmethod
     def init_from_config(self, data: Config_Dict):
         raise NotImplementedError
 
@@ -177,9 +203,9 @@ class Rigol(IConfig_Class):
     _amplitude_pp: Optional[float]
 
     def __init__(self, data: Optional[Config_Dict] = None) -> None:
-        super().__init__()
-
         self.amplitude_pp = None
+
+        super().__init__()
 
         if data:
             self.init_from_config(data)
@@ -190,12 +216,21 @@ class Rigol(IConfig_Class):
     def init_from_config(self, data: Config_Dict):
         self.amplitude_pp = data.get_rvalue(["rigol", "amplitude_pp"], float)
 
+    def validate(self) -> bool:
+        if self._amplitude_pp:
+            return False
+        else:
+            return True
+
     @property
-    def amplitude_pp(self):
-        return self._amplitude_pp
+    def amplitude_pp(self) -> float:
+        if self._amplitude_pp:
+            return self._amplitude_pp
+        else:
+            raise ConfigNoneValueException
 
     @amplitude_pp.setter
-    def amplitude_pp(self, amplitude_pp):
+    def amplitude_pp(self, amplitude_pp: Optional[float]):
         self._amplitude_pp = amplitude_pp
 
     def get_tree_name(self) -> str:
@@ -219,18 +254,18 @@ class Rigol(IConfig_Class):
 class Nidaq(IConfig_Class):
     _tree_name: str = "nidaq"
 
-    max_Fs: Optional[float]
-    max_voltage: Optional[float]
-    min_voltage: Optional[float]
-    ch_input: Optional[str]
+    _max_Fs: Optional[float]
+    _max_voltage: Optional[float]
+    _min_voltage: Optional[float]
+    _ch_input: Optional[str]
 
     def __init__(self, data: Optional[Config_Dict] = None) -> None:
-        super().__init__()
-
         self.max_Fs = None
         self.max_voltage = None
         self.min_voltage = None
         self.ch_input = None
+
+        super().__init__()
 
         if data:
             self.init_from_config(data)
@@ -238,7 +273,7 @@ class Nidaq(IConfig_Class):
     def init(
         self, max_Fs: float, max_voltage: float, min_voltage: float, ch_input: str
     ) -> None:
-        self.max_Fs = max_Fs
+        self._max_Fs = max_Fs
         self.max_voltage = max_voltage
         self.min_voltage = min_voltage
         self.ch_input = ch_input
@@ -249,6 +284,56 @@ class Nidaq(IConfig_Class):
         self.min_voltage = data.get_rvalue(["nidaq", "min_voltage"], float)
         self.ch_input = data.get_rvalue(["nidaq", "ch_input"], str)
 
+    def validate(self) -> bool:
+        if self._max_Fs and self._max_voltage and self.min_voltage and self.ch_input:
+            return False
+        else:
+            return True
+
+    @property
+    def max_Fs(self) -> float:
+        if self._max_Fs:
+            return self._max_Fs
+        else:
+            raise ConfigNoneValueError
+
+    @max_Fs.setter
+    def max_Fs(self, value: Optional[float]):
+        self._max_Fs = value
+
+    @property
+    def max_voltage(self) -> float:
+        if self._max_voltage:
+            return self._max_voltage
+        else:
+            raise ConfigNoneValueError
+
+    @max_voltage.setter
+    def max_voltage(self, value: Optional[float]):
+        self._max_voltage = value
+
+    @property
+    def min_voltage(self) -> float:
+        if self._min_voltage:
+            return self._min_voltage
+        else:
+            raise ConfigNoneValueError
+
+    @min_voltage.setter
+    def min_voltage(self, value: Optional[float]):
+        self._min_voltage = value
+
+    @property
+    def ch_input(self) -> str:
+        if self._ch_input:
+            return self._ch_input
+        else:
+            raise ConfigNoneValueError
+
+    @ch_input.setter
+    def ch_input(self, value: Optional[str]):
+        self._ch_input = value
+
     def set_tree_name(self, name: str):
         self._tree_name = name
 
@@ -257,7 +342,7 @@ class Nidaq(IConfig_Class):
 
     def tree(self) -> Tree:
         tree = Tree(self.tree_pattern_main(self._tree_name))
-        tree.add(self.tree_pattern_sub("Max Fs", self.max_Fs))
+        tree.add(self.tree_pattern_sub("Max Fs", self._max_Fs))
         tree.add(self.tree_pattern_sub("Max Voltage", self.max_voltage))
         tree.add(self.tree_pattern_sub("Min Voltage", self.min_voltage))
         tree.add(self.tree_pattern_sub("Input Channel", self.ch_input))
@@ -268,11 +353,12 @@ class Nidaq(IConfig_Class):
 class Sampling(IConfig_Class):
     _tree_name: str = "sampling"
 
-    n_fs: Optional[float]
-    points_per_decade: Optional[float]
-    number_of_samples: Optional[int]
-    f_min: Optional[float]
-    f_max: Optional[float]
+    _n_fs: Optional[float]
+    _points_per_decade: Optional[float]
+    _number_of_samples: Optional[int]
+    _f_range: Optional[Range[float]]
+    _f_min: Optional[float]
+    _f_max: Optional[float]
 
     def __init__(self, data: Optional[Config_Dict] = None) -> None:
         super().__init__()
@@ -288,19 +374,15 @@ class Sampling(IConfig_Class):
 
     def init(
         self,
-        points_per_decade: float,
-        number_of_samples: int,
-        f_min: float,
-        f_max: float,
+        points_per_decade: Optional[float] = None,
+        number_of_samples: Optional[int] = None,
+        f_range: Optional[Range[float]] = None,
         n_fs: Optional[float] = None,
     ):
         self.points_per_decade = points_per_decade
         self.number_of_samples = number_of_samples
-        self.f_min = f_min
-        self.f_max = f_max
-
-        if n_fs:
-            self.n_fs = n_fs
+        self.f_range = f_range
+        self.n_fs = n_fs
 
     def init_from_config(self, data: Config_Dict):
 
@@ -312,8 +394,65 @@ class Sampling(IConfig_Class):
             ["sampling", "points_per_decade"], float
         )
         self.number_of_samples = data.get_rvalue(["sampling", "number_of_samples"], int)
-        self.f_min = data.get_rvalue(["sampling", "f_min"], float)
-        self.f_max = data.get_rvalue(["sampling", "f_max"], float)
+        f_min = data.get_rvalue(["sampling", "f_min"], float)
+        f_max = data.get_rvalue(["sampling", "f_max"], float)
+
+        self.f_range = Range(f_min, f_max)
+
+    def validate(self) -> bool:
+        if (
+            self._points_per_decade
+            and self._number_of_samples
+            and self._f_range
+            and self._n_fs
+        ):
+            return False
+        else:
+            return True
+
+    @property
+    def n_fs(self) -> float:
+        if self._n_fs:
+            return self._n_fs
+        else:
+            raise ConfigNoneValueException
+
+    @n_fs.setter
+    def n_fs(self, value: Optional[float]):
+        self._n_fs = value
+
+    @property
+    def points_per_decade(self) -> float:
+        if self._points_per_decade:
+            return self._points_per_decade
+        else:
+            raise ConfigNoneValueException
+
+    @points_per_decade.setter
+    def points_per_decade(self, value: Optional[float]):
+        self._points_per_decade = value
+
+    @property
+    def number_of_samples(self) -> int:
+        if self._number_of_samples:
+            return self._number_of_samples
+        else:
+            raise ConfigNoneValueException
+
+    @number_of_samples.setter
+    def number_of_samples(self, value: Optional[int]):
+        self._number_of_samples = value
+
+    @property
+    def f_range(self) -> Range[float]:
+        if self._f_range:
+            return self._f_range
+        else:
+            raise ConfigNoneValueError
+
+    @f_range.setter
+    def f_range(self, value: Optional[Range[float]]):
+        self._f_range = value
 
     def set_tree_name(self, name: str):
         self._tree_name = name
@@ -325,8 +464,8 @@ class Sampling(IConfig_Class):
         tree = Tree(self.tree_pattern_main(self._tree_name))
         tree.add(self.tree_pattern_sub("Points per Decade", self.points_per_decade))
         tree.add(self.tree_pattern_sub("Number of Samples", self.number_of_samples))
-        tree.add(self.tree_pattern_sub("Min Hz", self.f_min))
-        tree.add(self.tree_pattern_sub("Max Hz", self.f_max))
+        tree.add(self.tree_pattern_sub("Frequency Min Hz", self.f_range.min))
+        tree.add(self.tree_pattern_sub("Frequency Max Hz", self.f_range.max))
 
         return tree
 
@@ -334,22 +473,24 @@ class Sampling(IConfig_Class):
 class Plot(IConfig_Class):
     _tree_name: str = "plot"
 
-    x_limit: Optional[Tuple[float, float]]
-    y_limit: Optional[Tuple[float, float]]
+    _y_offset: Optional[float]
+    _x_limit: Optional[Range[float]]
+    _y_limit: Optional[Range[float]]
 
     def __init__(self, data: Optional[Config_Dict] = None) -> None:
         super().__init__()
 
-        self.x_limit = None
-        self.y_limit = None
+        self._y_offset = None
+        self._x_limit = None
+        self._y_limit = None
 
         if data:
             self.init_from_config(data)
 
     def init(
         self,
-        x_limit: Optional[Tuple[float, float]] = None,
-        y_limit: Optional[Tuple[float, float]] = None,
+        x_limit: Optional[Range[float]] = None,
+        y_limit: Optional[Range[float]] = None,
     ):
         self.x_limit = x_limit
         self.y_limit = y_limit
@@ -357,8 +498,41 @@ class Plot(IConfig_Class):
     def init_from_config(self, data: Config_Dict):
 
         if data.get_value(["plot"]):
-            self.x_limit = data.get_value(["plot", "x_limit"], Tuple[float, float])
-            self.y_limit = data.get_value(["plot", "y_limit"], Tuple[float, float])
+            x_lim = data.get_value(["plot", "x_limit"], Tuple[float, float])
+            self.x_limit = Range(*x_lim) if x_lim else None
+
+            y_lim = data.get_value(["plot", "y_limit"], Tuple[float, float])
+            self.y_limit = Range(*y_lim) if y_lim else None
+
+    def validate(self) -> bool:
+        if self._x_limit:
+            return False
+        else:
+            return True
+
+    @property
+    def y_offset(self) -> Optional[float]:
+        return self._y_offset
+
+    @y_offset.setter
+    def y_offset(self, value: Optional[float]):
+        self._y_offset = value
+
+    @property
+    def x_limit(self):
+        return self._x_limit
+
+    @x_limit.setter
+    def x_limit(self, value: Optional[Range[float]]):
+        self._x_limit = value
+
+    @property
+    def y_limit(self) -> Optional[Range[float]]:
+        return self._y_limit
+
+    @y_limit.setter
+    def y_limit(self, value: Optional[Range[float]]):
+        self._y_limit = value
 
     def set_tree_name(self, name: str):
         self._tree_name = name
@@ -380,18 +554,51 @@ class Plot(IConfig_Class):
 
 class Config:
 
-    rigol: Optional[Rigol]
-    nidaq: Optional[Nidaq]
-    sampling: Optional[Sampling]
-    plot: Optional[Plot]
+    _rigol: Rigol
+    _nidaq: Nidaq
+    _sampling: Sampling
+    _plot: Plot
 
     step: float
 
+    @property
+    def rigol(self):
+        return self._rigol
+
+    @rigol.setter
+    def rigol(self, value: Rigol):
+        self._rigol = value
+
+    @property
+    def nidaq(self):
+        return self._nidaq
+
+    @nidaq.setter
+    def nidaq(self, value: Nidaq):
+        self._nidaq = value
+
+    @property
+    def sampling(self):
+        return self._sampling
+
+    @sampling.setter
+    def sampling(self, value: Sampling):
+        self._sampling = value
+
+    @property
+    def plot(self):
+        return self._plot
+
+    @plot.setter
+    def plot(self, value: Plot):
+
+        self._plot = value
+
     def __init__(self) -> None:
-        self.rigol = None
-        self.nidaq = None
-        self.sampling = None
-        self.plot = None
+        self.rigol = Rigol()
+        self.nidaq = Nidaq()
+        self.sampling = Sampling()
+        self.plot = Plot()
 
     def from_file(self, config_file_path: pathlib.Path):
         self._init_config_from_file(Config_Dict(load_json_config(config_file_path)))
@@ -414,10 +621,17 @@ class Config:
         self.calculate_step()
 
     def validate(self) -> bool:
+
+        for v in [self.rigol, self.nidaq, self.sampling, self.plot]:
+            v.validate()
+
         return False
 
     def calculate_step(self) -> float:
-        self.step = 1 / self.sampling.points_per_decade
+        if self.sampling.points_per_decade:
+            self.step = 1 / self.sampling.points_per_decade
+        else:
+            raise
         return self.step
 
     def tree(self) -> Tree:

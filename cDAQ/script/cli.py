@@ -4,6 +4,7 @@ from typing import List, Optional, Tuple
 
 import click
 from cDAQ.config import Config
+from cDAQ.config.type import Range
 from cDAQ.console import console
 from cDAQ.sampling import plot_from_csv, sampling_curve
 from cDAQ.timer import Timer
@@ -17,32 +18,15 @@ def cli():
 
 
 @cli.command()
-@click.argument("--config", "config_path", type=pathlib.Path)
+@click.option("--config", "config_path", type=pathlib.Path, required=True)
 @click.option("--home", type=pathlib.Path, default=pathlib.Path.cwd())
+# Config Overloads
 @click.option(
-    "--amplitude_pp",
-    type=float,
-    help="The Amplitude of generated wave.",
-    default=None,
+    "--amplitude_pp", type=float, help="The Amplitude of generated wave.", default=None
 )
-@click.option(
-    "--n_fs",
-    type=float,
-    help="Fs * n. Oversampling.",
-    default=None,
-)
-@click.option(
-    "--spd",
-    type=float,
-    help="Samples per decade.",
-    default=None,
-)
-@click.option(
-    "--n_samp",
-    type=int,
-    help="Number of samples.",
-    default=None,
-)
+@click.option("--n_fs", type=float, help="Fs * n. Oversampling.", default=None)
+@click.option("--spd", type=float, help="Samples per decade.", default=None)
+@click.option("--n_samp", type=int, help="Number of samples.", default=None)
 @click.option(
     "--f_range",
     nargs=2,
@@ -51,19 +35,13 @@ def cli():
     default=None,
 )
 @click.option(
-    "--y_lim",
-    nargs=2,
-    type=(float, float),
-    help="Range y Plot.",
-    default=None,
+    "--y_lim", nargs=2, type=(float, float), help="Range y Plot.", default=None
 )
 @click.option(
-    "--x_lim",
-    nargs=2,
-    type=(float, float),
-    help="Range x Plot.",
-    default=None,
+    "--x_lim", nargs=2, type=(float, float), help="Range x Plot.", default=None
 )
+@click.option("--y_offset", type=float, default=None)
+# Flags
 @click.option("--time", is_flag=True, help="Elapsed time.", default=False)
 @click.option(
     "--debug", is_flag=True, help="Will print verbose messages.", default=False
@@ -78,6 +56,7 @@ def sweep(
     f_range: Optional[Tuple[float, float]],
     y_lim: Optional[Tuple[float, float]],
     x_lim: Optional[Tuple[float, float]],
+    y_offset: Optional[float],
     time: bool,
     debug: bool,
 ):
@@ -103,22 +82,21 @@ def sweep(
 
     if f_range:
         f_min, f_max = f_range
-        config.sampling.f_min = f_min
-        config.sampling.f_max = f_max
+        config.sampling.f_range = Range(f_min, f_max)
 
     if spd:
         config.sampling.points_per_decade = spd
 
     if y_lim:
-        config.plot.y_limit = y_lim
+        config.plot.y_limit = Range(*y_lim)
 
     if x_lim:
-        config.plot.x_limit = x_lim
+        config.plot.x_limit = Range(*x_lim)
 
     # TODO: Implement Configuration validation
-    # if not config_obj.validate():
-    #     console.print("Config Error.")
-    #     exit()
+    if config.validate():
+        console.print("Config Error.")
+        exit()
 
     config.calculate_step()
 
@@ -143,6 +121,7 @@ def sweep(
         plot_file_path=HOME_PATH / "audio-[{}].png".format(datetime_now),
         y_lim=config.plot.y_limit,
         x_lim=config.plot.x_limit,
+        y_offset=y_offset,
         debug=debug,
     )
 
@@ -169,7 +148,7 @@ def sweep(
     type=(float, float),
     help="Range x Plot.",
 )
-@click.option("--y_offset", type=float, default=0)
+@click.option("--y_offset", type=float)
 @click.option(
     "--debug", is_flag=True, help="Will print verbose messages.", default=False
 )
@@ -179,7 +158,7 @@ def plot(
     format: List[str],
     y_lim: Optional[Tuple[float, float]],
     x_lim: Optional[Tuple[float, float]],
-    y_offset: float,
+    y_offset: Optional[float],
     debug: bool,
 ):
     HOME_PATH = home.absolute()
@@ -231,8 +210,8 @@ def plot(
         plot_from_csv(
             measurements_file_path=csv_file,
             plot_file_path=plot_file,
-            y_lim=y_lim,
-            x_lim=x_lim,
+            x_lim=Range(*x_lim) if x_lim else None,
+            y_lim=Range(*y_lim) if y_lim else None,
             y_offset=y_offset,
             debug=debug,
         )

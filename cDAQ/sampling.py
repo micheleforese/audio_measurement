@@ -5,12 +5,16 @@ from typing import List, Optional, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import matplotlib.ticker
+
+from matplotlib.ticker import ScalarFormatter
 from rich.live import Live
 from rich.panel import Panel
 from rich.table import Column, Table
 
 from cDAQ.alghorithm import LogaritmicScale
 from cDAQ.config import Config
+from cDAQ.config.type import Range
 from cDAQ.console import console
 from cDAQ.scpi import SCPI, Bandwidth, Switch
 from cDAQ.timer import Timer, Timer_Message
@@ -44,7 +48,7 @@ def sampling_curve(
         SCPI.set_function_voltage_ac(),
         SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
         SCPI.set_source_voltage_amplitude(1, round(config.rigol.amplitude_pp, 5)),
-        SCPI.set_source_frequency(1, round(config.sampling.f_min, 5)),
+        SCPI.set_source_frequency(1, round(config.sampling.f_range.min, 5)),
     ]
 
     SCPI.exec_commands(generator, generator_configs)
@@ -56,8 +60,8 @@ def sampling_curve(
     SCPI.exec_commands(generator, generator_ac_curves)
 
     log_scale: LogaritmicScale = LogaritmicScale(
-        config.sampling.f_min,
-        config.sampling.f_max,
+        config.sampling.f_range.min,
+        config.sampling.f_range.max,
         config.calculate_step(),
         config.sampling.points_per_decade,
     )
@@ -65,7 +69,7 @@ def sampling_curve(
     f = open(measurements_file_path, "w")
     f.write("{},{},{}\n".format("Frequency", "RMS Value", "dbV"))
 
-    frequency: float = round(config.sampling.f_min, 5)
+    frequency: float = round(config.sampling.f_range.min, 5)
 
     table = Table(
         Column(f"Frequency [Hz]", justify="right"),
@@ -98,7 +102,7 @@ def sampling_curve(
 
             # sleep(0.2)
 
-            Fs = config.nidaq.max_Fs
+            Fs = config.nidaq._max_Fs
 
             if frequency < 20:
                 Fs = frequency * config.sampling.n_fs
@@ -187,9 +191,9 @@ def sampling_curve(
 def plot_from_csv(
     measurements_file_path: Path,
     plot_file_path: Path,
-    y_lim: Optional[Tuple[float, float]] = None,
-    x_lim: Optional[Tuple[float, float]] = None,
-    y_offset: float = 0,
+    y_lim: Optional[Range[float]] = None,
+    x_lim: Optional[Range[float]] = None,
+    y_offset: Optional[float] = None,
     debug: bool = False,
 ):
     if debug:
@@ -204,10 +208,10 @@ def plot_from_csv(
     measurements = pd.read_csv(
         measurements_file_path, header=0, names=["Frequency", "RMS Value", "dbV"]
     )
-    console.print(measurements)
+    # console.print(measurements)
 
     for i, row in measurements.iterrows():
-        y_dBV.append(float(row["dbV"]) - y_offset)
+        y_dBV.append(float(row["dbV"]) - (y_offset if y_offset else 0))
         x_frequency.append(row["Frequency"])
 
     fig1, ax = plt.subplots(figsize=(16 * 2, 9 * 2), dpi=300)
@@ -221,15 +225,30 @@ def plot_from_csv(
         label.set_fontsize(40)
 
     # ax.plot(x_frequency, y_dBV)
-    ax.plot(x_frequency, y_dBV)
-    ax.set_xscale("log")
-    ax.set_title("Frequency response", fontsize=70)
-    ax.set_xlabel("Frequency (Hz)", fontsize=40)
-    ax.set_ylabel(r"Amplitude (dB)", fontsize=40)
+    ax.semilogx(x_frequency, y_dBV)
+    # ax.set_xscale("log")
+    ax.set_title("Frequency response", fontsize=50)
+    ax.set_xlabel("Frequency (Hz)")
+    ax.set_ylabel(r"Amplitude (dB)")
+
+    ax.tick_params(labelsize=30, labelrotation=45)
+
+    ax.xaxis.labelpad = 5
+    ax.yaxis.labelpad = 5
+
+    # TODO: Search (https://stackoverflow.com/questions/44078409/matplotlib-semi-log-plot-minor-tick-marks-are-gone-when-range-is-large)
+    # locmin = LogLocator(base=10.0, subs=(0.2, 0.4, 0.6, 0.8), numticks=12)
+    # ax.xaxis.set_minor_locator(locmin)
+    # ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+
+    for axis in [ax.xaxis, ax.yaxis]:
+        formatter = ScalarFormatter(useMathText=True)
+        formatter.set_scientific(False)
+        axis.set_major_formatter(formatter)
+        axis.set_minor_formatter(formatter)
 
     if y_lim:
-        x_lim_min, x_lim_max = y_lim
-        ax.set_ylim(x_lim_min, x_lim_max)
+        ax.set_ylim(y_lim.min, y_lim.max)
     else:
         min_y_dBV = min(y_dBV)
         max_y_dBV = max(y_dBV)
