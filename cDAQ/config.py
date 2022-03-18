@@ -174,10 +174,12 @@ class IConfig_Class(ABC):
 class Rigol(IConfig_Class):
     _tree_name: str = "rigol"
 
-    _amplitude_pp: float
+    _amplitude_pp: Optional[float]
 
     def __init__(self, data: Optional[Config_Dict] = None) -> None:
         super().__init__()
+
+        self.amplitude_pp = None
 
         if data:
             self.init_from_config(data)
@@ -217,13 +219,18 @@ class Rigol(IConfig_Class):
 class Nidaq(IConfig_Class):
     _tree_name: str = "nidaq"
 
-    max_Fs: float
-    max_voltage: float
-    min_voltage: float
-    ch_input: str
+    max_Fs: Optional[float]
+    max_voltage: Optional[float]
+    min_voltage: Optional[float]
+    ch_input: Optional[str]
 
     def __init__(self, data: Optional[Config_Dict] = None) -> None:
         super().__init__()
+
+        self.max_Fs = None
+        self.max_voltage = None
+        self.min_voltage = None
+        self.ch_input = None
 
         if data:
             self.init_from_config(data)
@@ -261,16 +268,20 @@ class Nidaq(IConfig_Class):
 class Sampling(IConfig_Class):
     _tree_name: str = "sampling"
 
-    n_fs: float
-    points_per_decade: float
-    number_of_samples: int
-    f_min: float
-    f_max: float
+    n_fs: Optional[float]
+    points_per_decade: Optional[float]
+    number_of_samples: Optional[int]
+    f_min: Optional[float]
+    f_max: Optional[float]
 
     def __init__(self, data: Optional[Config_Dict] = None) -> None:
         super().__init__()
 
-        self.n_fs = 6
+        self.n_fs = None
+        self.points_per_decade = None
+        self.number_of_samples = None
+        self.f_min = None
+        self.f_max = None
 
         if data:
             self.init_from_config(data)
@@ -369,15 +380,18 @@ class Plot(IConfig_Class):
 
 class Config:
 
-    rigol: Rigol
-    nidaq: Nidaq
-    sampling: Sampling
-    plot: Plot
+    rigol: Optional[Rigol]
+    nidaq: Optional[Nidaq]
+    sampling: Optional[Sampling]
+    plot: Optional[Plot]
 
     step: float
 
     def __init__(self) -> None:
-        pass
+        self.rigol = None
+        self.nidaq = None
+        self.sampling = None
+        self.plot = None
 
     def from_file(self, config_file_path: pathlib.Path):
         self._init_config_from_file(Config_Dict(load_json_config(config_file_path)))

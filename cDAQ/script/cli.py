@@ -17,17 +17,32 @@ def cli():
 
 
 @cli.command()
+@click.argument("--config", "config_path", type=pathlib.Path)
 @click.option("--home", type=pathlib.Path, default=pathlib.Path.cwd())
-@click.option("--config", "config_path", type=pathlib.Path)
 @click.option(
     "--amplitude_pp",
     type=float,
     help="The Amplitude of generated wave.",
     default=None,
 )
-@click.option("--n_fs", type=float, help="Fs * n. Oversampling.", default=6)
-@click.option("--spd", type=float, help="Samples per decade.", default=50)
-@click.option("--n_samp", type=int, help="Number of samples.", default=140)
+@click.option(
+    "--n_fs",
+    type=float,
+    help="Fs * n. Oversampling.",
+    default=None,
+)
+@click.option(
+    "--spd",
+    type=float,
+    help="Samples per decade.",
+    default=None,
+)
+@click.option(
+    "--n_samp",
+    type=int,
+    help="Number of samples.",
+    default=None,
+)
 @click.option(
     "--f_range",
     nargs=2,
@@ -54,8 +69,8 @@ def cli():
     "--debug", is_flag=True, help="Will print verbose messages.", default=False
 )
 def sweep(
+    config_path: pathlib.Path,
     home: pathlib.Path,
-    config_path: Optional[pathlib.Path],
     amplitude_pp: Optional[float],
     n_fs: Optional[float],
     spd: Optional[float],
@@ -73,11 +88,10 @@ def sweep(
     # Load JSON config
     config: Config = Config()
 
-    # Check Config
-    if config_path is not None:
-        config_file = config_path.absolute()
-        config.from_file(config_file)
+    config_file = config_path.absolute()
+    config.from_file(config_file)
 
+    # Override Configurations
     if amplitude_pp:
         config.rigol.amplitude_pp = amplitude_pp
 
@@ -89,7 +103,6 @@ def sweep(
 
     if f_range:
         f_min, f_max = f_range
-
         config.sampling.f_min = f_min
         config.sampling.f_max = f_max
 
