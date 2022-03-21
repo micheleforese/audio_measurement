@@ -1,16 +1,14 @@
 from pathlib import Path
-from time import sleep
-from typing import List, Optional, Tuple
+from typing import List, Optional, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.ticker
-
-from matplotlib.ticker import ScalarFormatter
+import matplotlib.ticker as ticker
 from rich.live import Live
 from rich.panel import Panel
 from rich.table import Column, Table
+import rich as rich
 
 from cDAQ.alghorithm import LogaritmicScale
 from cDAQ.config import Config
@@ -72,14 +70,14 @@ def sampling_curve(
     frequency: float = round(config.sampling.f_range.min, 5)
 
     table = Table(
-        Column(f"Frequency [Hz]", justify="right"),
-        Column(f"Fs [Hz]", justify="right"),
-        Column(f"Number of samples", justify="right"),
-        Column(f"Rms Value [V]", justify="right"),
+        Column("Frequency [Hz]", justify="right"),
+        Column("Fs [Hz]", justify="right"),
+        Column("Number of samples", justify="right"),
+        Column("Rms Value [V]", justify="right"),
         Column("Voltage Expected", justify="right"),
-        Column(f"Relative Error", justify="right"),
-        Column(f"dB Error", justify="right"),
-        Column(f"Time [s]", justify="right"),
+        Column("Relative Error", justify="right"),
+        Column("dB Error", justify="right"),
+        Column("Time [s]", justify="right"),
     )
 
     max_dB: Optional[float] = None
@@ -193,7 +191,7 @@ def plot_from_csv(
     plot_file_path: Path,
     y_lim: Optional[Range[float]] = None,
     x_lim: Optional[Range[float]] = None,
-    y_offset: Optional[float] = None,
+    y_offset: Optional[Union[float, str]] = None,
     debug: bool = False,
 ):
     if debug:
@@ -208,44 +206,57 @@ def plot_from_csv(
     measurements = pd.read_csv(
         measurements_file_path, header=0, names=["Frequency", "RMS Value", "dbV"]
     )
-    # console.print(measurements)
 
     for i, row in measurements.iterrows():
-        y_dBV.append(float(row["dbV"]) - (y_offset if y_offset else 0))
+        y_dBV.append(row["dbV"])
         x_frequency.append(row["Frequency"])
 
-    fig1, ax = plt.subplots(figsize=(16 * 2, 9 * 2), dpi=300)
+    console.print(y_offset)
 
-    # plt.rcParams["font.size"] = "40"
+    console.print(
+        Panel(
+            "min dB: {}\n".format(min(y_dBV))
+            + "max dB: {}\n".format(max(y_dBV))
+            + "diff dB: {}".format(abs(max(y_dBV) - min(y_dBV)))
+        )
+    )
 
-    for label in ax.get_xticklabels():
-        label.set_fontsize(40)
+    if y_offset:
+        if isinstance(y_offset, str) and not y_offset == "no":
+            if y_offset == "min":
+                y_offset = float(min(y_dBV))
 
-    for label in ax.get_yticklabels():
-        label.set_fontsize(40)
+            elif y_offset == "max":
+                y_offset = float(max(y_dBV))
+            else:
+                console.print('y_offset should be "max", "min" or "no".', style="error")
+            console.print(y_offset)
 
-    # ax.plot(x_frequency, y_dBV)
+        if isinstance(y_offset, float):
+            for i in range(len(y_dBV)):
+                y_dBV[i] = y_dBV[i] - y_offset
+
+    fig1, ax = plt.subplots(figsize=(16 * 2, 9 * 2), dpi=150)
+
     ax.semilogx(x_frequency, y_dBV)
-    # ax.set_xscale("log")
     ax.set_title("Frequency response", fontsize=50)
-    ax.set_xlabel("Frequency (Hz)")
-    ax.set_ylabel(r"Amplitude (dB)")
+    ax.set_xlabel("Frequency ($Hz$)", fontsize=40)
+    ax.set_ylabel(r"Amplitude ($dB$)", fontsize=40)
 
-    ax.tick_params(labelsize=30, labelrotation=45)
+    ax.tick_params(axis="both", labelsize=30)
 
-    ax.xaxis.labelpad = 5
-    ax.yaxis.labelpad = 5
+    logLocator = ticker.LogLocator(subs=np.arange(0, 1, 0.1))
+    logFormatter = ticker.LogFormatter(
+        labelOnlyBase=False, minor_thresholds=(np.inf, 0.5)
+    )
+    # X Axis - Major
+    ax.xaxis.set_major_locator(logLocator)
+    ax.xaxis.set_major_formatter(logFormatter)
+    # X Axis - Minor
+    ax.xaxis.set_minor_locator(logLocator)
+    ax.xaxis.set_minor_formatter(logFormatter)
 
-    # TODO: Search (https://stackoverflow.com/questions/44078409/matplotlib-semi-log-plot-minor-tick-marks-are-gone-when-range-is-large)
-    # locmin = LogLocator(base=10.0, subs=(0.2, 0.4, 0.6, 0.8), numticks=12)
-    # ax.xaxis.set_minor_locator(locmin)
-    # ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
-
-    for axis in [ax.xaxis, ax.yaxis]:
-        formatter = ScalarFormatter(useMathText=True)
-        formatter.set_scientific(False)
-        axis.set_major_formatter(formatter)
-        axis.set_minor_formatter(formatter)
+    ax.grid(True, linestyle="-", which="both", color="0.7")
 
     if y_lim:
         ax.set_ylim(y_lim.min, y_lim.max)
@@ -256,26 +267,5 @@ def plot_from_csv(
             min_y_dBV - 1,
             max_y_dBV + 1,
         )
-
-    console.print(
-        Panel(
-            "min dB: {}\n".format(min(y_dBV))
-            + "max dB: {}\n".format(max(y_dBV))
-            + "diff dB: {}".format(abs(max(y_dBV) - min(y_dBV)))
-        )
-    )
-
-    # if x_lim:
-    #     x_lim_min, x_lim_max = x_lim
-    #     ax.set_ylim(x_lim_min, x_lim_max)
-    # else:
-    #     min_plot_x = min(x_frequency)
-    #     max_plot_x = max(x_frequency)
-    #     ax.set_ylim(
-    #         min_plot_x + abs(min_plot_x) / min_plot_x,
-    #         max_plot_x + abs(max_plot_x) / max_plot_x,
-    #     )
-
-    ax.grid(True, linestyle="-", which="both", color="0.8")
 
     plt.savefig(plot_file_path)

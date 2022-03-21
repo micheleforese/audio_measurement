@@ -5,7 +5,7 @@
   },
   nidaq: {
     // Mandatory
-    max_Fs: 10200,
+    max_Fs: 102000,
     max_voltage: 4,
     min_voltage: -4,
     ch_input: "cDAQ9189-1CDBE0AMod1/ai1",
@@ -21,6 +21,7 @@
   plot: {
     // Mandatory
     y_offset: 0,
+    y_offset_auto: "min",
     y_limit: [-1, 1],
     x_limit: [-1, 1],
   },

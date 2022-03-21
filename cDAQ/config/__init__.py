@@ -474,6 +474,8 @@ class Plot(IConfig_Class):
     _tree_name: str = "plot"
 
     _y_offset: Optional[float]
+    # TODO: Implement logic for auto offset from config file
+    y_offset_auto: Optional[str]
     _x_limit: Optional[Range[float]]
     _y_limit: Optional[Range[float]]
 

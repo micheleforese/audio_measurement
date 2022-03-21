@@ -1,6 +1,6 @@
 import pathlib
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import click
 from cDAQ.config import Config
@@ -41,6 +41,11 @@ def cli():
     "--x_lim", nargs=2, type=(float, float), help="Range x Plot.", default=None
 )
 @click.option("--y_offset", type=float, default=None)
+@click.option(
+    "--y_offset_auto",
+    type=click.Choice(["min", "max", "no"], case_sensitive=False),
+    default=None,
+)
 # Flags
 @click.option("--time", is_flag=True, help="Elapsed time.", default=False)
 @click.option(
@@ -57,6 +62,7 @@ def sweep(
     y_lim: Optional[Tuple[float, float]],
     x_lim: Optional[Tuple[float, float]],
     y_offset: Optional[float],
+    y_offset_auto: Optional[str],
     time: bool,
     debug: bool,
 ):
@@ -93,6 +99,12 @@ def sweep(
     if x_lim:
         config.plot.x_limit = Range(*x_lim)
 
+    y_offset_mode: Optional[Union[float, str]] = None
+    if y_offset:
+        y_offset_mode = y_offset
+    elif y_offset_auto:
+        y_offset_mode = y_offset_auto
+
     # TODO: Implement Configuration validation
     if config.validate():
         console.print("Config Error.")
@@ -121,7 +133,7 @@ def sweep(
         plot_file_path=HOME_PATH / "audio-[{}].png".format(datetime_now),
         y_lim=config.plot.y_limit,
         x_lim=config.plot.x_limit,
-        y_offset=y_offset,
+        y_offset=y_offset_mode,
         debug=debug,
     )
 
@@ -148,7 +160,12 @@ def sweep(
     type=(float, float),
     help="Range x Plot.",
 )
-@click.option("--y_offset", type=float)
+@click.option("--y_offset", type=float, default=None)
+@click.option(
+    "--y_offset_auto",
+    type=click.Choice(["min", "max", "no"], case_sensitive=False),
+    default=None,
+)
 @click.option(
     "--debug", is_flag=True, help="Will print verbose messages.", default=False
 )
@@ -159,11 +176,18 @@ def plot(
     y_lim: Optional[Tuple[float, float]],
     x_lim: Optional[Tuple[float, float]],
     y_offset: Optional[float],
+    y_offset_auto: Optional[str],
     debug: bool,
 ):
     HOME_PATH = home.absolute()
     csv_file: pathlib.Path = pathlib.Path()
     plot_file: pathlib.Path = pathlib.Path()
+
+    y_offset_mode: Optional[Union[float, str]] = None
+    if y_offset:
+        y_offset_mode = y_offset
+    elif y_offset_auto:
+        y_offset_mode = y_offset_auto
 
     is_most_recent_file: bool = False
 
@@ -212,6 +236,6 @@ def plot(
             plot_file_path=plot_file,
             x_lim=Range(*x_lim) if x_lim else None,
             y_lim=Range(*y_lim) if y_lim else None,
-            y_offset=y_offset,
+            y_offset=y_offset_mode,
             debug=debug,
         )
