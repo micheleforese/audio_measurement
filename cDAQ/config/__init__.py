@@ -1,7 +1,7 @@
 from ctypes import resize
 import pathlib
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar
+from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
 from click import option
 from matplotlib.pyplot import xlim
 
@@ -9,7 +9,7 @@ import pyjson5
 from rich.panel import Panel
 from rich.tree import Tree
 from rich.json import JSON
-from cDAQ.config.type import Range
+from cDAQ.config.type import ModAuto, Range
 
 from cDAQ.console import console
 from cDAQ.config.exception import (
@@ -52,6 +52,7 @@ class Config_Dict:
 
     T = TypeVar("T")
 
+    #TODO: Fix type overrride
     def get_rvalue(self, path: List[str], type: Type[T] = Any) -> T:
 
         value: Any = self.data
@@ -473,9 +474,7 @@ class Sampling(IConfig_Class):
 class Plot(IConfig_Class):
     _tree_name: str = "plot"
 
-    _y_offset: Optional[float]
-    # TODO: Implement logic for auto offset from config file
-    y_offset_auto: Optional[str]
+    _y_offset: Optional[Union[float, ModAuto]]
     _x_limit: Optional[Range[float]]
     _y_limit: Optional[Range[float]]
 
@@ -493,9 +492,11 @@ class Plot(IConfig_Class):
         self,
         x_limit: Optional[Range[float]] = None,
         y_limit: Optional[Range[float]] = None,
+        y_offset: Optional[Union[float, ModAuto]] = None,
     ):
         self.x_limit = x_limit
         self.y_limit = y_limit
+        self.y_offset = y_offset
 
     def init_from_config(self, data: Config_Dict):
 
@@ -506,22 +507,28 @@ class Plot(IConfig_Class):
             y_lim = data.get_value(["plot", "y_limit"], Tuple[float, float])
             self.y_limit = Range(*y_lim) if y_lim else None
 
+            y_offset = data.get_value(["plot", "y_offset"], float)
+            if y_offset:
+                self.y_offset = y_offset
+            else:
+                y_offset_auto = data.get_value(["plot", "y_offset"], str)
+                if y_offset_auto:
+                    if y_offset_auto == ModAuto.MIN.value:
+                        self.y_offset = ModAuto.MIN
+                    elif y_offset_auto == ModAuto.MAX.value:
+                        self.y_offset = ModAuto.MAX
+                    elif y_offset_auto == ModAuto.NO.value:
+                        self.y_offset = ModAuto.NO
+                    else:
+                        raise ConfigError
+
+            console.print(Panel(self.tree()))
+
     def validate(self) -> bool:
-        if self._x_limit:
-            return False
-        else:
-            return True
+        return False
 
     @property
-    def y_offset(self) -> Optional[float]:
-        return self._y_offset
-
-    @y_offset.setter
-    def y_offset(self, value: Optional[float]):
-        self._y_offset = value
-
-    @property
-    def x_limit(self):
+    def x_limit(self) -> Optional[Range[float]]:
         return self._x_limit
 
     @x_limit.setter
@@ -536,6 +543,14 @@ class Plot(IConfig_Class):
     def y_limit(self, value: Optional[Range[float]]):
         self._y_limit = value
 
+    @property
+    def y_offset(self) -> Optional[Union[float, ModAuto]]:
+        return self._y_offset
+
+    @y_offset.setter
+    def y_offset(self, value: Optional[Union[float, ModAuto]]):
+        self._y_offset = value
+
     def set_tree_name(self, name: str):
         self._tree_name = name
 
@@ -549,6 +564,11 @@ class Plot(IConfig_Class):
         )
         tree.add(
             self.tree_pattern_sub("y_limit", self.y_limit if self.y_limit else "Auto")
+        )
+        tree.add(
+            self.tree_pattern_sub(
+                "y_offset", self.y_offset if self.y_offset else "Auto"
+            )
         )
 
         return tree
@@ -623,10 +643,16 @@ class Config:
         self.calculate_step()
 
     def validate(self) -> bool:
+        config_list: List[IConfig_Class] = [
+            self.rigol,
+            self.nidaq,
+            self.sampling,
+            self.plot,
+        ]
 
-        for v in [self.rigol, self.nidaq, self.sampling, self.plot]:
-            v.validate()
-
+        for v in config_list:
+            if v.validate():
+                return True
         return False
 
     def calculate_step(self) -> float:

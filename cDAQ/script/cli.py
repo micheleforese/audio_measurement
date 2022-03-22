@@ -4,11 +4,11 @@ from typing import List, Optional, Tuple, Union
 
 import click
 from cDAQ.config import Config
-from cDAQ.config.type import Range
+from cDAQ.config.type import ModAuto, Range
 from cDAQ.console import console
 from cDAQ.sampling import plot_from_csv, sampling_curve
-from cDAQ.script.gui import AudioMeasurementsApp
 from cDAQ.timer import Timer
+from cDAQ.config import Plot
 from rich.panel import Panel
 from rich.prompt import Confirm
 
@@ -100,13 +100,22 @@ def sweep(
     if x_lim:
         config.plot.x_limit = Range(*x_lim)
 
-    y_offset_mode: Optional[Union[float, str]] = None
-    if y_offset:
-        y_offset_mode = y_offset
-    elif y_offset_auto:
-        y_offset_mode = y_offset_auto
+    console.print(Panel(config.plot.tree()))
+    console.print(type(config.plot.y_offset))
 
-    # TODO: Implement Configuration validation
+    if y_offset:
+        config.plot.y_offset = y_offset
+    elif y_offset_auto and not isinstance(config.plot.y_offset, float):
+        console.print(Panel(config.plot.tree()))
+        if y_offset_auto == ModAuto.NO.value:
+            config.plot.y_offset = ModAuto.NO
+        elif y_offset_auto == ModAuto.MIN.value:
+            config.plot.y_offset = ModAuto.MIN
+        elif y_offset_auto == ModAuto.MAX.value:
+            config.plot.y_offset = ModAuto.MAX
+        else:
+            config.plot.y_offset = None
+
     if config.validate():
         console.print("Config Error.")
         exit()
@@ -132,9 +141,7 @@ def sweep(
     plot_from_csv(
         measurements_file_path=HOME_PATH / "audio-[{}].csv".format(datetime_now),
         plot_file_path=HOME_PATH / "audio-[{}].png".format(datetime_now),
-        y_lim=config.plot.y_limit,
-        x_lim=config.plot.x_limit,
-        y_offset=y_offset_mode,
+        plot_config=config.plot,
         debug=debug,
     )
 
@@ -184,11 +191,25 @@ def plot(
     csv_file: pathlib.Path = pathlib.Path()
     plot_file: pathlib.Path = pathlib.Path()
 
-    y_offset_mode: Optional[Union[float, str]] = None
+    y_offset_mode: Optional[Union[float, ModAuto]] = None
     if y_offset:
         y_offset_mode = y_offset
     elif y_offset_auto:
-        y_offset_mode = y_offset_auto
+        if y_offset_auto == ModAuto.NO.value:
+            y_offset_mode = ModAuto.NO
+        elif y_offset_auto == ModAuto.MIN.value:
+            y_offset_mode = ModAuto.MIN
+        elif y_offset_auto == ModAuto.MAX.value:
+            y_offset_mode = ModAuto.MAX
+        else:
+            y_offset_mode = None
+
+    plot_config = Plot()
+    plot_config.init(
+        x_limit=Range(*x_lim) if x_lim else None,
+        y_limit=Range(*y_lim) if y_lim else None,
+        y_offset=y_offset_mode,
+    )
 
     is_most_recent_file: bool = False
 
@@ -235,16 +256,14 @@ def plot(
         plot_from_csv(
             measurements_file_path=csv_file,
             plot_file_path=plot_file,
-            x_lim=Range(*x_lim) if x_lim else None,
-            y_lim=Range(*y_lim) if y_lim else None,
-            y_offset=y_offset_mode,
+            plot_config=plot_config,
             debug=debug,
         )
 
 
-@cli.command()
-@click.option("--home", type=pathlib.Path, default=pathlib.Path.cwd())
-def gui(home: pathlib.Path):
-    # SimpleApp.run(log="textual.log")
-    App = AudioMeasurementsApp(home)
-    App.run(title="Audio Measurements", log="audio_measurements_app.log", home=home)
+# @cli.command()
+# @click.option("--home", type=pathlib.Path, default=pathlib.Path.cwd())
+# def gui(home: pathlib.Path):
+#     # SimpleApp.run(log="textual.log")
+#     App = AudioMeasurementsApp(home)
+#     App.run(title="Audio Measurements", log="audio_measurements_app.log", home=home)

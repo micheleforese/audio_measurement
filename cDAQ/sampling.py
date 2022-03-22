@@ -12,13 +12,14 @@ import rich as rich
 
 from cDAQ.alghorithm import LogaritmicScale
 from cDAQ.config import Config
-from cDAQ.config.type import Range
+from cDAQ.config.type import ModAuto, Range
 from cDAQ.console import console
 from cDAQ.scpi import SCPI, Bandwidth, Switch
 from cDAQ.timer import Timer, Timer_Message
 from cDAQ.usbtmc import UsbTmc, get_device_list, print_devices_list
 from cDAQ.utility import percentage_error, rms, transfer_function
 from usbtmc import Instrument
+from cDAQ.config import Plot
 
 
 def sampling_curve(
@@ -189,16 +190,11 @@ def sampling_curve(
 def plot_from_csv(
     measurements_file_path: Path,
     plot_file_path: Path,
-    y_lim: Optional[Range[float]] = None,
-    x_lim: Optional[Range[float]] = None,
-    y_offset: Optional[Union[float, str]] = None,
+    plot_config: Plot,
     debug: bool = False,
 ):
     if debug:
-        console.print("Measurements_file_path: {}".format(measurements_file_path))
-        console.print("Plot_file_path: {}".format(plot_file_path))
-        console.print("y_lim: {}".format(y_lim))
-        console.print("x_lim: {}".format(x_lim))
+        console.print(Panel(plot_config.tree()))
 
     x_frequency: List[float] = []
     y_dBV: List[float] = []
@@ -211,8 +207,6 @@ def plot_from_csv(
         y_dBV.append(row["dbV"])
         x_frequency.append(row["Frequency"])
 
-    console.print(y_offset)
-
     console.print(
         Panel(
             "min dB: {}\n".format(min(y_dBV))
@@ -221,18 +215,21 @@ def plot_from_csv(
         )
     )
 
-    if y_offset:
-        if isinstance(y_offset, str) and not y_offset == "no":
-            if y_offset == "min":
+    if plot_config.y_offset:
+        y_offset: Optional[float] = None
+        if isinstance(plot_config.y_offset, float):
+            y_offset = plot_config.y_offset
+        elif isinstance(plot_config.y_offset, ModAuto):
+            if plot_config.y_offset == ModAuto.MIN:
                 y_offset = float(min(y_dBV))
-
-            elif y_offset == "max":
+            elif plot_config.y_offset == ModAuto.MAX:
                 y_offset = float(max(y_dBV))
+            elif plot_config.y_offset == ModAuto.NO:
+                y_offset = None
             else:
                 console.print('y_offset should be "max", "min" or "no".', style="error")
-            console.print(y_offset)
 
-        if isinstance(y_offset, float):
+        if y_offset:
             for i in range(len(y_dBV)):
                 y_dBV[i] = y_dBV[i] - y_offset
 
@@ -258,8 +255,8 @@ def plot_from_csv(
 
     ax.grid(True, linestyle="-", which="both", color="0.7")
 
-    if y_lim:
-        ax.set_ylim(y_lim.min, y_lim.max)
+    if plot_config.y_limit:
+        ax.set_ylim(plot_config.y_limit.min, plot_config.y_limit.max)
     else:
         min_y_dBV = min(y_dBV)
         max_y_dBV = max(y_dBV)

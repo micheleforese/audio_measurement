@@ -1,3 +1,4 @@
+import enum
 from typing import Generic, Type, TypeVar
 
 RangeType = TypeVar("RangeType")
@@ -26,3 +27,9 @@ class Range(Generic[RangeType]):
     @max.setter
     def max(self, value: RangeType):
         self._max = value
+
+
+class ModAuto(enum.Enum):
+    NO = "no"
+    MIN = "min"
+    MAX = "max"

@@ -1,11 +1,7 @@
-from logging import PlaceHolder
 import subprocess, os, platform
 import pathlib
-import sys
-from tkinter import Place
 from typing import List, Optional
 import pandas as pd
-from pytest import Mark
 
 from rich.console import RenderableType
 from rich.panel import Panel
