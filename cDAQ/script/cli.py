@@ -7,6 +7,7 @@ from cDAQ.config import Config
 from cDAQ.config.type import Range
 from cDAQ.console import console
 from cDAQ.sampling import plot_from_csv, sampling_curve
+from cDAQ.script.gui import AudioMeasurementsApp
 from cDAQ.timer import Timer
 from rich.panel import Panel
 from rich.prompt import Confirm
@@ -239,3 +240,11 @@ def plot(
             y_offset=y_offset_mode,
             debug=debug,
         )
+
+
+@cli.command()
+@click.option("--home", type=pathlib.Path, default=pathlib.Path.cwd())
+def gui(home: pathlib.Path):
+    # SimpleApp.run(log="textual.log")
+    App = AudioMeasurementsApp(home)
+    App.run(title="Audio Measurements", log="audio_measurements_app.log", home=home)
