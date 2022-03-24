@@ -21,6 +21,9 @@ from cDAQ.utility import percentage_error, rms, transfer_function
 from usbtmc import Instrument
 from cDAQ.config import Plot
 
+from scipy.interpolate import make_interp_spline
+from scipy.interpolate import interp1d
+
 
 def sampling_curve(
     config: Config,
@@ -61,7 +64,7 @@ def sampling_curve(
     log_scale: LogaritmicScale = LogaritmicScale(
         config.sampling.f_range.min,
         config.sampling.f_range.max,
-        config.calculate_step(),
+        config.step,
         config.sampling.points_per_decade,
     )
 
@@ -233,14 +236,32 @@ def plot_from_csv(
             for i in range(len(y_dBV)):
                 y_dBV[i] = y_dBV[i] - y_offset
 
-    fig1, ax = plt.subplots(figsize=(16 * 2, 9 * 2), dpi=150)
+    fig1, ax = plt.subplots(figsize=(16 * 2, 9 * 2), dpi=300)
 
-    ax.semilogx(x_frequency, y_dBV)
+    cubic_interpolation_model = interp1d(x_frequency, y_dBV, kind="cubic")
+    X_ = np.linspace(min(x_frequency), max(x_frequency), int(len(x_frequency)))
+    # X_ = np.logspace(min(x_frequency), max(x_frequency))
+    # X_ = np.linspace(min(x_frequency), max(x_frequency), len(x_frequency))
+    Y_ = cubic_interpolation_model(X_)
+    # X_Y_Spline = make_interp_spline(x_frequency, y_dBV)
+    # Y_ = X_Y_Spline(x_frequency)
+
+    ax.semilogx(
+        x_frequency,
+        y_dBV,
+        "o",
+        X_,
+        Y_,
+        "-",
+        linewidth=4,
+    )
+    # ax.semilogx(x_frequency, Y_, linewidth=4)
+    # ax.semilogx(x_frequency, y_dBV, linewidth=4)
     ax.set_title("Frequency response", fontsize=50)
     ax.set_xlabel("Frequency ($Hz$)", fontsize=40)
     ax.set_ylabel(r"Amplitude ($dB$)", fontsize=40)
 
-    ax.tick_params(axis="both", labelsize=30)
+    ax.tick_params(axis="both", labelsize=15)
 
     logLocator = ticker.LogLocator(subs=np.arange(0, 1, 0.1))
     logFormatter = ticker.LogFormatter(

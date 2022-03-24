@@ -12,6 +12,9 @@ class Range(Generic[RangeType]):
         self._min = min
         self._max = max
 
+    def __str__(self) -> str:
+        return "{} to {}".format(self.min, self.max)
+
     @property
     def min(self) -> RangeType:
         return self._min

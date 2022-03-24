@@ -52,6 +52,9 @@ def cli():
 @click.option(
     "--debug", is_flag=True, help="Will print verbose messages.", default=False
 )
+@click.option(
+    "--simulate", is_flag=True, help="Will Simulate the Sweep.", default=False
+)
 def sweep(
     config_path: pathlib.Path,
     home: pathlib.Path,
@@ -66,6 +69,7 @@ def sweep(
     y_offset_auto: Optional[str],
     time: bool,
     debug: bool,
+    simulate: bool,
 ):
     HOME_PATH = home.absolute()
 
@@ -76,6 +80,8 @@ def sweep(
 
     config_file = config_path.absolute()
     config.from_file(config_file)
+
+    console.print(Panel(config.tree(), title="Configuration JSON - FROM FILE"))
 
     # Override Configurations
     if amplitude_pp:
@@ -100,13 +106,9 @@ def sweep(
     if x_lim:
         config.plot.x_limit = Range(*x_lim)
 
-    console.print(Panel(config.plot.tree()))
-    console.print(type(config.plot.y_offset))
-
     if y_offset:
         config.plot.y_offset = y_offset
     elif y_offset_auto and not isinstance(config.plot.y_offset, float):
-        console.print(Panel(config.plot.tree()))
         if y_offset_auto == ModAuto.NO.value:
             config.plot.y_offset = ModAuto.NO
         elif y_offset_auto == ModAuto.MIN.value:
@@ -120,8 +122,6 @@ def sweep(
         console.print("Config Error.")
         exit()
 
-    config.calculate_step()
-
     if debug:
         config.print()
 
@@ -129,21 +129,25 @@ def sweep(
     if time:
         timer.start()
 
-    sampling_curve(
-        config=config,
-        measurements_file_path=HOME_PATH / "audio-[{}].csv".format(datetime_now),
-        debug=debug,
-    )
+    if not simulate:
+
+        sampling_curve(
+            config=config,
+            measurements_file_path=HOME_PATH / "audio-[{}].csv".format(datetime_now),
+            debug=debug,
+        )
 
     if time:
         timer.stop().print()
 
-    plot_from_csv(
-        measurements_file_path=HOME_PATH / "audio-[{}].csv".format(datetime_now),
-        plot_file_path=HOME_PATH / "audio-[{}].png".format(datetime_now),
-        plot_config=config.plot,
-        debug=debug,
-    )
+    if not simulate:
+
+        plot_from_csv(
+            measurements_file_path=HOME_PATH / "audio-[{}].csv".format(datetime_now),
+            plot_file_path=HOME_PATH / "audio-[{}].png".format(datetime_now),
+            plot_config=config.plot,
+            debug=debug,
+        )
 
 
 @cli.command()
@@ -232,20 +236,20 @@ def plot(
     if is_most_recent_file:
         # Take the most recent csv File.
         csv_file_list: List[pathlib.Path] = [
-            csv for csv in HOME_PATH.rglob("*.csv") if csv.is_file() and csv.stem
+            csv for csv in HOME_PATH.rglob("*.csv") if csv.is_file()
         ]
 
         csv_file_list.sort(
             key=lambda name: datetime.strptime(
                 name.stem, f"audio-[%Y-%m-%d--%H-%M-%f]"
             ),
-            reverse=True,
+            # reverse=True,
         )
         try:
             csv_file = csv_file_list.pop()
-            date_pattern = datetime.now().strftime(f"%Y-%m-%d--%H-%M-%f")
+            # date_pattern = datetime.now().strftime(f"%Y-%m-%d--%H-%M-%f")
 
-            plot_file = HOME_PATH / date_pattern
+            plot_file = HOME_PATH / pathlib.Path(csv_file).with_suffix("")
         except IndexError:
             console.print("There is no csv file available.", style="error")
             exit()

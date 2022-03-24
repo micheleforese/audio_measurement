@@ -22,11 +22,7 @@ from cDAQ.config.exception import (
 def load_json_config(config_file_path):
     with open(config_file_path) as config_file:
         file_content: str = config_file.read()
-
         config = pyjson5.decode(file_content)
-
-        console.print(config)
-
         return config
 
 
@@ -44,16 +40,17 @@ class NotInitializedWarning(RuntimeWarning):
     pass
 
 
+T = TypeVar("T")
+
+
 class Config_Dict:
     data: Any
 
     def __init__(self, data: Any) -> None:
         self.data = data
 
-    T = TypeVar("T")
-
-    #TODO: Fix type overrride
-    def get_rvalue(self, path: List[str], type: Type[T] = Any) -> T:
+    # TODO: Fix type overrride
+    def get_rvalue(self, path: List[str], type_value: Type[T] = Any) -> T:
 
         value: Any = self.data
 
@@ -67,11 +64,13 @@ class Config_Dict:
                 )
                 exit()
 
-        return value
+        return_value: type_value = value
 
-    T = TypeVar("T")
+        return return_value
 
-    def get_value(self, path: List[str], type: Type[T] = Any) -> Optional[T]:
+    # T = TypeVar("T")
+
+    def get_value(self, path: List[str], type_value: Type[T] = Any) -> Optional[T]:
         value: Any = self.data
 
         for p in path:
@@ -80,7 +79,9 @@ class Config_Dict:
             except KeyError:
                 return None
 
-        return value
+        return_value: type_value = value
+
+        return return_value
 
 
 class IConfig_Class(ABC):
@@ -511,7 +512,7 @@ class Plot(IConfig_Class):
             if y_offset:
                 self.y_offset = y_offset
             else:
-                y_offset_auto = data.get_value(["plot", "y_offset"], str)
+                y_offset_auto = data.get_value(["plot", "y_offset_auto"], str)
                 if y_offset_auto:
                     if y_offset_auto == ModAuto.MIN.value:
                         self.y_offset = ModAuto.MIN
@@ -521,8 +522,6 @@ class Plot(IConfig_Class):
                         self.y_offset = ModAuto.NO
                     else:
                         raise ConfigError
-
-            console.print(Panel(self.tree()))
 
     def validate(self) -> bool:
         return False
@@ -581,7 +580,43 @@ class Config:
     _sampling: Sampling
     _plot: Plot
 
-    step: float
+    _step: float
+
+    def __init__(self) -> None:
+        self.rigol = Rigol()
+        self.nidaq = Nidaq()
+        self.sampling = Sampling()
+        self.plot = Plot()
+
+    def from_file(self, config_file_path: pathlib.Path):
+        self._init_config_from_file(Config_Dict(load_json_config(config_file_path)))
+
+    def _init_config_from_file(self, data: Config_Dict):
+
+        # Rigol Class
+        self.rigol = Rigol(data)
+
+        # Nidaq Class
+        self.nidaq = Nidaq(data)
+
+        # Sampling Class
+        self.sampling = Sampling(data)
+
+        # Plot Class
+        self.plot = Plot(data)
+
+    def validate(self) -> bool:
+        config_list: List[IConfig_Class] = [
+            self.rigol,
+            self.nidaq,
+            self.sampling,
+            self.plot,
+        ]
+
+        for v in config_list:
+            if v.validate():
+                return True
+        return False
 
     @property
     def rigol(self):
@@ -616,51 +651,13 @@ class Config:
 
         self._plot = value
 
-    def __init__(self) -> None:
-        self.rigol = Rigol()
-        self.nidaq = Nidaq()
-        self.sampling = Sampling()
-        self.plot = Plot()
-
-    def from_file(self, config_file_path: pathlib.Path):
-        self._init_config_from_file(Config_Dict(load_json_config(config_file_path)))
-
-    def _init_config_from_file(self, data: Config_Dict):
-
-        # Rigol Class
-        self.rigol = Rigol(data)
-
-        # Nidaq Class
-        self.nidaq = Nidaq(data)
-
-        # Sampling Class
-        self.sampling = Sampling(data)
-
-        # Plot Class
-        self.plot = Plot(data)
-
-        # Calculations
-        self.calculate_step()
-
-    def validate(self) -> bool:
-        config_list: List[IConfig_Class] = [
-            self.rigol,
-            self.nidaq,
-            self.sampling,
-            self.plot,
-        ]
-
-        for v in config_list:
-            if v.validate():
-                return True
-        return False
-
-    def calculate_step(self) -> float:
+    @property
+    def step(self) -> float:
         if self.sampling.points_per_decade:
-            self.step = 1 / self.sampling.points_per_decade
+            self._step = 1 / self.sampling.points_per_decade
         else:
             raise
-        return self.step
+        return self._step
 
     def tree(self) -> Tree:
         tree = Tree("Configuration JSON", style="bold")
@@ -674,4 +671,4 @@ class Config:
         return tree
 
     def print(self):
-        console.print(self.tree())
+        console.print(Panel(self.tree()))
