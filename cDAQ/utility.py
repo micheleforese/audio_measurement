@@ -1,7 +1,7 @@
 import enum
 import math
 from time import sleep
-from typing import List, Optional
+from typing import Callable, List, Optional, Tuple
 
 import nidaqmx
 import nidaqmx.constants
@@ -18,6 +18,8 @@ from numpy.ma.core import sin, sqrt
 from rich.panel import Panel
 from rich.table import Column, Table
 from rich.tree import Tree
+import scipy as sp
+from scipy.interpolate import interp1d
 from scipy.fft import fft
 
 import usbtmc
@@ -592,3 +594,59 @@ def command_line(instr: usbtmc.Instrument):
             console.print("{}".format(answer))
         else:
             instr.write(cmd)
+
+
+class INTRERP_KIND(enum.Enum):
+    LINEAR = "linear"
+    NEAREST = "nearest"
+    ZERO = "zero"
+    SLINEAR = "slinear"
+    QUDRATIC = "quadratic"
+    CUBIC = "cubic"
+    PREVIUS = "previous"
+    NEXT = "next"
+
+
+def logx_interp1d(
+    xx: List[float],
+    yy: List[float],
+    kind: INTRERP_KIND = INTRERP_KIND.LINEAR,
+) -> Callable[[float], float]:
+
+    x_log = [np.math.log10(x) for x in xx]
+    lin_interp = interp1d(x_log, yy, kind=kind.value)
+    log_interp_func = lambda x_intrp: np.math.pow(
+        10.0, lin_interp(np.math.log10(x_intrp))
+    )
+    return log_interp_func
+
+
+# TODO: fix logy, both and model interpolation
+def logy_interp1d(
+    xx: List[float],
+    yy: List[float],
+    kind: INTRERP_KIND = INTRERP_KIND.LINEAR,
+) -> Callable[[float], float]:
+
+    y_log = [np.math.log10(y) for y in yy]
+    lin_interp = interp1d(xx, y_log, kind=kind.value)
+    log_interp_func = lambda x_intrp: np.math.pow(10.0, lin_interp(x_intrp))
+    return log_interp_func
+
+
+def log_interp1d(
+    xx: List[float],
+    yy: List[float],
+    kind: INTRERP_KIND = INTRERP_KIND.LINEAR,
+) -> Callable[[float], float]:
+    x_log = [np.math.log10(x) for x in xx]
+    y_log = [np.math.log10(y) for y in yy]
+    lin_interp = interp1d(x_log, y_log, kind=kind.value)
+    log_interp_func = lambda x_intrp: np.math.pow(
+        10.0, lin_interp(np.math.log10(x_intrp))
+    )
+    return log_interp_func
+
+
+def log_interpolation_model(xx, yy):
+    pass

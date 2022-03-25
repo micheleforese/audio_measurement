@@ -2,27 +2,34 @@ from pathlib import Path
 from typing import List, Optional, Union
 
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
-import matplotlib.ticker as ticker
+import rich as rich
+from scipy.interpolate import interp1d
+import scipy as sp
+import scipy.interpolate
 from rich.live import Live
 from rich.panel import Panel
 from rich.table import Column, Table
-import rich as rich
+from scipy.interpolate import make_interp_spline
 
 from cDAQ.alghorithm import LogaritmicScale
-from cDAQ.config import Config
+from cDAQ.config import Config, Plot
 from cDAQ.config.type import ModAuto, Range
 from cDAQ.console import console
 from cDAQ.scpi import SCPI, Bandwidth, Switch
 from cDAQ.timer import Timer, Timer_Message
 from cDAQ.usbtmc import UsbTmc, get_device_list, print_devices_list
-from cDAQ.utility import percentage_error, rms, transfer_function
+from cDAQ.utility import (
+    INTRERP_KIND,
+    log_interp1d,
+    logx_interp1d,
+    percentage_error,
+    rms,
+    transfer_function,
+)
 from usbtmc import Instrument
-from cDAQ.config import Plot
-
-from scipy.interpolate import make_interp_spline
-from scipy.interpolate import interp1d
 
 
 def sampling_curve(
@@ -64,7 +71,6 @@ def sampling_curve(
     log_scale: LogaritmicScale = LogaritmicScale(
         config.sampling.f_range.min,
         config.sampling.f_range.max,
-        config.step,
         config.sampling.points_per_decade,
     )
 
@@ -94,10 +100,7 @@ def sampling_curve(
         auto_refresh=True,
     ) as live:
 
-        while log_scale.check():
-            log_scale.next()
-            # Frequency in Hz
-            frequency = log_scale.get_frequency()
+        for frequency in log_scale.f_list:
 
             # Sets the Frequency
             generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
@@ -238,49 +241,58 @@ def plot_from_csv(
 
     fig1, ax = plt.subplots(figsize=(16 * 2, 9 * 2), dpi=300)
 
-    cubic_interpolation_model = interp1d(x_frequency, y_dBV, kind="cubic")
-    X_ = np.linspace(min(x_frequency), max(x_frequency), int(len(x_frequency)))
-    # X_ = np.logspace(min(x_frequency), max(x_frequency))
-    # X_ = np.linspace(min(x_frequency), max(x_frequency), len(x_frequency))
-    Y_ = cubic_interpolation_model(X_)
-    # X_Y_Spline = make_interp_spline(x_frequency, y_dBV)
-    # Y_ = X_Y_Spline(x_frequency)
+    x_frequency_log = [np.math.log10(x_log) for x_log in x_frequency]
+
+    cubic_interpolation_model = interp1d(x_frequency_log, y_dBV, kind="cubic")
+    # cubic_interpolation_model = logx_interp1d(x_frequency_log, y_dBV, kind=INTRERP_KIND.CUBIC)
+    x_frequency_log_interpolated = np.linspace(
+        min(x_frequency_log),
+        max(x_frequency_log),
+        int(len(x_frequency_log) * 10),
+    )
+
+    x_frequency_interpolated = [
+        np.math.pow(10, x_intrp) for x_intrp in x_frequency_log_interpolated
+    ]
+
+    y_dBV_interpolated = cubic_interpolation_model(x_frequency_log_interpolated)
 
     ax.semilogx(
         x_frequency,
         y_dBV,
         "o",
-        X_,
-        Y_,
+        x_frequency_interpolated,
+        y_dBV_interpolated,
         "-",
         linewidth=4,
     )
-    # ax.semilogx(x_frequency, Y_, linewidth=4)
-    # ax.semilogx(x_frequency, y_dBV, linewidth=4)
     ax.set_title("Frequency response", fontsize=50)
     ax.set_xlabel("Frequency ($Hz$)", fontsize=40)
     ax.set_ylabel(r"Amplitude ($dB$)", fontsize=40)
 
     ax.tick_params(axis="both", labelsize=15)
+    ax.tick_params(axis="x", rotation=90)
 
     logLocator = ticker.LogLocator(subs=np.arange(0, 1, 0.1))
     logFormatter = ticker.LogFormatter(
         labelOnlyBase=False, minor_thresholds=(np.inf, 0.5)
     )
+    # ax.xaxis.set_scientific(False)
     # X Axis - Major
     ax.xaxis.set_major_locator(logLocator)
     ax.xaxis.set_major_formatter(logFormatter)
     # X Axis - Minor
     ax.xaxis.set_minor_locator(logLocator)
     ax.xaxis.set_minor_formatter(logFormatter)
+    # ax.ticklabel_format(style="plain", axis='x')
 
     ax.grid(True, linestyle="-", which="both", color="0.7")
 
     if plot_config.y_limit:
         ax.set_ylim(plot_config.y_limit.min, plot_config.y_limit.max)
     else:
-        min_y_dBV = min(y_dBV)
-        max_y_dBV = max(y_dBV)
+        min_y_dBV = min(y_dBV_interpolated)
+        max_y_dBV = max(y_dBV_interpolated)
         ax.set_ylim(
             min_y_dBV - 1,
             max_y_dBV + 1,
