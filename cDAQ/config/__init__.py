@@ -1,28 +1,24 @@
-from ctypes import resize
 import pathlib
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
-from click import option
-from matplotlib.pyplot import xlim
+from typing import Any, List, Optional, Tuple, Type, TypeVar, Union, cast
 
-import pyjson5
-from rich.panel import Panel
-from rich.tree import Tree
-from rich.json import JSON
-from cDAQ.config.type import ModAuto, Range
-
-from cDAQ.console import console
+import pyjson5 as pjson5
 from cDAQ.config.exception import (
     ConfigError,
+    ConfigException,
     ConfigNoneValueError,
     ConfigNoneValueException,
 )
+from cDAQ.config.type import ModAuto, Range
+from cDAQ.console import console
+from rich.panel import Panel
+from rich.tree import Tree
 
 
 def load_json_config(config_file_path):
     with open(config_file_path) as config_file:
         file_content: str = config_file.read()
-        config = pyjson5.decode(file_content)
+        config = pjson5.decode(file_content)
         return config
 
 
@@ -40,9 +36,6 @@ class NotInitializedWarning(RuntimeWarning):
     pass
 
 
-T = TypeVar("T")
-
-
 class Config_Dict:
     data: Any
 
@@ -50,6 +43,8 @@ class Config_Dict:
         self.data = data
 
     # TODO: Fix type overrride
+    T = TypeVar("T")
+
     def get_rvalue(self, path: List[str], type_value: Type[T] = Any) -> T:
 
         value: Any = self.data
@@ -64,11 +59,9 @@ class Config_Dict:
                 )
                 exit()
 
-        return_value: type_value = value
+        return cast(type_value, value)
 
-        return return_value
-
-    # T = TypeVar("T")
+    T = TypeVar("T")
 
     def get_value(self, path: List[str], type_value: Type[T] = Any) -> Optional[T]:
         value: Any = self.data
@@ -79,9 +72,7 @@ class Config_Dict:
             except KeyError:
                 return None
 
-        return_value: type_value = value
-
-        return return_value
+        return cast(type_value, value)
 
 
 class IConfig_Class(ABC):
@@ -173,7 +164,7 @@ class IConfig_Class(ABC):
         )
 
     @abstractmethod
-    def validate() -> bool:
+    def validate(self) -> bool:
         raise NotImplementedError
 
     @abstractmethod
@@ -339,7 +330,7 @@ class Nidaq(IConfig_Class):
     def set_tree_name(self, name: str):
         self._tree_name = name
 
-    def get_tree_name(self, name: str) -> str:
+    def get_tree_name(self) -> str:
         return self._tree_name
 
     def tree(self) -> Tree:
@@ -656,7 +647,7 @@ class Config:
         if self.sampling.points_per_decade:
             self._step = 1 / self.sampling.points_per_decade
         else:
-            raise
+            raise ConfigException
         return self._step
 
     def tree(self) -> Tree:

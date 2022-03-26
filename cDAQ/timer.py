@@ -2,10 +2,9 @@ import time
 from datetime import timedelta
 from typing import Optional
 
-from rich.console import Console
 from rich.panel import Panel
 
-console = Console()
+from cDAQ.console import console
 
 
 class TimerError(Exception):
@@ -20,13 +19,12 @@ class Timer_Message:
         self.elapsed_time = elapsed_time
         self.message = message
 
+    def __repr__(self) -> str:
+        return f"[green]{self.message}[/green]: [blue]{self.elapsed_time}[/blue]"
+
     def print(self):
         console.print(
-            Panel(
-                "[green]{}[/green]: [blue]{}[/blue]".format(
-                    self.message, self.elapsed_time
-                )
-            )
+            Panel(f"[green]{self.message}[/green]: [blue]{self.elapsed_time}[/blue]")
         )
 
 
@@ -41,7 +39,7 @@ class Timer:
     def start(self, message: Optional[str] = None):
         """Start a new timer"""
         if self._start_time is not None:
-            raise TimerError(f"Timer is running. Use .stop() to stop it")
+            raise TimerError("Timer is running. Use .stop() to stop it")
 
         if message is not None:
             self._message = message
@@ -51,7 +49,7 @@ class Timer:
     def stop(self) -> Timer_Message:
         """Stop the timer, and report the elapsed time"""
         if self._start_time is None:
-            raise TimerError(f"Timer is not running. Use start() to start it")
+            raise TimerError("Timer is not running. Use start() to start it")
 
         message = self._message
         elapsed_time: timedelta = timedelta(

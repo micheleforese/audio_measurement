@@ -26,7 +26,7 @@ class SCPI:
                 if response == "":
                     response = "NULL"
 
-                console.print("{}:\t{}".format(command, response))
+                console.print(f"{command}:\t{response}")
             else:
                 instr.write(command)
 
@@ -122,7 +122,7 @@ class SCPI:
     def set_output_impedance(output: int, impedance: float) -> str:
         if SCPI.check_output(output):
             console.print("Setting output to 0", style="warning")
-            source = 0
+            output = 0
 
         return ":OUTPut{0}:IMPedance {1}".format(output, impedance)
 
@@ -130,7 +130,7 @@ class SCPI:
     def set_output_load(output: int, load: str) -> str:
         if SCPI.check_output(output):
             console.print("Setting output to 0", style="warning")
-            source = 0
+            output = 0
 
         return ":OUTPut{0}:LOAD {1}".format(output, load)
 

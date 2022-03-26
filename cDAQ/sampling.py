@@ -1,34 +1,26 @@
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
-import rich as rich
-from scipy.interpolate import interp1d
 import scipy as sp
-import scipy.interpolate
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from rich.live import Live
 from rich.panel import Panel
 from rich.table import Column, Table
-from scipy.interpolate import make_interp_spline
 
 from cDAQ.alghorithm import LogaritmicScale
 from cDAQ.config import Config, Plot
 from cDAQ.config.type import ModAuto, Range
 from cDAQ.console import console
+from cDAQ.math import INTERPOLATION_KIND, logx_interpolation_model
 from cDAQ.scpi import SCPI, Bandwidth, Switch
 from cDAQ.timer import Timer, Timer_Message
 from cDAQ.usbtmc import UsbTmc, get_device_list, print_devices_list
-from cDAQ.utility import (
-    INTRERP_KIND,
-    log_interp1d,
-    logx_interp1d,
-    percentage_error,
-    rms,
-    transfer_function,
-)
+from cDAQ.utility import RMS, percentage_error, transfer_function
 from usbtmc import Instrument
 
 
@@ -38,18 +30,18 @@ def sampling_curve(
     debug: bool = False,
 ):
 
-    """Asks for the 2 instruments"""
+    # Asks for the 2 instruments
     list_devices: List[Instrument] = get_device_list()
     if debug:
         print_devices_list(list_devices)
 
     generator: UsbTmc = UsbTmc(list_devices[0])
 
-    """Open the Instruments interfaces"""
+    # Open the Instruments interfaces
     # Auto Close with the destructor
     generator.open()
 
-    """Sets the Configuration for the Voltmeter"""
+    # Sets the Configuration for the Voltmeter
     generator_configs: list = [
         SCPI.clear(),
         SCPI.reset(),
@@ -126,7 +118,7 @@ def sampling_curve(
             time.start()
 
             # GET MEASUREMENTS
-            rms_value: Optional[float] = rms(
+            rms_value: Optional[float] = RMS.rms(
                 frequency=frequency,
                 Fs=Fs,
                 ch_input=config.nidaq.ch_input,
@@ -143,7 +135,7 @@ def sampling_curve(
                     approx=rms_value,
                 )
 
-                bBV: float = 20 * np.math.log10(
+                bBV: float = 20 * np.log10(
                     rms_value * 2 * np.math.sqrt(2) / config.rigol.amplitude_pp
                 )
 
@@ -239,63 +231,54 @@ def plot_from_csv(
             for i in range(len(y_dBV)):
                 y_dBV[i] = y_dBV[i] - y_offset
 
-    fig1, ax = plt.subplots(figsize=(16 * 2, 9 * 2), dpi=300)
+    plot: Tuple[Figure, Axes] = plt.subplots(figsize=(16 * 2, 9 * 2), dpi=300)
 
-    x_frequency_log = [np.math.log10(x_log) for x_log in x_frequency]
+    fig: Figure
+    axes: Axes
 
-    cubic_interpolation_model = interp1d(x_frequency_log, y_dBV, kind="cubic")
-    # cubic_interpolation_model = logx_interp1d(x_frequency_log, y_dBV, kind=INTRERP_KIND.CUBIC)
-    x_frequency_log_interpolated = np.linspace(
-        min(x_frequency_log),
-        max(x_frequency_log),
-        int(len(x_frequency_log) * 10),
+    fig, axes = plot
+
+    x_interpolated, y_interpolated = logx_interpolation_model(
+        x_frequency, y_dBV, int(len(x_frequency) * 10), kind=INTERPOLATION_KIND.CUBIC
     )
 
-    x_frequency_interpolated = [
-        np.math.pow(10, x_intrp) for x_intrp in x_frequency_log_interpolated
-    ]
+    xy_sampled = [x_frequency, y_dBV, "o"]
+    xy_interpolated = [x_interpolated, y_interpolated, "-"]
 
-    y_dBV_interpolated = cubic_interpolation_model(x_frequency_log_interpolated)
-
-    ax.semilogx(
-        x_frequency,
-        y_dBV,
-        "o",
-        x_frequency_interpolated,
-        y_dBV_interpolated,
-        "-",
+    axes.semilogx(
+        *xy_sampled,
+        *xy_interpolated,
         linewidth=4,
     )
-    ax.set_title("Frequency response", fontsize=50)
-    ax.set_xlabel("Frequency ($Hz$)", fontsize=40)
-    ax.set_ylabel(r"Amplitude ($dB$)", fontsize=40)
+    axes.set_title("Frequency response", fontsize=50)
+    axes.set_xlabel("Frequency ($Hz$)", fontsize=40)
+    axes.set_ylabel("Amplitude ($dB$)", fontsize=40)
 
-    ax.tick_params(axis="both", labelsize=15)
-    ax.tick_params(axis="x", rotation=90)
+    axes.tick_params(axis="both", labelsize=15)
+    axes.tick_params(axis="x", rotation=90)
 
     logLocator = ticker.LogLocator(subs=np.arange(0, 1, 0.1))
     logFormatter = ticker.LogFormatter(
         labelOnlyBase=False, minor_thresholds=(np.inf, 0.5)
     )
-    # ax.xaxis.set_scientific(False)
     # X Axis - Major
-    ax.xaxis.set_major_locator(logLocator)
-    ax.xaxis.set_major_formatter(logFormatter)
+    axes.xaxis.set_major_locator(logLocator)
+    axes.xaxis.set_major_formatter(logFormatter)
     # X Axis - Minor
-    ax.xaxis.set_minor_locator(logLocator)
-    ax.xaxis.set_minor_formatter(logFormatter)
-    # ax.ticklabel_format(style="plain", axis='x')
+    axes.xaxis.set_minor_locator(logLocator)
+    axes.xaxis.set_minor_formatter(logFormatter)
 
-    ax.grid(True, linestyle="-", which="both", color="0.7")
+    axes.grid(True, linestyle="-", which="both", color="0.7")
 
     if plot_config.y_limit:
-        ax.set_ylim(plot_config.y_limit.min, plot_config.y_limit.max)
+        axes.set_ylim(plot_config.y_limit.min, plot_config.y_limit.max)
     else:
-        min_y_dBV = min(y_dBV_interpolated)
-        max_y_dBV = max(y_dBV_interpolated)
-        ax.set_ylim(
+        min_y_dBV = min(y_interpolated)
+        max_y_dBV = max(y_interpolated)
+        axes.set_ylim(
             min_y_dBV - 1,
             max_y_dBV + 1,
         )
 
     plt.savefig(plot_file_path)
+    plt.show()

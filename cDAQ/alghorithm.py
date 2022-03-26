@@ -1,4 +1,3 @@
-from math import log10
 from typing import List
 
 import numpy as np
@@ -20,8 +19,8 @@ class LogaritmicScale:
         self.min_Hz = min_Hz
         self.max_Hz = max_Hz
 
-        self.min_index = log10(self.min_Hz)
-        self.max_index = log10(self.max_Hz)
+        self.min_index = np.log10(self.min_Hz)
+        self.max_index = np.log10(self.max_Hz)
 
         self.points_per_decade = points_per_decade
 
@@ -33,4 +32,4 @@ class LogaritmicScale:
             np.linspace(self.min_index, self.max_index, num=m_step_tot, endpoint=True)
         )
 
-        self.f_list = [np.math.pow(10, f) for f in self.f_log_list]
+        self.f_list = [np.float_power(10, f) for f in self.f_log_list]

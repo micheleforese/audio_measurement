@@ -156,35 +156,17 @@ def test_error_sampling():
             else:
                 max_Fs = max_Fs_relative
 
-            # live.console.log(
-            #     "Fs",
-            #     np.logspace(
-            #         np.math.log10(min_Fs_constant),
-            #         np.math.log10(max_Fs),
-            #         10,
-            #     ),
-            # )
-
             for Fs in np.logspace(
-                np.math.log10(min_Fs_constant),
-                np.math.log10(max_Fs),
+                np.log10(min_Fs_constant),
+                np.log10(max_Fs),
                 10,
             ):
                 if Fs > max_Fs:
                     Fs = max_Fs
 
-                # live.console.log(
-                #     "n_sample",
-                #     np.logspace(
-                #         np.math.log10(min_n_sample_per_period_constant),
-                #         np.math.log10(max_n_sample_constant),
-                #         10,
-                #     ),
-                # )
-
                 for n_sample in np.logspace(
-                    np.math.log10(min_n_sample_per_period_constant),
-                    np.math.log10(max_n_sample_constant),
+                    np.log10(min_n_sample_per_period_constant),
+                    np.log10(max_n_sample_constant),
                     10,
                 ):
                     n_sample = int(round(n_sample))
@@ -211,7 +193,7 @@ def test_error_sampling():
                     message: Timer_Message = time.stop()
 
                     perc_error = percentage_error(
-                        exact=(config.amplitude_pp / 2) / np.math.sqrt(2),
+                        exact=(config.rigol.amplitude_pp / 2) / np.math.sqrt(2),
                         approx=rms_value,
                     )
 
