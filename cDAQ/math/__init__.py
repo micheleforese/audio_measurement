@@ -45,4 +45,10 @@ def logx_interpolation_model(
 
     y_interpolated = interpolation_model(x_log_interpolated)
 
-    return tuple(x_interpolated, y_interpolated)
+    return x_interpolated, y_interpolated
+
+
+def decimal_decompose(x) -> Tuple[float, int]:
+    exponent = int(math.floor(np.log10(abs(x)))) if x != 0 else 0
+    mantissa = float(x / 10**exponent)
+    return mantissa, exponent

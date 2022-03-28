@@ -1,4 +1,5 @@
 from pathlib import Path
+from tokenize import Exponent
 from typing import List, Optional, Tuple
 
 import matplotlib.pyplot as plt
@@ -6,6 +7,7 @@ import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 import scipy as sp
+import matplotlib
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from rich.live import Live
@@ -22,6 +24,8 @@ from cDAQ.timer import Timer, Timer_Message
 from cDAQ.usbtmc import UsbTmc, get_device_list, print_devices_list
 from cDAQ.utility import RMS, percentage_error, transfer_function
 from usbtmc import Instrument
+
+matplotlib.use("TkAgg")
 
 
 def sampling_curve(
@@ -149,8 +153,8 @@ def sampling_curve(
                     max_dB = transfer_func_dB
 
                 table.add_row(
-                    "{:.5f}".format(frequency),
-                    "{:.5f}".format(Fs),
+                    "{:.2f}".format(frequency),
+                    "{:.2f}".format(Fs),
                     "{}".format(config.sampling.number_of_samples),
                     "{:.5f} ".format(round(rms_value, 5)),
                     "{:.5f} ".format(
@@ -239,7 +243,10 @@ def plot_from_csv(
     fig, axes = plot
 
     x_interpolated, y_interpolated = logx_interpolation_model(
-        x_frequency, y_dBV, int(len(x_frequency) * 10), kind=INTERPOLATION_KIND.CUBIC
+        x_frequency,
+        y_dBV,
+        int(len(x_frequency) * 5),
+        kind=INTERPOLATION_KIND.CUBIC,
     )
 
     xy_sampled = [x_frequency, y_dBV, "o"]
@@ -250,23 +257,43 @@ def plot_from_csv(
         *xy_interpolated,
         linewidth=4,
     )
-    axes.set_title("Frequency response", fontsize=50)
-    axes.set_xlabel("Frequency ($Hz$)", fontsize=40)
-    axes.set_ylabel("Amplitude ($dB$)", fontsize=40)
+    # Added Line to y = 3
+    axes.plot(
+        [0, max(x_interpolated)],
+        [3, 3],
+        "k-",
+        color="red",
+    )
 
-    axes.tick_params(axis="both", labelsize=15)
+    axes.set_title(
+        "Frequency response",
+        # fontsize=50,
+    )
+    axes.set_xlabel(
+        "Frequency ($Hz$)",
+        # fontsize=40,
+    )
+    axes.set_ylabel(
+        "Amplitude ($dB$)",
+        # fontsize=40,
+    )
+
+    axes.tick_params(
+        axis="both",
+        # labelsize=15,
+    )
     axes.tick_params(axis="x", rotation=90)
 
     logLocator = ticker.LogLocator(subs=np.arange(0, 1, 0.1))
-    logFormatter = ticker.LogFormatter(
-        labelOnlyBase=False, minor_thresholds=(np.inf, 0.5)
-    )
+
+    def logMinorFormatFunc(x, pos):
+        return "{:.0f}".format(x)
+
+    logMinorFormat = ticker.FuncFormatter(logMinorFormatFunc)
+
     # X Axis - Major
     axes.xaxis.set_major_locator(logLocator)
-    axes.xaxis.set_major_formatter(logFormatter)
-    # X Axis - Minor
-    axes.xaxis.set_minor_locator(logLocator)
-    axes.xaxis.set_minor_formatter(logFormatter)
+    axes.xaxis.set_major_formatter(logMinorFormat)
 
     axes.grid(True, linestyle="-", which="both", color="0.7")
 
