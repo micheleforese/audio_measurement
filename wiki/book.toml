@@ -1,0 +1,6 @@
+[book]
+authors = ["Michele Forese"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Audio Measurement Documentation"

@@ -21,3 +21,6 @@ env
 
 # Test script
 audio/**
+
+# Wiki mdbook
+wiki/book
