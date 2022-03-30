@@ -1,5 +1,4 @@
-from setuptools import setup, find_packages
-
+from setuptools import find_packages, setup
 
 with open("README.md") as f:
     readme = f.read()
@@ -15,7 +14,16 @@ setup(
     # license=license,
     packages=find_packages(exclude=("tests", "doc", "driver", "data", "config")),
     install_requires=[
-        "Click",
+        "click",
+        "rich",
+        "pyjson5",
+        "matplotlib",
+        "numpy",
+        "scipy",
+        "pandas",
+        "python-usbtmc",
+        "pyusb",
+        "nidaqmx",
     ],
     entry_points={
         "console_scripts": [
