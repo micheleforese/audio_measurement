@@ -1,3 +1,4 @@
+import functools
 import time
 from datetime import timedelta
 from typing import Optional
@@ -59,3 +60,42 @@ class Timer:
         self._start_time = None
         self._message = ""
         return Timer_Message(elapsed_time, message)
+
+
+def timer(timer_message: Optional[str] = None):
+    def decorator_func(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            timer = Timer()
+            timer.start(timer_message if timer_message else func.__name__)
+            ret = func(*args, **kwargs)
+            message = timer.stop()
+            message.print()
+            return ret
+
+        return wrapper
+
+    return decorator_func
+
+
+class timeit:
+    """decorator for becnhmarking"""
+
+    fnt: Optional[str]
+
+    def __init__(self, fnt: Optional[str] = None) -> None:
+        self.fnt = fnt
+
+    def __call__(self, fn):
+        # returns the decorator itself, which accepts a function and returns another function
+        # wraps ensures that the name and docstring of 'fn' is preserved in 'wrapper'
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            timer = Timer()
+            timer.start(self.fnt if self.fnt else fn.__name__)
+            res = fn(*args, **kwargs)
+            message = timer.stop()
+            message.print()
+            return res
+
+        return wrapper

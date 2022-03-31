@@ -25,8 +25,6 @@ from cDAQ.usbtmc import UsbTmc, get_device_list, print_devices_list
 from cDAQ.utility import RMS, percentage_error, transfer_function
 from usbtmc import Instrument
 
-matplotlib.use("TkAgg")
-
 
 def sampling_curve(
     config: Config,
@@ -267,20 +265,20 @@ def plot_from_csv(
 
     axes.set_title(
         "Frequency response",
-        # fontsize=50,
+        fontsize=50,
     )
     axes.set_xlabel(
         "Frequency ($Hz$)",
-        # fontsize=40,
+        fontsize=40,
     )
     axes.set_ylabel(
         "Amplitude ($dB$)",
-        # fontsize=40,
+        fontsize=40,
     )
 
     axes.tick_params(
         axis="both",
-        # labelsize=15,
+        labelsize=15,
     )
     axes.tick_params(axis="x", rotation=90)
 

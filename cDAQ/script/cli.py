@@ -1,5 +1,6 @@
 import pathlib
 from datetime import datetime
+from timeit import timeit
 from typing import List, Optional, Tuple, Union
 
 import click
@@ -7,7 +8,8 @@ from cDAQ.config import Config
 from cDAQ.config.type import ModAuto, Range
 from cDAQ.console import console
 from cDAQ.sampling import plot_from_csv, sampling_curve
-from cDAQ.timer import Timer
+from cDAQ.script.test import testTimer
+from cDAQ.timer import Timer, timer, timeit
 from cDAQ.config import Plot
 from rich.panel import Panel
 from rich.prompt import Confirm
@@ -15,19 +17,48 @@ from rich.prompt import Confirm
 
 @click.group()
 def cli():
-    return 0
+    pass
 
 
-@cli.command()
-@click.option("--config", "config_path", type=pathlib.Path, required=True)
-@click.option("--home", type=pathlib.Path, default=pathlib.Path.cwd())
+@cli.command(help="Audio Sweep")
+@click.option(
+    "--config",
+    "config_path",
+    type=pathlib.Path,
+    help="Configuration path of the config file in json5 format.",
+    required=True,
+)
+@click.option(
+    "--home",
+    type=pathlib.Path,
+    help="Home path, where the csv and plot image will be created.",
+    default=pathlib.Path.cwd(),
+)
 # Config Overloads
 @click.option(
-    "--amplitude_pp", type=float, help="The Amplitude of generated wave.", default=None
+    "--amplitude_pp",
+    type=float,
+    help="The Amplitude of generated wave.",
+    default=None,
 )
-@click.option("--n_fs", type=float, help="Fs * n. Oversampling.", default=None)
-@click.option("--spd", type=float, help="Samples per decade.", default=None)
-@click.option("--n_samp", type=int, help="Number of samples.", default=None)
+@click.option(
+    "--n_fs",
+    type=float,
+    help="Fs * n. Oversampling.",
+    default=None,
+)
+@click.option(
+    "--spd",
+    type=float,
+    help="Samples per decade.",
+    default=None,
+)
+@click.option(
+    "--n_samp",
+    type=int,
+    help="Number of samples.",
+    default=None,
+)
 @click.option(
     "--f_range",
     nargs=2,
@@ -36,24 +67,49 @@ def cli():
     default=None,
 )
 @click.option(
-    "--y_lim", nargs=2, type=(float, float), help="Range y Plot.", default=None
+    "--y_lim",
+    nargs=2,
+    type=(float, float),
+    help="Range y Plot.",
+    default=None,
 )
 @click.option(
-    "--x_lim", nargs=2, type=(float, float), help="Range x Plot.", default=None
+    "--x_lim",
+    nargs=2,
+    type=(float, float),
+    help="Range x Plot.",
+    default=None,
 )
-@click.option("--y_offset", type=float, default=None)
+@click.option(
+    "--y_offset",
+    type=float,
+    help="Offset value.",
+    default=None,
+)
 @click.option(
     "--y_offset_auto",
     type=click.Choice(["min", "max", "no"], case_sensitive=False),
+    help='Offset Mode, can be: "min", "max" or "no".',
     default=None,
 )
 # Flags
-@click.option("--time", is_flag=True, help="Elapsed time.", default=False)
 @click.option(
-    "--debug", is_flag=True, help="Will print verbose messages.", default=False
+    "--time",
+    is_flag=True,
+    help="Elapsed time.",
+    default=False,
 )
 @click.option(
-    "--simulate", is_flag=True, help="Will Simulate the Sweep.", default=False
+    "--debug",
+    is_flag=True,
+    help="Will print verbose messages.",
+    default=False,
+)
+@click.option(
+    "--simulate",
+    is_flag=True,
+    help="Will Simulate the Sweep.",
+    default=False,
 )
 def sweep(
     config_path: pathlib.Path,
@@ -71,6 +127,7 @@ def sweep(
     debug: bool,
     simulate: bool,
 ):
+
     HOME_PATH = home.absolute()
 
     datetime_now = datetime.now().strftime(f"%Y-%m-%d--%H-%M-%f")
@@ -133,7 +190,7 @@ def sweep(
 
         sampling_curve(
             config=config,
-            measurements_file_path=HOME_PATH / "audio-[{}].csv".format(datetime_now),
+            measurements_file_path=HOME_PATH / "audio-{}.csv".format(datetime_now),
             debug=debug,
         )
 
@@ -143,21 +200,31 @@ def sweep(
     if not simulate:
 
         plot_from_csv(
-            measurements_file_path=HOME_PATH / "audio-[{}].csv".format(datetime_now),
-            plot_file_path=HOME_PATH / "audio-[{}].png".format(datetime_now),
+            measurements_file_path=HOME_PATH / "audio-{}.csv".format(datetime_now),
+            plot_file_path=HOME_PATH / "audio-{}.png".format(datetime_now),
             plot_config=config.plot,
             debug=debug,
         )
 
 
-@cli.command()
-@click.option("--csv", type=pathlib.Path, default=None)
-@click.option("--home", type=pathlib.Path, default=pathlib.Path.cwd())
+@cli.command(help="Plot from a csv file.")
+@click.option(
+    "--csv",
+    type=pathlib.Path,
+    help="Measurements file path in csv format.",
+    default=None,
+)
+@click.option(
+    "--home",
+    type=pathlib.Path,
+    help="Home path, where the plot image will be created.",
+    default=pathlib.Path.cwd(),
+)
 @click.option(
     "--format",
-    help="The file format of the plot.",
     type=click.Choice(["png", "pdf"], case_sensitive=False),
     multiple=True,
+    help='Format of the plot, can be: "png" or "pdf".',
     default=["png"],
 )
 @click.option(
@@ -172,14 +239,23 @@ def sweep(
     type=(float, float),
     help="Range x Plot.",
 )
-@click.option("--y_offset", type=float, default=None)
 @click.option(
-    "--y_offset_auto",
-    type=click.Choice(["min", "max", "no"], case_sensitive=False),
+    "--y_offset",
+    type=float,
+    help="Offset value.",
     default=None,
 )
 @click.option(
-    "--debug", is_flag=True, help="Will print verbose messages.", default=False
+    "--y_offset_auto",
+    type=click.Choice(["min", "max", "no"], case_sensitive=False),
+    help='Offset Mode, can be: "min", "max" or "no".',
+    default=None,
+)
+@click.option(
+    "--debug",
+    is_flag=True,
+    help="Will print verbose messages.",
+    default=False,
 )
 def plot(
     csv: Optional[pathlib.Path],
@@ -236,13 +312,11 @@ def plot(
     if is_most_recent_file:
         # Take the most recent csv File.
         csv_file_list: List[pathlib.Path] = [
-            csv for csv in HOME_PATH.rglob("*.csv") if csv.is_file()
+            csv for csv in HOME_PATH.glob("*.csv") if csv.is_file()
         ]
 
         csv_file_list.sort(
-            key=lambda name: datetime.strptime(
-                name.stem, f"audio-[%Y-%m-%d--%H-%M-%f]"
-            ),
+            key=lambda name: datetime.strptime(name.stem, f"audio-%Y-%m-%d--%H-%M-%f"),
             # reverse=True,
         )
         try:
@@ -256,13 +330,21 @@ def plot(
 
     for plot_file_format in format:
         plot_file = plot_file.with_suffix("." + plot_file_format)
-        console.print("Plotting file: {}".format(plot_file))
+        console.print('Plotting file: "{}"'.format(plot_file.absolute()))
         plot_from_csv(
             measurements_file_path=csv_file,
             plot_file_path=plot_file,
             plot_config=plot_config,
             debug=debug,
         )
+
+
+@cli.group()
+def test():
+    pass
+
+
+test.add_command(testTimer)
 
 
 # @cli.command()

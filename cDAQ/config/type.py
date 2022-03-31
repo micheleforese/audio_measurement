@@ -36,3 +36,6 @@ class ModAuto(enum.Enum):
     NO = "no"
     MIN = "min"
     MAX = "max"
+
+    def __str__(self) -> str:
+        return "{}".format(self.name)
