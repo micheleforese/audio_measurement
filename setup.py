@@ -1,7 +1,8 @@
 from setuptools import find_packages, setup
 
+readme = ""
 with open("README.md") as f:
-    readme = f.read()
+    readme: str = f.read()
 
 setup(
     name="audio_measurements",
