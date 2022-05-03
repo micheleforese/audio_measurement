@@ -141,7 +141,8 @@ def sweep(
     config_file = config_path.absolute()
     config.from_file(config_file)
 
-    console.print(Panel(config.tree(), title="Configuration JSON - FROM FILE"))
+    if debug:
+        console.print(Panel(config.tree(), title="Configuration JSON - FROM FILE"))
 
     # Override Configurations
     if amplitude_pp:
@@ -185,19 +186,21 @@ def sweep(
     if debug:
         config.print()
 
+    console.print(Panel("[blue]Sweep start[/]"))
+
     timer = Timer("Sweep time")
     if time:
         timer.start()
 
     if not simulate:
 
-        console.print("sampling_curve()")
-
         sampling_curve(
             config=config,
             measurements_file_path=HOME_PATH / "audio-{}.csv".format(datetime_now),
             debug=debug,
         )
+
+    console.print(Panel("[blue]Sweep end[/]"))
 
     if time:
         timer.stop().print()

@@ -87,10 +87,8 @@ def sampling_curve(
         Column("Fs [Hz]", justify="right"),
         Column("Number of samples", justify="right"),
         Column("Rms Value [V]", justify="right"),
-        Column("Voltage Expected", justify="right"),
-        Column("Relative Error", justify="right"),
-        Column("dB Error", justify="right"),
-        Column("Time [s]", justify="right"),
+        Column("Gain \[dB]", justify="right"),
+        Column("Time \[s]", justify="right"),
     )
 
     max_dB: Optional[float] = None
@@ -107,8 +105,6 @@ def sampling_curve(
 
             # Sets the Frequency
             generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
-
-            # sleep(0.2)
 
             Fs = config.nidaq._max_Fs
 
@@ -136,7 +132,7 @@ def sampling_curve(
                 max_voltage=config.nidaq.max_voltage,
                 min_voltage=config.nidaq.min_voltage,
                 number_of_samples=config.sampling.number_of_samples,
-                time_report=True,
+                time_report=False,
             )
 
             message: Timer_Message = time.stop()
@@ -165,12 +161,6 @@ def sampling_curve(
                     "{:.2f}".format(Fs),
                     "{}".format(config.sampling.number_of_samples),
                     "{:.5f} ".format(round(rms_value, 5)),
-                    "{:.5f} ".format(
-                        round((config.rigol.amplitude_pp / 2) / np.math.sqrt(2), 5)
-                    ),
-                    "[{}]{:.3f}[/]".format(
-                        "red" if perc_error <= 0 else "green", round(perc_error, 3)
-                    ),
                     "[{}]{:.2f}[/]".format(
                         "red" if bBV <= 0 else "green", transfer_func_dB
                     ),
@@ -204,8 +194,10 @@ def plot_from_csv(
     plot_config: Plot,
     debug: bool = False,
 ):
+    console.print(Panel("[blue]Plotting start[/]"))
+
     if debug:
-        console.print(Panel(plot_config.tree()))
+        console.print(Panel(plot_config.tree(), title="Plot Configurations"))
 
     x_frequency: List[float] = []
     y_dBV: List[float] = []
@@ -244,7 +236,7 @@ def plot_from_csv(
             for i in range(len(y_dBV)):
                 y_dBV[i] = y_dBV[i] - y_offset
 
-    plot: Tuple[Figure, Axes] = plt.subplots(figsize=(16 * 2, 9 * 2), dpi=300)
+    plot: Tuple[Figure, Axes] = plt.subplots(figsize=(16 * 2, 9 * 2), dpi=600)
 
     fig: Figure
     axes: Axes
@@ -270,7 +262,7 @@ def plot_from_csv(
     axes.plot(
         [0, max(x_interpolated)],
         [-3, -3],
-        "k-",
+        "-",
         color="green",
     )
 
@@ -322,6 +314,8 @@ def plot_from_csv(
         )
 
     plt.tight_layout()
+
+    console.print(Panel("[blue]Plotting end[/]"))
 
     plt.savefig(plot_file_path)
     if debug:

@@ -39,8 +39,11 @@ def create_latex_file(
     home: pathlib.Path,
     debug: bool = False,
 ):
-    console.print("[PATH - image_file] - {}".format(image_file.absolute()))
-    console.print("[PATH - home] - {}".format(home.absolute()))
+
+    console.print(Panel("[blue]Latex pdf creation start[/]"))
+
+    console.print('[PATH - image_file] - "{}"'.format(image_file.absolute()))
+    console.print('[PATH - home] - "{}"'.format(home.absolute()))
 
     latex_packages = use_package(
         [
@@ -93,7 +96,7 @@ def create_latex_file(
     latex_end = "\n" + r"\end{document}"
 
     docker_image_file_path = image_file.name
-    console.print("[PATH - docker - image_file] - {}".format(docker_image_file_path))
+    console.print('[PATH - docker - image_file] - "{}"'.format(docker_image_file_path))
 
     latex = (
         ""
@@ -150,7 +153,7 @@ def create_latex_file(
     latex_file_path: pathlib.Path = image_file.with_suffix(".tex")
     docker_latex_file_path = latex_file_path.name
 
-    console.print("[PATH - latex_file_path] - {}".format(latex_file_path))
+    console.print('[PATH - latex_file_path] - "{}"'.format(latex_file_path))
 
     with open(latex_file_path, "w") as f:
         f.write(latex_complete)
@@ -162,13 +165,17 @@ def create_latex_file(
     # Get User ID and GROUP
     console.print("[DOCKER] - Retriving id user.")
     user_id, stderr = exec_command(["id", "-u"])
-    console.log(user_id)
-    console.log(stderr)
+
+    if debug:
+        console.log(user_id)
+        console.log(stderr)
 
     console.print("[DOCKER] - Retriving id group.")
     user_group, stderr = exec_command(["id", "-g"])
-    console.log(user_group)
-    console.log(stderr)
+
+    if debug:
+        console.log(user_group)
+        console.log(stderr)
 
     docker_instance = Docker()
 
@@ -183,20 +190,19 @@ def create_latex_file(
             group=1000,
         ),
         volume=Volume(local=home.absolute().resolve(), remote="/data"),
-        command="pdflatex  -output-format={} {}".format(
-            # "{}-{}".format(out_directory, image_file.stem),
+        command="pdflatex -output-format={} {}".format(
             "pdf",
             latex_file_path.name,
-            # "audio-2022-04-29--12-30-528497.tex",
         ),
     )
 
-    console.print('[DOCKER] - Command: "{}".'.format(docker_command_run))
+    console.print("[DOCKER] - Command: \n\t{}".format(docker_command_run))
 
     console.print("[DOCKER] - Running image.")
     stdout, stderr = exec_command(docker_command_run)
 
-    console.log("RESULT:" + stdout)
-    console.log("ERROR" + stderr)
+    if debug:
+        console.log("RESULT:" + stdout)
+        console.log("ERROR:" + stderr)
 
-    console.print("[DOCKER] - pdflatex done.")
+    console.print(Panel("[blue]Latex pdf creation end[/]"))

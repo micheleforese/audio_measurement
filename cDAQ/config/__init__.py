@@ -662,4 +662,4 @@ class Config:
         return tree
 
     def print(self):
-        console.print(Panel(self.tree()))
+        console.print(Panel(self.tree(), title="Configuration JSON"))
