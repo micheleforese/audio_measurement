@@ -170,8 +170,6 @@ class RMS:
 
         timer = Timer()
 
-        # number_of_samples = 800
-
         # Pre allocate the array
         try:
             voltages = read_voltages(
@@ -261,34 +259,39 @@ def read_voltages(
     frequency: float,
     Fs: float,
     number_of_samples: int,
-    ch_input: str = "cDAQ9189-1CDBE0AMod1/ai1",
-    min_voltage: float = -4,
-    max_voltage: float = 4,
+    ch_input: str,
+    min_voltage: float,
+    max_voltage: float,
 ) -> np.ndarray:
 
     if frequency > Fs / 2:
         raise ValueError("The Sampling rate is low: Fs / 2 > frequency.")
 
-    task = nidaqmx.Task("Input Voltage")
-    task.ai_channels.add_ai_voltage_chan(
-        ch_input, min_val=min_voltage, max_val=max_voltage
-    )
+    try:
+        task = nidaqmx.Task("Input Voltage")
+        nidaqmx
 
-    # Sets the Clock sampling rate
-    task.timing.cfg_samp_clk_timing(Fs)
+        task.ai_channels.add_ai_voltage_chan(
+            ch_input, min_val=min_voltage, max_val=max_voltage
+        )
 
-    # Pre allocate the array
-    voltages = np.ndarray(number_of_samples)
+        # Sets the Clock sampling rate
+        task.timing.cfg_samp_clk_timing(Fs)
 
-    # Sets the task for the stream_reader
-    channel1_stream_reader = nidaqmx.stream_readers.AnalogSingleChannelReader(
-        task.in_stream
-    )
+        # Pre allocate the array
+        voltages = np.ndarray(number_of_samples)
 
-    # Sampling the voltages
-    channel1_stream_reader.read_many_sample(
-        voltages, number_of_samples_per_channel=number_of_samples
-    )
-    task.close()
+        # Sets the task for the stream_reader
+        channel1_stream_reader = nidaqmx.stream_readers.AnalogSingleChannelReader(
+            task.in_stream
+        )
+
+        # Sampling the voltages
+        channel1_stream_reader.read_many_sample(
+            voltages, number_of_samples_per_channel=number_of_samples
+        )
+        task.close()
+    except Exception as e:
+        console.print("[EXCEPTION] - {}".format(e))
 
     return voltages

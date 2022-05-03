@@ -7,7 +7,10 @@ import click
 from cDAQ.config import Config
 from cDAQ.config.type import ModAuto, Range
 from cDAQ.console import console
+from cDAQ.docker import Docker
+from cDAQ.docker.latex import create_latex_file
 from cDAQ.sampling import plot_from_csv, sampling_curve
+from cDAQ.script.gui import GuiAudioMeasurements
 from cDAQ.script.test import testTimer
 from cDAQ.timer import Timer, timer, timeit
 from cDAQ.config import Plot
@@ -128,7 +131,7 @@ def sweep(
     simulate: bool,
 ):
 
-    HOME_PATH = home.absolute()
+    HOME_PATH = home.absolute().resolve()
 
     datetime_now = datetime.now().strftime(f"%Y-%m-%d--%H-%M-%f")
 
@@ -188,6 +191,8 @@ def sweep(
 
     if not simulate:
 
+        console.print("sampling_curve()")
+
         sampling_curve(
             config=config,
             measurements_file_path=HOME_PATH / "audio-{}.csv".format(datetime_now),
@@ -197,14 +202,19 @@ def sweep(
     if time:
         timer.stop().print()
 
+    measurements_file = HOME_PATH / "audio-{}.csv".format(datetime_now)
+    image_file = HOME_PATH / "audio-{}.png".format(datetime_now)
+
     if not simulate:
 
         plot_from_csv(
-            measurements_file_path=HOME_PATH / "audio-{}.csv".format(datetime_now),
-            plot_file_path=HOME_PATH / "audio-{}.png".format(datetime_now),
+            measurements_file_path=measurements_file,
+            plot_file_path=image_file,
             plot_config=config.plot,
             debug=debug,
         )
+
+    create_latex_file(image_file, home=HOME_PATH, debug=debug)
 
 
 @cli.command(help="Plot from a csv file.")
@@ -337,6 +347,8 @@ def plot(
             plot_config=plot_config,
             debug=debug,
         )
+        if plot_file_format == "png":
+            create_latex_file(plot_file, home=home)
 
 
 @cli.group()
@@ -347,9 +359,9 @@ def test():
 test.add_command(testTimer)
 
 
-# @cli.command()
-# @click.option("--home", type=pathlib.Path, default=pathlib.Path.cwd())
-# def gui(home: pathlib.Path):
-#     # SimpleApp.run(log="textual.log")
-#     App = AudioMeasurementsApp(home)
-#     App.run(title="Audio Measurements", log="audio_measurements_app.log", home=home)
+@cli.command()
+@click.option("--home", type=pathlib.Path, default=pathlib.Path.cwd())
+def gui(home: pathlib.Path):
+    # SimpleApp.run(log="textual.log")
+    App = GuiAudioMeasurements()
+    App.run()

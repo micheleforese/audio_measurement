@@ -1,29 +1,27 @@
 from pathlib import Path
-from tokenize import Exponent
+from time import sleep
 from typing import List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
-import scipy as sp
-import matplotlib
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from rich.live import Live
 from rich.panel import Panel
 from rich.table import Column, Table
+from usbtmc import Instrument
 
 from cDAQ.alghorithm import LogaritmicScale
 from cDAQ.config import Config, Plot
-from cDAQ.config.type import ModAuto, Range
+from cDAQ.config.type import ModAuto
 from cDAQ.console import console
 from cDAQ.math import INTERPOLATION_KIND, logx_interpolation_model
 from cDAQ.scpi import SCPI, Bandwidth, Switch
 from cDAQ.timer import Timer, Timer_Message
 from cDAQ.usbtmc import UsbTmc, get_device_list, print_devices_list
 from cDAQ.utility import RMS, percentage_error, transfer_function
-from usbtmc import Instrument
 
 
 def sampling_curve(
@@ -43,10 +41,13 @@ def sampling_curve(
     # Auto Close with the destructor
     generator.open()
 
+    if debug:
+        console.print("[Rigol] - Opened.")
+
     # Sets the Configuration for the Voltmeter
     generator_configs: list = [
         SCPI.clear(),
-        SCPI.reset(),
+        # SCPI.reset(),
         SCPI.set_output(1, Switch.OFF),
         SCPI.set_function_voltage_ac(),
         SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
@@ -56,11 +57,19 @@ def sampling_curve(
 
     SCPI.exec_commands(generator, generator_configs)
 
+    # sleep(1)
+
+    if debug:
+        console.print("[Rigol] - configured.")
+
     generator_ac_curves: List[str] = [
         SCPI.set_output(1, Switch.ON),
     ]
 
     SCPI.exec_commands(generator, generator_ac_curves)
+
+    if debug:
+        console.print("[Rigol] - opened output 1.")
 
     log_scale: LogaritmicScale = LogaritmicScale(
         config.sampling.f_range.min,
@@ -127,11 +136,12 @@ def sampling_curve(
                 max_voltage=config.nidaq.max_voltage,
                 min_voltage=config.nidaq.min_voltage,
                 number_of_samples=config.sampling.number_of_samples,
+                time_report=True,
             )
 
-            if rms_value:
-                message: Timer_Message = time.stop()
+            message: Timer_Message = time.stop()
 
+            if rms_value:
                 perc_error = percentage_error(
                     exact=(config.rigol.amplitude_pp / 2) / np.math.sqrt(2),
                     approx=rms_value,
@@ -175,16 +185,17 @@ def sampling_curve(
                         bBV,
                     )
                 )
+    f.close()
 
     SCPI.exec_commands(
         generator,
         [
             SCPI.set_output(1, Switch.OFF),
+            SCPI.clear(),
         ],
     )
-    console.print(Panel("max_dB: {}".format(max_dB)))
 
-    f.close()
+    console.print(Panel("max_dB: {}".format(max_dB)))
 
 
 def plot_from_csv(
@@ -215,8 +226,8 @@ def plot_from_csv(
         )
     )
 
+    y_offset: Optional[float] = None
     if plot_config.y_offset:
-        y_offset: Optional[float] = None
         if isinstance(plot_config.y_offset, float):
             y_offset = plot_config.y_offset
         elif isinstance(plot_config.y_offset, ModAuto):
@@ -258,9 +269,9 @@ def plot_from_csv(
     # Added Line to y = 3
     axes.plot(
         [0, max(x_interpolated)],
-        [3, 3],
+        [-3, -3],
         "k-",
-        color="red",
+        color="green",
     )
 
     axes.set_title(
@@ -272,17 +283,22 @@ def plot_from_csv(
         fontsize=40,
     )
     axes.set_ylabel(
-        "Amplitude ($dB$)",
+        "Amplitude ($dB$) ($0dB = {}Vpp$)".format(y_offset if y_offset else "NULL"),
         fontsize=40,
     )
 
     axes.tick_params(
         axis="both",
-        labelsize=15,
+        labelsize=22,
     )
     axes.tick_params(axis="x", rotation=90)
 
-    logLocator = ticker.LogLocator(subs=np.arange(0, 1, 0.1))
+    granularity_ticks = 0.1
+
+    if (max(x_interpolated) / min(x_interpolated)) <= 3.3:
+        granularity_ticks = 0.01
+
+    logLocator = ticker.LogLocator(subs=np.arange(0, 1, granularity_ticks))
 
     def logMinorFormatFunc(x, pos):
         return "{:.0f}".format(x)
@@ -305,5 +321,8 @@ def plot_from_csv(
             max_y_dBV + 1,
         )
 
+    plt.tight_layout()
+
     plt.savefig(plot_file_path)
-    plt.show()
+    if debug:
+        console.print('Plotted file: "{}"'.format(plot_file_path))

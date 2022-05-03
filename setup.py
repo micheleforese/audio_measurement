@@ -25,6 +25,8 @@ setup(
         "python-usbtmc",
         "pyusb",
         "nidaqmx",
+        "PyQt5",
+        "PyQt6",
     ],
     entry_points={
         "console_scripts": [
