@@ -34,7 +34,7 @@ class Docker:
         command: Optional[str] = None,
     ) -> str:
 
-        docker_run_command = ["sudo", "docker", "run"]
+        docker_run_command = ["docker", "run"]
 
         if remove_on_exit:
             docker_run_command.append("--rm")

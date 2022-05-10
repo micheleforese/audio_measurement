@@ -4,10 +4,26 @@ from struct import pack
 from typing import List, Optional
 
 from matplotlib import use
+from rich.console import Group
+from rich.live import Live
+from rich.panel import Panel
+from rich.progress import (
+    BarColumn,
+    DownloadColumn,
+    MofNCompleteColumn,
+    Progress,
+    SpinnerColumn,
+    TaskID,
+    TextColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+    TransferSpeedColumn,
+)
+
+import cDAQ.ui.terminal as ui_t
 from cDAQ.console import console
 from cDAQ.docker import Docker, User, Volume
 from cDAQ.docker.utility import exec_command
-from rich.panel import Panel
 
 
 class Package:
@@ -40,10 +56,19 @@ def create_latex_file(
     debug: bool = False,
 ):
 
-    console.print(Panel("[blue]Latex pdf creation start[/]"))
+    live_group = Group(Panel(ui_t.progress_list_task))
 
-    console.print('[PATH - image_file] - "{}"'.format(image_file.absolute()))
-    console.print('[PATH - home] - "{}"'.format(home.absolute()))
+    live = Live(live_group, console=console)
+    live.start()
+
+    task_latex = ui_t.progress_list_task.add_task(
+        "Create Latex pdf", task="Configuration"
+    )
+    ui_t.progress_list_task.start_task(task_latex)
+
+    if debug:
+        console.print('[PATH - image_file] - "{}"'.format(image_file.absolute()))
+        console.print('[PATH - home] - "{}"'.format(home.absolute()))
 
     latex_packages = use_package(
         [
@@ -67,28 +92,12 @@ def create_latex_file(
         ]
     )
 
-    latex_udc = (
-        r"\newcommand{\der}[3][]{\frac{d^{#1} #2}{d #3^{#1}}}"
-        + "\n"
-        + r"\newcommand{\dder}[3][]{\frac{\partial{d}^{#1} #2}{\partial{d} #3^{#1} }}"
-        + "\n"
-        + r"\newcommand{\uvec}[1]{\hat{#1}}"
-        + "\n"
-        + r"\newcommand{\cvec}[2]{#1\uvec{#2}}"
-        + "\n"
-        + r"\newcommand{\veccomp}[4][]{\cvec{#2}{i^{#1}} + \cvec{#3}{j^{#1}} + \cvec{#4}{k^{#1}}}"
-        + "\n"
-    )
-
-    # latex_udc = ""
-
     latex_start = (
         r"\documentclass[a4, landscape]{article}"
         + "\n"
         + latex_packages
         + "\pgfplotsset{compat=1.18}"
         + "\n"
-        + latex_udc
         + r"\begin{document}"
         + "\n"
     )
@@ -96,39 +105,22 @@ def create_latex_file(
     latex_end = "\n" + r"\end{document}"
 
     docker_image_file_path = image_file.name
-    console.print('[PATH - docker - image_file] - "{}"'.format(docker_image_file_path))
+    if debug:
+        console.print(
+            '[PATH - docker - image_file] - "{}"'.format(docker_image_file_path)
+        )
 
     latex = (
-        ""
-        # +"\n"
-        # + "\n"
-        # + "\n"
-        + "\n" + r"\null" + "\n" + r"\vfill"
-        # + r"}}}}"
-        # + r"\makebox[\textwidth]{"
-        + "\n"
+        "" + "\n" + r"\null" + "\n" + r"\vfill" + "\n"
         r"\begin{figure}[h]"
-        # + "\n"
         + "\centering"
-        # + "\n"
-        # + r"\hvspace*{-1in}"
-        # + "\n"
         + r"\includegraphics[width=.9\paperwidth]{"
         + "{}".format(docker_image_file_path)
         + r"}"
-        # + r"\includegraphics[width=\textwidth]{{{}}}".format(docker_image_file_path)
-        + "\n" + r"\end{figure}" + "\n" + r"\vfill"
-        # + r"\paragraph{First Paragraph}"
-        #######
-        # + "\n"
-        # + r"\begin{tikzpicture}[remember picture,overlay]"
-        # + "\n"
-        # + r"\node[]{\includegraphics[width=.9\paperwidth]{"
-        # + "{}".format(docker_image_file_path)
-        # + "}};"
-        # + "\n"
-        # + r"\end{tikzpicture}"
-        ########
+        + "\n"
+        + r"\end{figure}"
+        + "\n"
+        + r"\vfill"
         + "\n"
         + "\n"
         + r"\begin{tikzpicture}[remember picture,overlay,shift={(current page.north east)}]"
@@ -160,17 +152,17 @@ def create_latex_file(
 
     out_directory = "build"
 
+    ui_t.progress_list_task.update(task_latex, task="Docker Image Running")
+
     docker_image = "micheleforese/latex:full"
 
     # Get User ID and GROUP
-    console.print("[DOCKER] - Retriving id user.")
     user_id, stderr = exec_command(["id", "-u"])
 
     if debug:
         console.log(user_id)
         console.log(stderr)
 
-    console.print("[DOCKER] - Retriving id group.")
     user_group, stderr = exec_command(["id", "-g"])
 
     if debug:
@@ -203,6 +195,10 @@ def create_latex_file(
 
     if debug:
         console.log("RESULT:" + stdout)
+
+    if len(str(stderr)) != 0:
         console.log("ERROR:" + stderr)
 
-    console.print(Panel("[blue]Latex pdf creation end[/]"))
+    ui_t.progress_list_task.remove_task(task_latex)
+
+    live.stop()

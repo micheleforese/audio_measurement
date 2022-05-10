@@ -8,11 +8,26 @@ import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from rich.console import Group
 from rich.live import Live
 from rich.panel import Panel
+from rich.progress import (
+    BarColumn,
+    DownloadColumn,
+    MofNCompleteColumn,
+    Progress,
+    SpinnerColumn,
+    TaskID,
+    TextColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+    TransferSpeedColumn,
+)
+from rich.prompt import Confirm
 from rich.table import Column, Table
 from usbtmc import Instrument
 
+import cDAQ.ui.terminal as ui_t
 from cDAQ.alghorithm import LogaritmicScale
 from cDAQ.config import Config, Plot
 from cDAQ.config.type import ModAuto
@@ -30,6 +45,17 @@ def sampling_curve(
     debug: bool = False,
 ):
 
+    progress_group = Group(
+        Panel(Group(ui_t.progress_list_task, ui_t.progress_sweep, ui_t.progress_task)),
+    )
+    live = Live(progress_group, console=console)
+    live.start()
+
+    task_sampling = ui_t.progress_list_task.add_task(
+        "Sampling", start=False, task="Retriving Devices"
+    )
+    ui_t.progress_list_task.start_task(task_sampling)
+
     # Asks for the 2 instruments
     list_devices: List[Instrument] = get_device_list()
     if debug:
@@ -37,12 +63,11 @@ def sampling_curve(
 
     generator: UsbTmc = UsbTmc(list_devices[0])
 
+    ui_t.progress_list_task.update(task_sampling, task="Setting Devices")
+
     # Open the Instruments interfaces
     # Auto Close with the destructor
     generator.open()
-
-    if debug:
-        console.print("[Rigol] - Opened.")
 
     # Sets the Configuration for the Voltmeter
     generator_configs: list = [
@@ -57,19 +82,11 @@ def sampling_curve(
 
     SCPI.exec_commands(generator, generator_configs)
 
-    # sleep(1)
-
-    if debug:
-        console.print("[Rigol] - configured.")
-
     generator_ac_curves: List[str] = [
         SCPI.set_output(1, Switch.ON),
     ]
 
     SCPI.exec_commands(generator, generator_ac_curves)
-
-    if debug:
-        console.print("[Rigol] - opened output 1.")
 
     log_scale: LogaritmicScale = LogaritmicScale(
         config.sampling.f_range.min,
@@ -89,93 +106,105 @@ def sampling_curve(
         Column("Rms Value [V]", justify="right"),
         Column("Gain \[dB]", justify="right"),
         Column("Time \[s]", justify="right"),
+        title="[blue]Sweep.",
     )
 
     max_dB: Optional[float] = None
+    ui_t.progress_list_task.update(task_sampling, task="Sweep")
 
-    with Live(
-        table,
-        screen=False,
-        console=console,
-        vertical_overflow="visible",
-        auto_refresh=True,
-    ) as live:
+    task_sweep = ui_t.progress_sweep.add_task(
+        "Sweep", start=False, total=len(log_scale.f_list)
+    )
+    ui_t.progress_sweep.start_task(task_sweep)
 
-        for frequency in log_scale.f_list:
+    for frequency in log_scale.f_list:
 
-            # Sets the Frequency
-            generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
+        ui_t.progress_sweep.update(task_sweep, frequency=round(frequency, 5))
 
-            Fs = config.nidaq._max_Fs
+        # Sets the Frequency
+        generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
 
-            if frequency < 20:
-                Fs = frequency * config.sampling.n_fs
-                config.sampling.number_of_samples = 90
-            elif frequency <= 1000:
-                Fs = frequency * config.sampling.n_fs
-            elif frequency <= 10000:
-                Fs = frequency * config.sampling.n_fs
-            else:
-                Fs = frequency * config.sampling.n_fs
+        Fs = config.nidaq._max_Fs
 
-            if Fs > config.nidaq.max_Fs:
-                Fs = config.nidaq.max_Fs
+        if frequency < 20:
+            Fs = frequency * config.sampling.n_fs
+            config.sampling.number_of_samples = 90
+        elif frequency <= 1000:
+            Fs = frequency * config.sampling.n_fs
+        elif frequency <= 10000:
+            Fs = frequency * config.samplingRms_fs
 
-            time = Timer()
-            time.start()
+        if Fs > config.nidaq.max_Fs:
+            Fs = config.nidaq.max_Fs
 
-            # GET MEASUREMENTS
-            rms_value: Optional[float] = RMS.rms(
-                frequency=frequency,
-                Fs=Fs,
-                ch_input=config.nidaq.ch_input,
-                max_voltage=config.nidaq.max_voltage,
-                min_voltage=config.nidaq.min_voltage,
-                number_of_samples=config.sampling.number_of_samples,
-                time_report=False,
+        time = Timer()
+        time.start()
+
+        # GET MEASUREMENTS
+        rms_value: Optional[float] = RMS.rms(
+            frequency=frequency,
+            Fs=Fs,
+            ch_input=config.nidaq.ch_input,
+            max_voltage=config.nidaq.max_voltage,
+            min_voltage=config.nidaq.min_voltage,
+            number_of_samples=config.sampling.number_of_samples,
+            time_report=False,
+        )
+
+        message: Timer_Message = time.stop()
+
+        if rms_value:
+
+            perc_error = percentage_error(
+                exact=(config.rigol.amplitude_pp / 2) / np.math.sqrt(2),
+                approx=rms_value,
             )
 
-            message: Timer_Message = time.stop()
+            gain_bBV: float = 20 * np.log10(
+                rms_value * 2 * np.math.sqrt(2) / config.rigol.amplitude_pp
+            )
 
-            if rms_value:
-                perc_error = percentage_error(
-                    exact=(config.rigol.amplitude_pp / 2) / np.math.sqrt(2),
-                    approx=rms_value,
+            transfer_func_dB = transfer_function(
+                rms_value, config.rigol.amplitude_pp / (2 * np.math.sqrt(2))
+            )
+
+            if max_dB:
+                max_dB = max(abs(max_dB), abs(transfer_func_dB))
+            else:
+                max_dB = transfer_func_dB
+
+            table.add_row(
+                "{:.2f}".format(frequency),
+                "{:.2f}".format(Fs),
+                "{}".format(config.sampling.number_of_samples),
+                "{:.5f} ".format(round(rms_value, 5)),
+                "[{}]{:.2f}[/]".format(
+                    "red" if gain_bBV <= 0 else "green", transfer_func_dB
+                ),
+                "[cyan]{}[/]".format(message.elapsed_time),
+            )
+
+            """File Writing"""
+            f.write(
+                "{},{},{}\n".format(
+                    frequency,
+                    rms_value,
+                    gain_bBV,
                 )
+            )
 
-                bBV: float = 20 * np.log10(
-                    rms_value * 2 * np.math.sqrt(2) / config.rigol.amplitude_pp
-                )
+            ui_t.progress_sweep.update(task_sweep, advance=1)
 
-                transfer_func_dB = transfer_function(
-                    rms_value, config.rigol.amplitude_pp / (2 * np.math.sqrt(2))
-                )
+        else:
+            console.print("[ERROR] - Error retriving rms_value.", style="error")
 
-                if max_dB:
-                    max_dB = max(abs(max_dB), abs(transfer_func_dB))
-                else:
-                    max_dB = transfer_func_dB
+    console.print(table)
 
-                table.add_row(
-                    "{:.2f}".format(frequency),
-                    "{:.2f}".format(Fs),
-                    "{}".format(config.sampling.number_of_samples),
-                    "{:.5f} ".format(round(rms_value, 5)),
-                    "[{}]{:.2f}[/]".format(
-                        "red" if bBV <= 0 else "green", transfer_func_dB
-                    ),
-                    "[cyan]{}[/]".format(message.elapsed_time),
-                )
+    ui_t.progress_sweep.remove_task(task_sweep)
 
-                """File Writing"""
-                f.write(
-                    "{},{},{}\n".format(
-                        frequency,
-                        rms_value,
-                        bBV,
-                    )
-                )
     f.close()
+
+    ui_t.progress_list_task.update(task_sampling, task="Shutting down the Channel 1")
 
     SCPI.exec_commands(
         generator,
@@ -185,7 +214,11 @@ def sampling_curve(
         ],
     )
 
+    ui_t.progress_list_task.remove_task(task_sampling)
+
     console.print(Panel("max_dB: {}".format(max_dB)))
+
+    live.stop()
 
 
 def plot_from_csv(
@@ -194,13 +227,22 @@ def plot_from_csv(
     plot_config: Plot,
     debug: bool = False,
 ):
-    console.print(Panel("[blue]Plotting start[/]"))
+
+    live_group = Group(Panel(ui_t.progress_list_task))
+
+    live = Live(live_group, console=console)
+    live.start()
+
+    task_plotting = ui_t.progress_list_task.add_task("Plotting", task="Plotting")
+    ui_t.progress_list_task.start_task(task_plotting)
 
     if debug:
         console.print(Panel(plot_config.tree(), title="Plot Configurations"))
 
     x_frequency: List[float] = []
     y_dBV: List[float] = []
+
+    ui_t.progress_list_task.update(task_plotting, task="Read Measurements")
 
     measurements = pd.read_csv(
         measurements_file_path, header=0, names=["Frequency", "RMS Value", "dbV"]
@@ -217,6 +259,8 @@ def plot_from_csv(
             + "diff dB: {}".format(abs(max(y_dBV) - min(y_dBV)))
         )
     )
+
+    ui_t.progress_list_task.update(task_plotting, task="Apply Offset")
 
     y_offset: Optional[float] = None
     if plot_config.y_offset:
@@ -236,6 +280,8 @@ def plot_from_csv(
             for i in range(len(y_dBV)):
                 y_dBV[i] = y_dBV[i] - y_offset
 
+    ui_t.progress_list_task.update(task_plotting, task="Interpolate")
+
     plot: Tuple[Figure, Axes] = plt.subplots(figsize=(16 * 2, 9 * 2), dpi=600)
 
     fig: Figure
@@ -252,6 +298,8 @@ def plot_from_csv(
 
     xy_sampled = [x_frequency, y_dBV, "o"]
     xy_interpolated = [x_interpolated, y_interpolated, "-"]
+
+    ui_t.progress_list_task.update(task_plotting, task="Plotting Graph")
 
     axes.semilogx(
         *xy_sampled,
@@ -315,8 +363,10 @@ def plot_from_csv(
 
     plt.tight_layout()
 
-    console.print(Panel("[blue]Plotting end[/]"))
-
     plt.savefig(plot_file_path)
     if debug:
         console.print('Plotted file: "{}"'.format(plot_file_path))
+
+    ui_t.progress_list_task.remove_task(task_plotting)
+
+    live.stop()

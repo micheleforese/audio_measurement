@@ -186,8 +186,6 @@ def sweep(
     if debug:
         config.print()
 
-    console.print(Panel("[blue]Sweep start[/]"))
-
     timer = Timer("Sweep time")
     if time:
         timer.start()
@@ -199,8 +197,6 @@ def sweep(
             measurements_file_path=HOME_PATH / "audio-{}.csv".format(datetime_now),
             debug=debug,
         )
-
-    console.print(Panel("[blue]Sweep end[/]"))
 
     if time:
         timer.stop().print()
