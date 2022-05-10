@@ -22,7 +22,7 @@ from rich.progress import (
 
 import cDAQ.ui.terminal as ui_t
 from cDAQ.console import console
-from cDAQ.docker import Docker, User, Volume
+from cDAQ.docker import Docker_CLI, User, Volume
 from cDAQ.docker.utility import exec_command
 
 
@@ -169,7 +169,7 @@ def create_latex_file(
         console.log(user_group)
         console.log(stderr)
 
-    docker_instance = Docker()
+    docker_instance = Docker_CLI()
 
     console.print("[DOCKER] - Running image.")
     docker_command_run = docker_instance.run(

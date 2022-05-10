@@ -21,7 +21,7 @@ class Volume:
         self.remote = remote
 
 
-class Docker:
+class Docker_CLI:
     def __init__(self) -> None:
         pass
 

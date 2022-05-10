@@ -7,7 +7,7 @@ import click
 from cDAQ.config import Config
 from cDAQ.config.type import ModAuto, Range
 from cDAQ.console import console
-from cDAQ.docker import Docker
+from cDAQ.docker import Docker_CLI
 from cDAQ.docker.latex import create_latex_file
 from cDAQ.sampling import plot_from_csv, sampling_curve
 from cDAQ.script.gui import GuiAudioMeasurements
