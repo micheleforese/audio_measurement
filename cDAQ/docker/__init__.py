@@ -7,7 +7,6 @@ class User:
     group: int
 
     def __init__(self, id: int, group: int) -> None:
-        # $(id -u):$(id -g)
         self.id = id
         self.group = group
 

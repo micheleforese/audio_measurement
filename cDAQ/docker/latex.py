@@ -7,18 +7,6 @@ from matplotlib import use
 from rich.console import Group
 from rich.live import Live
 from rich.panel import Panel
-from rich.progress import (
-    BarColumn,
-    DownloadColumn,
-    MofNCompleteColumn,
-    Progress,
-    SpinnerColumn,
-    TaskID,
-    TextColumn,
-    TimeElapsedColumn,
-    TimeRemainingColumn,
-    TransferSpeedColumn,
-)
 
 import cDAQ.ui.terminal as ui_t
 from cDAQ.console import console
@@ -58,7 +46,11 @@ def create_latex_file(
 
     live_group = Group(Panel(ui_t.progress_list_task))
 
-    live = Live(live_group, console=console)
+    live = Live(
+        live_group,
+        transient=True,
+        console=console,
+    )
     live.start()
 
     task_latex = ui_t.progress_list_task.add_task(
@@ -145,10 +137,18 @@ def create_latex_file(
     latex_file_path: pathlib.Path = image_file.with_suffix(".tex")
     docker_latex_file_path = latex_file_path.name
 
-    console.print('[PATH - latex_file_path] - "{}"'.format(latex_file_path))
+    pdf_file_path: pathlib.Path = latex_file_path.with_suffix(".pdf")
 
     with open(latex_file_path, "w") as f:
         f.write(latex_complete)
+
+    console.print(
+        Panel(
+            '[bold][[blue]FILE[/blue] - [cyan]LATEX[/cyan]][/bold] - "[bold green]{}[/bold green]"'.format(
+                latex_file_path.absolute().resolve()
+            )
+        )
+    )
 
     out_directory = "build"
 
@@ -171,7 +171,6 @@ def create_latex_file(
 
     docker_instance = Docker_CLI()
 
-    console.print("[DOCKER] - Running image.")
     docker_command_run = docker_instance.run(
         docker_image,
         remove_on_exit=True,
@@ -184,13 +183,17 @@ def create_latex_file(
         volume=Volume(local=home.absolute().resolve(), remote="/data"),
         command="pdflatex -output-format={} {}".format(
             "pdf",
-            latex_file_path.name,
+            docker_latex_file_path,
         ),
     )
 
-    console.print("[DOCKER] - Command: \n\t{}".format(docker_command_run))
+    if debug:
+        console.print(
+            '[DOCKER] - Command: \n "[bold green]{}[/bold green]"'.format(
+                docker_command_run
+            )
+        )
 
-    console.print("[DOCKER] - Running image.")
     stdout, stderr = exec_command(docker_command_run)
 
     if debug:
@@ -198,6 +201,14 @@ def create_latex_file(
 
     if len(str(stderr)) != 0:
         console.log("ERROR:" + stderr)
+
+    console.print(
+        Panel(
+            '[bold][[blue]FILE[/blue] - [cyan]PDF[/cyan]][/bold] - "[bold green]{}[/bold green]"'.format(
+                pdf_file_path.absolute().resolve()
+            )
+        )
+    )
 
     ui_t.progress_list_task.remove_task(task_latex)
 

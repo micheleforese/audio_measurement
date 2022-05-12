@@ -1,5 +1,4 @@
 from pathlib import Path
-from time import sleep
 from typing import List, Optional, Tuple
 
 import matplotlib.pyplot as plt
@@ -11,19 +10,6 @@ from matplotlib.figure import Figure
 from rich.console import Group
 from rich.live import Live
 from rich.panel import Panel
-from rich.progress import (
-    BarColumn,
-    DownloadColumn,
-    MofNCompleteColumn,
-    Progress,
-    SpinnerColumn,
-    TaskID,
-    TextColumn,
-    TimeElapsedColumn,
-    TimeRemainingColumn,
-    TransferSpeedColumn,
-)
-from rich.prompt import Confirm
 from rich.table import Column, Table
 from usbtmc import Instrument
 
@@ -45,10 +31,14 @@ def sampling_curve(
     debug: bool = False,
 ):
 
-    progress_group = Group(
+    live_group = Group(
         Panel(Group(ui_t.progress_list_task, ui_t.progress_sweep, ui_t.progress_task)),
     )
-    live = Live(progress_group, console=console)
+    live = Live(
+        live_group,
+        transient=True,
+        console=console,
+    )
     live.start()
 
     task_sampling = ui_t.progress_list_task.add_task(
@@ -132,7 +122,7 @@ def sampling_curve(
         elif frequency <= 1000:
             Fs = frequency * config.sampling.n_fs
         elif frequency <= 10000:
-            Fs = frequency * config.samplingRms_fs
+            Fs = frequency * config.sampling.n_fs
 
         if Fs > config.nidaq.max_Fs:
             Fs = config.nidaq.max_Fs
@@ -198,7 +188,8 @@ def sampling_curve(
         else:
             console.print("[ERROR] - Error retriving rms_value.", style="error")
 
-    console.print(table)
+    if debug:
+        console.print(table)
 
     ui_t.progress_sweep.remove_task(task_sweep)
 
@@ -216,7 +207,16 @@ def sampling_curve(
 
     ui_t.progress_list_task.remove_task(task_sampling)
 
-    console.print(Panel("max_dB: {}".format(max_dB)))
+    if debug:
+        console.print(Panel("max_dB: {}".format(max_dB)))
+
+    console.print(
+        Panel(
+            '[bold][[blue]FILE[/blue] - [cyan]CSV[/cyan]][/bold] - "[bold green]{}[/bold green]"'.format(
+                measurements_file_path.absolute().resolve()
+            )
+        )
+    )
 
     live.stop()
 
@@ -230,7 +230,11 @@ def plot_from_csv(
 
     live_group = Group(Panel(ui_t.progress_list_task))
 
-    live = Live(live_group, console=console)
+    live = Live(
+        live_group,
+        transient=True,
+        console=console,
+    )
     live.start()
 
     task_plotting = ui_t.progress_list_task.add_task("Plotting", task="Plotting")
@@ -252,13 +256,14 @@ def plot_from_csv(
         y_dBV.append(row["dbV"])
         x_frequency.append(row["Frequency"])
 
-    console.print(
-        Panel(
-            "min dB: {}\n".format(min(y_dBV))
-            + "max dB: {}\n".format(max(y_dBV))
-            + "diff dB: {}".format(abs(max(y_dBV) - min(y_dBV)))
+    if debug:
+        console.print(
+            Panel(
+                "min dB: {}\n".format(min(y_dBV))
+                + "max dB: {}\n".format(max(y_dBV))
+                + "diff dB: {}".format(abs(max(y_dBV) - min(y_dBV)))
+            )
         )
-    )
 
     ui_t.progress_list_task.update(task_plotting, task="Apply Offset")
 
@@ -323,7 +328,9 @@ def plot_from_csv(
         fontsize=40,
     )
     axes.set_ylabel(
-        "Amplitude ($dB$) ($0dB = {}Vpp$)".format(y_offset if y_offset else "NULL"),
+        "Amplitude ($dB$) ($0 \, dB = {} \, Vpp$)".format(
+            round(y_offset, 5) if y_offset else 0
+        ),
         fontsize=40,
     )
 
@@ -364,8 +371,14 @@ def plot_from_csv(
     plt.tight_layout()
 
     plt.savefig(plot_file_path)
-    if debug:
-        console.print('Plotted file: "{}"'.format(plot_file_path))
+
+    console.print(
+        Panel(
+            '[bold][[blue]FILE[/blue] - [cyan]GRAPH[/cyan]][/bold] - "[bold green]{}[/bold green]"'.format(
+                plot_file_path.absolute().resolve()
+            )
+        )
+    )
 
     ui_t.progress_list_task.remove_task(task_plotting)
 
