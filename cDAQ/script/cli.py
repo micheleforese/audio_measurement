@@ -9,7 +9,7 @@ from cDAQ.config.type import ModAuto, Range
 from cDAQ.console import console
 from cDAQ.docker import Docker_CLI
 from cDAQ.docker.latex import create_latex_file
-from cDAQ.sampling import plot_from_csv, sampling_curve
+from cDAQ.sampling import config_offset, plot_from_csv, sampling_curve
 from cDAQ.script.gui import GuiAudioMeasurements
 from cDAQ.script.test import testTimer
 from cDAQ.timer import Timer, timer, timeit
@@ -348,6 +348,83 @@ def plot(
         )
         if plot_file_format == "png":
             create_latex_file(plot_file, home=home)
+
+
+@cli.command(help="Plot from a csv file.")
+@click.option(
+    "--config",
+    "config_path",
+    type=pathlib.Path,
+    help="Configuration path of the config file in json5 format.",
+    required=True,
+)
+@click.option(
+    "--csv",
+    type=pathlib.Path,
+    help="Measurements file path in csv format.",
+    default=None,
+)
+@click.option(
+    "--home",
+    type=pathlib.Path,
+    help="Home path, where the plot image will be created.",
+    default=pathlib.Path.cwd(),
+)
+@click.option(
+    "--y_offset",
+    type=float,
+    help="Offset value.",
+    default=None,
+)
+@click.option(
+    "--y_offset_auto",
+    type=click.Choice(["min", "max", "no"], case_sensitive=False),
+    help='Offset Mode, can be: "min", "max" or "no".',
+    default=None,
+)
+@click.option(
+    "--debug",
+    is_flag=True,
+    help="Will print verbose messages.",
+    default=False,
+)
+def config(
+    config_path: pathlib.Path,
+    csv: Optional[pathlib.Path],
+    home: pathlib.Path,
+    y_offset: Optional[float],
+    y_offset_auto: Optional[str],
+    debug: bool,
+):
+    HOME_PATH = home.absolute().resolve()
+    csv_file: pathlib.Path = pathlib.Path()
+    plot_file: pathlib.Path = pathlib.Path()
+
+    config: Config = Config()
+
+    config_file = config_path.absolute()
+    config.from_file(config_file)
+
+    if y_offset:
+        config.plot.y_offset = y_offset
+    elif y_offset_auto and not isinstance(config.plot.y_offset, float):
+        if y_offset_auto == ModAuto.NO.value:
+            config.plot.y_offset = ModAuto.NO
+        elif y_offset_auto == ModAuto.MIN.value:
+            config.plot.y_offset = ModAuto.MIN
+        elif y_offset_auto == ModAuto.MAX.value:
+            config.plot.y_offset = ModAuto.MAX
+        else:
+            config.plot.y_offset = None
+
+    if config.validate():
+        console.print("Config Error.")
+        exit()
+
+    if debug:
+        config.print()
+
+    config_offset(config=config, debug=debug)
 
 
 @cli.group()

@@ -1,3 +1,4 @@
+import math
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -12,13 +13,14 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.table import Column, Table
 from usbtmc import Instrument
+from cDAQ.math.pid import PID
 
 import cDAQ.ui.terminal as ui_t
 from cDAQ.alghorithm import LogaritmicScale
 from cDAQ.config import Config, Plot
 from cDAQ.config.type import ModAuto
 from cDAQ.console import console
-from cDAQ.math import INTERPOLATION_KIND, logx_interpolation_model
+from cDAQ.math import INTERPOLATION_KIND, logx_interpolation_model, unit_normalization
 from cDAQ.scpi import SCPI, Bandwidth, Switch
 from cDAQ.timer import Timer, Timer_Message
 from cDAQ.usbtmc import UsbTmc, get_device_list, print_devices_list
@@ -383,3 +385,158 @@ def plot_from_csv(
     ui_t.progress_list_task.remove_task(task_plotting)
 
     live.stop()
+
+
+def config_offset(
+    config: Config,
+    # measurements_file_path: Path,
+    debug: bool = False,
+):
+
+    voltage_amplitude_start: float = 0.2
+    voltage_amplitude = voltage_amplitude_start
+    frequency = 1000
+    Fs = frequency * config.sampling.n_fs
+    diff_voltage = 0.001
+    Vpp_4dBu_exact = 1.227653
+    step_voltage = 0.2
+
+    table = Table(
+        Column("4dBu [V]", justify="right"),
+        Column("Vpp [V]", justify="right"),
+        Column("Rms Value [V]", justify="right"),
+        Column("Diff Vpp [V]", justify="right"),
+        Column("Error [%]", justify="right"),
+        Column("Found", justify="center"),
+        Column("Count", justify="right"),
+        title="[blue]Configuration.",
+    )
+
+    live_group = Group(
+        table,
+        Panel(
+            Group(
+                ui_t.progress_list_task,
+                ui_t.progress_sweep,
+                ui_t.progress_task,
+            )
+        ),
+    )
+    live = Live(
+        live_group,
+        transient=False,
+        console=console,
+    )
+    live.start()
+
+    task_sampling = ui_t.progress_list_task.add_task(
+        "CONFIGURING", start=False, task="Retriving Devices"
+    )
+    ui_t.progress_list_task.start_task(task_sampling)
+
+    # Asks for the 2 instruments
+    list_devices: List[Instrument] = get_device_list()
+    if debug:
+        print_devices_list(list_devices)
+
+    generator: UsbTmc = UsbTmc(list_devices[0])
+
+    ui_t.progress_list_task.update(task_sampling, task="Setting Devices")
+
+    # Open the Instruments interfaces
+    # Auto Close with the destructor
+    generator.open()
+
+    # Sets the Configuration for the Voltmeter
+    # Frequency: 1000
+    generator_configs: list = [
+        SCPI.clear(),
+        SCPI.set_output(1, Switch.OFF),
+        SCPI.set_function_voltage_ac(),
+        SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
+        SCPI.set_source_voltage_amplitude(1, voltage_amplitude_start),
+        SCPI.set_source_frequency(1, frequency),
+    ]
+
+    SCPI.exec_commands(generator, generator_configs)
+
+    generator_ac_curves: List[str] = [
+        SCPI.set_output(1, Switch.ON),
+    ]
+
+    SCPI.exec_commands(generator, generator_ac_curves)
+
+    ui_t.progress_list_task.update(task_sampling, task="Setting Devices")
+
+    Vpp_found: bool = False
+    iteration: int = 0
+    iteration_max = 40
+
+    ui_t.progress_list_task.update(task_sampling, task="Searching for Voltage offset")
+
+    error: float = 0.0
+    error_prev: float = 0.0
+
+    pid = PID(
+        step=np.full(40, 1.27),
+        controller_gain=15.0,
+        tauI=2.0,
+        tauD=1.0,
+        controller_output_zero=0.0,
+    )
+
+    while not Vpp_found:
+
+        # GET MEASUREMENTS
+        rms_value: Optional[float] = RMS.rms(
+            frequency=frequency,
+            Fs=Fs,
+            ch_input=config.nidaq.ch_input,
+            max_voltage=config.nidaq.max_voltage,
+            min_voltage=config.nidaq.min_voltage,
+            number_of_samples=config.sampling.number_of_samples,
+            time_report=False,
+        )
+
+        if rms_value:
+            error = Vpp_4dBu_exact - rms_value
+            diff = Vpp_4dBu_exact - rms_value
+
+            output_process = pid.controller_output_zero + pid.controller_gain
+
+            error_percentage = percentage_error(exact=Vpp_4dBu_exact, approx=rms_value)
+
+            if np.abs(diff) > diff_voltage:
+                voltage_amplitude = voltage_amplitude - unit_normalization(
+                    error_percentage
+                ) * diff * (step_voltage - step_voltage * (iteration / iteration_max))
+
+                # Apply new Amplitude
+                generator_configs: list = [
+                    SCPI.set_source_voltage_amplitude(1, voltage_amplitude),
+                ]
+
+                SCPI.exec_commands(generator, generator_configs)
+            else:
+                if iteration > iteration_max - 1:
+                    Vpp_found = True
+                iteration = iteration + 1
+
+            table.add_row(
+                "{:.8f}".format(Vpp_4dBu_exact),
+                "{:.8f}".format(voltage_amplitude),
+                "{:.8f}".format(rms_value),
+                "{:.8f} ".format(diff),
+                "[{}]{:.5f}[/]".format(
+                    "red" if error_percentage <= 0 else "green", error_percentage
+                ),
+                "{}".format(Vpp_found),
+                "{}".format(iteration),
+            )
+
+        else:
+            console.print("[SAMPLING] - Error retriving rms_value.")
+
+    live.stop()
+
+    console.print(Panel("Voltage Offset: {}".format(voltage_amplitude)))
