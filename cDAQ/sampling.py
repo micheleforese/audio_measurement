@@ -1,4 +1,3 @@
-import math
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -13,7 +12,6 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.table import Column, Table
 from usbtmc import Instrument
-from cDAQ.math.pid import PID
 
 import cDAQ.ui.terminal as ui_t
 from cDAQ.alghorithm import LogaritmicScale
@@ -21,6 +19,7 @@ from cDAQ.config import Config, Plot
 from cDAQ.config.type import ModAuto
 from cDAQ.console import console
 from cDAQ.math import INTERPOLATION_KIND, logx_interpolation_model, unit_normalization
+from cDAQ.math.pid import PID, Timed_Value
 from cDAQ.scpi import SCPI, Bandwidth, Switch
 from cDAQ.timer import Timer, Timer_Message
 from cDAQ.usbtmc import UsbTmc, get_device_list, print_devices_list
@@ -399,7 +398,6 @@ def config_offset(
     Fs = frequency * config.sampling.n_fs
     diff_voltage = 0.001
     Vpp_4dBu_exact = 1.227653
-    step_voltage = 0.2
 
     table = Table(
         Column("4dBu [V]", justify="right"),
@@ -470,19 +468,15 @@ def config_offset(
 
     Vpp_found: bool = False
     iteration: int = 0
-    iteration_max = 40
 
     ui_t.progress_list_task.update(task_sampling, task="Searching for Voltage offset")
 
-    error: float = 0.0
-    error_prev: float = 0.0
-
     pid = PID(
-        step=np.full(40, 1.27),
+        set_point=Vpp_4dBu_exact,
         controller_gain=15.0,
         tauI=2.0,
         tauD=1.0,
-        controller_output_zero=0.0,
+        controller_output_zero=voltage_amplitude_start,
     )
 
     while not Vpp_found:
@@ -500,39 +494,33 @@ def config_offset(
 
         if rms_value:
             error = Vpp_4dBu_exact - rms_value
-            diff = Vpp_4dBu_exact - rms_value
 
-            output_process = pid.controller_output_zero + pid.controller_gain
+            voltage_amplitude = pid.pid_step(Timed_Value(error), rms_value)
 
             error_percentage = percentage_error(exact=Vpp_4dBu_exact, approx=rms_value)
 
-            if np.abs(diff) > diff_voltage:
-                voltage_amplitude = voltage_amplitude - unit_normalization(
-                    error_percentage
-                ) * diff * (step_voltage - step_voltage * (iteration / iteration_max))
+            # Apply new Amplitude
+            generator_configs: list = [
+                SCPI.set_source_voltage_amplitude(1, voltage_amplitude)
+            ]
 
-                # Apply new Amplitude
-                generator_configs: list = [
-                    SCPI.set_source_voltage_amplitude(1, voltage_amplitude),
-                ]
-
-                SCPI.exec_commands(generator, generator_configs)
-            else:
-                if iteration > iteration_max - 1:
-                    Vpp_found = True
-                iteration = iteration + 1
+            SCPI.exec_commands(generator, generator_configs)
 
             table.add_row(
-                "{:.8f}".format(Vpp_4dBu_exact),
-                "{:.8f}".format(voltage_amplitude),
-                "{:.8f}".format(rms_value),
-                "{:.8f} ".format(diff),
+                f"{Vpp_4dBu_exact:.8f}",
+                f"{voltage_amplitude:.8f}",
+                f"{rms_value:.8f}",
+                f"{error:.8f} ",
                 "[{}]{:.5f}[/]".format(
-                    "red" if error_percentage <= 0 else "green", error_percentage
+                    "red" if error_percentage <= 0 else "green",
+                    error_percentage,
                 ),
-                "{}".format(Vpp_found),
-                "{}".format(iteration),
+                f"{Vpp_found}",
+                f"{iteration}",
             )
+
+            if error < diff_voltage:
+                Vpp_found = True
 
         else:
             console.print("[SAMPLING] - Error retriving rms_value.")
