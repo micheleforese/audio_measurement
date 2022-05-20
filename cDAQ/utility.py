@@ -107,7 +107,7 @@ def print_supported_output_types(channel: AOChannel):
 
 
 def percentage_error(exact: float, approx: float) -> float:
-    return ((approx - exact) / exact) * 100
+    return (approx - exact) / exact
 
 
 def transfer_function(rms: float, input_rms: float) -> float:

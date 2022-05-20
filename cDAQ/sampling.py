@@ -1,4 +1,6 @@
+from code import interact
 from pathlib import Path
+from time import sleep
 from typing import List, Optional, Tuple
 
 import matplotlib.pyplot as plt
@@ -10,6 +12,7 @@ from matplotlib.figure import Figure
 from rich.console import Group
 from rich.live import Live
 from rich.panel import Panel
+from rich.prompt import Confirm
 from rich.table import Column, Table
 from usbtmc import Instrument
 
@@ -18,8 +21,14 @@ from cDAQ.alghorithm import LogaritmicScale
 from cDAQ.config import Config, Plot
 from cDAQ.config.type import ModAuto
 from cDAQ.console import console
-from cDAQ.math import INTERPOLATION_KIND, logx_interpolation_model, unit_normalization
-from cDAQ.math.pid import PID, Timed_Value
+from cDAQ.math import INTERPOLATION_KIND, logx_interpolation_model
+from cDAQ.math.pid import (
+    PID_TERM,
+    PID_Controller,
+    Timed_Value,
+    calculate_area,
+    calculate_gradient,
+)
 from cDAQ.scpi import SCPI, Bandwidth, Switch
 from cDAQ.timer import Timer, Timer_Message
 from cDAQ.usbtmc import UsbTmc, get_device_list, print_devices_list
@@ -388,25 +397,28 @@ def plot_from_csv(
 
 def config_offset(
     config: Config,
-    # measurements_file_path: Path,
+    plot_file_path: Path,
     debug: bool = False,
 ):
 
-    voltage_amplitude_start: float = 0.2
+    voltage_amplitude_start: float = 0.01
     voltage_amplitude = voltage_amplitude_start
     frequency = 1000
     Fs = frequency * config.sampling.n_fs
-    diff_voltage = 0.001
+    diff_voltage = 0.0005
     Vpp_4dBu_exact = 1.227653
 
     table = Table(
+        Column("Iteration", justify="right"),
         Column("4dBu [V]", justify="right"),
         Column("Vpp [V]", justify="right"),
         Column("Rms Value [V]", justify="right"),
         Column("Diff Vpp [V]", justify="right"),
+        Column("Gain [dB]", justify="right"),
+        Column("Proportional Term [V]", justify="right"),
+        Column("Integral Term [V]", justify="right"),
+        Column("Differential Term [V]", justify="right"),
         Column("Error [%]", justify="right"),
-        Column("Found", justify="center"),
-        Column("Count", justify="right"),
         title="[blue]Configuration.",
     )
 
@@ -420,10 +432,12 @@ def config_offset(
             )
         ),
     )
+
     live = Live(
         live_group,
         transient=False,
         console=console,
+        vertical_overflow="visible",
     )
     live.start()
 
@@ -452,7 +466,7 @@ def config_offset(
         SCPI.set_output(1, Switch.OFF),
         SCPI.set_function_voltage_ac(),
         SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
-        SCPI.set_source_voltage_amplitude(1, voltage_amplitude_start),
+        SCPI.set_source_voltage_amplitude(1, voltage_amplitude),
         SCPI.set_source_frequency(1, frequency),
     ]
 
@@ -464,20 +478,30 @@ def config_offset(
 
     SCPI.exec_commands(generator, generator_ac_curves)
 
-    ui_t.progress_list_task.update(task_sampling, task="Setting Devices")
-
-    Vpp_found: bool = False
-    iteration: int = 0
+    # sleep(2)
 
     ui_t.progress_list_task.update(task_sampling, task="Searching for Voltage offset")
 
-    pid = PID(
+    Vpp_found: bool = False
+    iteration: int = 0
+    pid = PID_Controller(
         set_point=Vpp_4dBu_exact,
-        controller_gain=15.0,
-        tauI=2.0,
-        tauD=1.0,
+        controller_gain=1.5,
+        tauI=1,
+        tauD=0.5,
         controller_output_zero=voltage_amplitude_start,
     )
+
+    pid_term = PID_TERM()
+
+    process_output_list: List[float] = [voltage_amplitude_start]
+    process_variable_list: List[float] = []
+    error_list: List[float] = []
+    gain_dB_list: List[float] = []
+
+    k_tot = 0.2745
+
+    gain_apparato: Optional[float] = None
 
     while not Vpp_found:
 
@@ -493,38 +517,167 @@ def config_offset(
         )
 
         if rms_value:
-            error = Vpp_4dBu_exact - rms_value
 
-            voltage_amplitude = pid.pid_step(Timed_Value(error), rms_value)
+            if not gain_apparato:
+                gain_apparato = rms_value / voltage_amplitude_start
+                pid.controller_gain = k_tot / gain_apparato
 
-            error_percentage = percentage_error(exact=Vpp_4dBu_exact, approx=rms_value)
+            process_variable_list.append(rms_value)
 
-            # Apply new Amplitude
-            generator_configs: list = [
-                SCPI.set_source_voltage_amplitude(1, voltage_amplitude)
-            ]
+            error: float = Vpp_4dBu_exact - rms_value
 
-            SCPI.exec_commands(generator, generator_configs)
+            error_list.append(error)
+
+            error_percentage: float = percentage_error(
+                exact=Vpp_4dBu_exact, approx=rms_value
+            )
+
+            gain_dB: float = 20 * np.log10(rms_value / voltage_amplitude)
+
+            gain_dB_list.append(gain_dB)
 
             table.add_row(
+                f"{iteration}",
                 f"{Vpp_4dBu_exact:.8f}",
                 f"{voltage_amplitude:.8f}",
                 f"{rms_value:.8f}",
-                f"{error:.8f} ",
-                "[{}]{:.5f}[/]".format(
-                    "red" if error_percentage <= 0 else "green",
+                "[{}]{:+.8f}[/]".format(
+                    "red" if error > diff_voltage else "green",
+                    error,
+                ),
+                "[{}]{:+.8f}[/]".format(
+                    "red" if gain_dB < 0 else "green",
+                    gain_dB,
+                ),
+                f"{pid_term.proportional[-1]:+.8f}",
+                f"{pid_term.integral[-1]:+.8f}",
+                f"{pid_term.derivative[-1]:+.8f}",
+                "[{}]{:+.5%}[/]".format(
+                    "red" if error > diff_voltage else "green",
                     error_percentage,
                 ),
-                f"{Vpp_found}",
-                f"{iteration}",
             )
 
-            if error < diff_voltage:
+            if abs(error) < diff_voltage:
                 Vpp_found = True
+
+                table_result = Table(
+                    "Gain Apparato",
+                    "Kc",
+                    "tauI",
+                    "tauD",
+                    "steps",
+                )
+
+                table_result.add_row(
+                    f"{rms_value / voltage_amplitude:.8f}",
+                    f"{pid.controller_gain}",
+                    f"{pid.tauI}",
+                    f"{pid.tauD}",
+                    f"{iteration}",
+                )
+
+                console.print(Panel(table_result))
+
+            else:
+                pid_term.add_proportional(pid.controller_gain * error)
+                pid_term.add_integral(
+                    pid.controller_gain * calculate_area(error_list) / pid.tauI
+                )
+                pid_term.add_derivative(
+                    -pid.controller_gain
+                    * pid.tauD
+                    * calculate_gradient(process_variable_list)
+                )
+
+                output_variable: float = (
+                    voltage_amplitude_start
+                    + pid_term.proportional[-1]
+                    + pid_term.integral[-1]
+                    + pid_term.derivative[-1]
+                )
+
+                process_output_list.append(output_variable)
+
+                voltage_amplitude = output_variable
+
+                # Apply new Amplitude
+                generator_configs: list = [
+                    SCPI.set_source_voltage_amplitude(1, voltage_amplitude)
+                ]
+
+                SCPI.exec_commands(generator, generator_configs)
+
+                sleep(0.4)
+
+                iteration += 1
 
         else:
             console.print("[SAMPLING] - Error retriving rms_value.")
 
+    generator_ac_curves: List[str] = [
+        SCPI.set_output(1, Switch.OFF),
+    ]
+
+    SCPI.exec_commands(generator, generator_ac_curves)
+
     live.stop()
 
     console.print(Panel("Voltage Offset: {}".format(voltage_amplitude)))
+
+    sp = np.full(iteration, Vpp_4dBu_exact)
+
+    plt.figure(1, figsize=(16, 9))
+
+    plt.subplot(2, 2, 1)
+    plt.plot(
+        sp,
+        "k-",
+        linewidth=0.5,
+        label="Setpoint (SP)",
+    )
+    plt.plot(
+        process_variable_list,
+        "r:",
+        linewidth=1,
+        label="Process Variable (PV)",
+    )
+    plt.legend(["Set Point (SP)", "Process Variable (PV)"], loc="best")
+
+    plt.subplot(2, 2, 2)
+    plt.plot(
+        pid_term.proportional, "g.-", linewidth=2, label=r"Proportional = $K_c \; e(t)$"
+    )
+    plt.plot(
+        pid_term.integral,
+        "b-",
+        linewidth=2,
+        label=r"Integral = $\frac{K_c}{\tau_I} \int_{i=0}^{n_t} e(t) \; dt $",
+    )
+    plt.plot(
+        pid_term.derivative,
+        "r--",
+        linewidth=2,
+        label=r"Derivative = $-K_c \tau_D \frac{d(PV)}{dt}$",
+    )
+    plt.legend(loc="best")
+
+    plt.subplot(2, 2, 3)
+    plt.plot(
+        error_list,
+        "m--",
+        linewidth=2,
+        label="Error (e=SP-PV)",
+    )
+    plt.legend(loc="best")
+
+    plt.subplot(2, 2, 4)
+    plt.plot(
+        process_output_list,
+        "b--",
+        linewidth=2,
+        label="Controller Output (OP)",
+    )
+    plt.legend(loc="best")
+
+    plt.savefig(plot_file_path)

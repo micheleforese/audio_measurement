@@ -1,21 +1,47 @@
 import pathlib
+from code import interact
 from datetime import datetime
+from pathlib import Path
+from time import sleep
 from timeit import timeit
 from typing import List, Optional, Tuple, Union
 
 import click
-from cDAQ.config import Config
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import numpy as np
+import pandas as pd
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from rich.console import Group
+from rich.live import Live
+from rich.panel import Panel
+from rich.prompt import Confirm
+from rich.table import Column, Table
+from usbtmc import Instrument
+
+import cDAQ.ui.terminal as ui_t
+from cDAQ.alghorithm import LogaritmicScale
+from cDAQ.config import Config, Plot
 from cDAQ.config.type import ModAuto, Range
 from cDAQ.console import console
 from cDAQ.docker import Docker_CLI
 from cDAQ.docker.latex import create_latex_file
+from cDAQ.math import INTERPOLATION_KIND, logx_interpolation_model
+from cDAQ.math.pid import (
+    PID_TERM,
+    PID_Controller,
+    Timed_Value,
+    calculate_area,
+    calculate_gradient,
+)
 from cDAQ.sampling import config_offset, plot_from_csv, sampling_curve
+from cDAQ.scpi import SCPI, Bandwidth, Switch
 from cDAQ.script.gui import GuiAudioMeasurements
 from cDAQ.script.test import testTimer
-from cDAQ.timer import Timer, timer, timeit
-from cDAQ.config import Plot
-from rich.panel import Panel
-from rich.prompt import Confirm
+from cDAQ.timer import Timer, Timer_Message, timeit, timer
+from cDAQ.usbtmc import UsbTmc, get_device_list, print_devices_list
+from cDAQ.utility import RMS, percentage_error, transfer_function
 
 
 @click.group()
@@ -424,12 +450,49 @@ def config(
     if debug:
         config.print()
 
-    config_offset(config=config, debug=debug)
+    datetime_now = datetime.now().strftime(f"%Y-%m-%d--%H-%M-%f")
+
+    config_offset(
+        config=config,
+        plot_file_path=home / "audio-{}.config.png".format(datetime_now),
+        debug=debug,
+    )
 
 
 @cli.group()
 def test():
     pass
+
+
+@cli.group()
+def rigol():
+    pass
+
+
+@rigol.command()
+@click.option(
+    "--debug",
+    is_flag=True,
+    help="Will print verbose messages.",
+    default=False,
+)
+def off(debug: bool):
+    # Asks for the 2 instruments
+    list_devices: List[Instrument] = get_device_list()
+    if debug:
+        print_devices_list(list_devices)
+
+    generator: UsbTmc = UsbTmc(list_devices[0])
+
+    generator.open()
+
+    generator_ac_curves: List[str] = [
+        SCPI.set_output(1, Switch.OFF),
+    ]
+
+    SCPI.exec_commands(generator, generator_ac_curves)
+
+    console.print(Panel("[blue]Rigol Turned OFF[/]"))
 
 
 test.add_command(testTimer)
