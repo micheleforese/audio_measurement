@@ -503,6 +503,8 @@ def config_offset(
 
     gain_apparato: Optional[float] = None
 
+    level_offset: Optional[float] = None
+
     while not Vpp_found:
 
         # GET MEASUREMENTS
@@ -560,6 +562,7 @@ def config_offset(
 
             if abs(error) < diff_voltage:
                 Vpp_found = True
+                level_offset = voltage_amplitude
 
                 table_result = Table(
                     "Gain Apparato",
@@ -578,6 +581,14 @@ def config_offset(
                 )
 
                 console.print(Panel(table_result))
+
+                offset_file_path = plot_file_path.with_suffix(".offset")
+
+                f = open(offset_file_path, "w")
+                f.write("{}".format(level_offset))
+                f.close()
+
+                console.print(Panel("[PATH] - {}".format(offset_file_path)))
 
             else:
                 pid_term.add_proportional(pid.controller_gain * error)
