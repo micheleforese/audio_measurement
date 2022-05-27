@@ -125,12 +125,6 @@ def integrate(y_values: List[float], delta) -> float:
         else:
             y_plus = y_values[idx + 1]
 
-            # console.print(
-            #     "Values: {} - {}".format(round(y, 5), round(y_plus, 9)))
-
-            # if(idx % 10 == 0):
-            # input()
-
             # Make the calculations
             if y * y_plus < 0:
                 r_rec: float = abs(y) * delta / 4
@@ -269,11 +263,12 @@ def read_voltages(
 
     try:
         task = nidaqmx.Task("Input Voltage")
-        nidaqmx
 
-        task.ai_channels.add_ai_voltage_chan(
+        ai_channel = task.ai_channels.add_ai_voltage_chan(
             ch_input, min_val=min_voltage, max_val=max_voltage
         )
+
+        task.start()
 
         # Sets the Clock sampling rate
         task.timing.cfg_samp_clk_timing(Fs)
