@@ -62,6 +62,14 @@ def cli():
     type=pathlib.Path,
     help="Home path, where the csv and plot image will be created.",
     default=pathlib.Path.cwd(),
+    show_default=True,
+)
+@click.option(
+    "--offset",
+    "offset_file",
+    type=pathlib.Path,
+    help="Offset file path.",
+    required=True,
 )
 # Config Overloads
 @click.option(
@@ -143,6 +151,7 @@ def cli():
 def sweep(
     config_path: pathlib.Path,
     home: pathlib.Path,
+    offset_file: pathlib.Path,
     amplitude_pp: Optional[float],
     n_fs: Optional[float],
     spd: Optional[float],
@@ -193,6 +202,10 @@ def sweep(
     if x_lim:
         config.plot.x_limit = Range(*x_lim)
 
+    aplitude_base_level = float(offset_file.read_text())
+
+    config.rigol.amplitude_pp = aplitude_base_level
+
     if y_offset:
         config.plot.y_offset = y_offset
     elif y_offset_auto and not isinstance(config.plot.y_offset, float):
@@ -239,7 +252,7 @@ def sweep(
             debug=debug,
         )
 
-    create_latex_file(image_file, home=HOME_PATH, debug=debug)
+        create_latex_file(image_file, home=HOME_PATH, debug=debug)
 
 
 @cli.command(help="Plot from a csv file.")
@@ -254,6 +267,7 @@ def sweep(
     type=pathlib.Path,
     help="Home path, where the plot image will be created.",
     default=pathlib.Path.cwd(),
+    show_default=True,
 )
 @click.option(
     "--format",
@@ -261,18 +275,21 @@ def sweep(
     multiple=True,
     help='Format of the plot, can be: "png" or "pdf".',
     default=["png"],
+    show_default=True,
 )
 @click.option(
     "--y_lim",
     nargs=2,
     type=(float, float),
     help="Range y Plot.",
+    default=None,
 )
 @click.option(
     "--x_lim",
     nargs=2,
     type=(float, float),
     help="Range x Plot.",
+    default=None,
 )
 @click.option(
     "--y_offset",
@@ -376,7 +393,7 @@ def plot(
             create_latex_file(plot_file, home=home)
 
 
-@cli.command(help="Plot from a csv file.")
+@cli.command(help="Gets the config Offset Through PID Controller.")
 @click.option(
     "--config",
     "config_path",
@@ -395,6 +412,7 @@ def plot(
     type=pathlib.Path,
     help="Home path, where the plot image will be created.",
     default=pathlib.Path.cwd(),
+    show_default=True,
 )
 @click.option(
     "--y_offset",
