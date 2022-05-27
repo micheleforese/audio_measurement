@@ -50,19 +50,20 @@ class PID_TERM:
 
 class PID_Controller:
 
+    term: PID_TERM
+
     set_point: float
     controller_gain: float
     tauI: float
     tauD: float
     controller_output_zero: float
 
-    _error_list: List[Timed_Value]
-    _error_integral_list: List[float]
+    _error_list: List[Timed_Value]  #
     _error_integral: float
+    _error_integral_cache_index: int
 
+    _process_output_list: List[float]  #
     _process_variable_list: List[float]
-    _derivative_process_variable_list: List[float]
-    _derivative_process_variable: float
 
     def __init__(
         self,
@@ -72,6 +73,8 @@ class PID_Controller:
         tauD: float,
         controller_output_zero: float,
     ) -> None:
+
+        self.term = PID_TERM()
 
         self.set_point = set_point
         self.controller_gain = controller_gain
@@ -84,20 +87,28 @@ class PID_Controller:
 
         self.controller_output_zero = controller_output_zero
 
+        self._error_integral_cache_index = 0
+
         self._error_list = []
         self._error_integral_list = [0]
         self._error_integral = 0
+
         self._process_variable_list = []
         self._derivative_process_variable_list = [0]
         self._derivative_process_variable = 0
 
+        self._process_output_list = [controller_output_zero]
+
+    @property
+    def process_output_list(self):
+        return self._process_output_list
+
+    def add_process_output(self, value: float):
+        self._process_output_list.append(value)
+
     @property
     def error_list(self):
         return self._error_list
-
-    @property
-    def error_integral_list(self):
-        return self._error_integral_list
 
     @property
     def error_integral(self):
@@ -108,58 +119,18 @@ class PID_Controller:
         return self._process_variable_list
 
     @property
-    def derivative_process_variable_list(self):
-        return self._derivative_process_variable_list
-
-    @property
     def derivative_process_variable(self):
         return self._derivative_process_variable
 
     def add_error(self, error: Timed_Value):
         self._error_list.append(error)
-        value: float = error.value
-
-        temp_error_integral: float = 0
-        if len(self._error_list) > 0:
-            error_area = (self._error_list[-1].value + value) / 2
-            temp_error_integral = self._error_integral + error_area
-
-        self._error_integral = temp_error_integral
-
-        self._error_list.append(error)
-        self._error_integral_list.append(temp_error_integral)
-
-    def calculate_error_integral(self):
-
-        temp_error_integral: float = 0
-
-        if len(self._error_list) > 1:
-            error_area = (self._error_list[-1].value + 10) / 2
-            temp_error_integral = self._error_integral + error_area
-        else:
-            return 0
-
-        self._error_integral = temp_error_integral
 
     def add_process_variable(self, process_variable: float):
-        process_variable_prev: float
-
-        temp_derivative_process_variable: float = 0
-
-        if len(self.process_variable_list) > 0:
-            process_variable_prev = self.process_variable_list[-1]
-            temp_derivative_process_variable = process_variable - process_variable_prev
-
-        self._derivative_process_variable = temp_derivative_process_variable
-
         self._process_variable_list.append(process_variable)
-        self._derivative_process_variable_list.append(temp_derivative_process_variable)
 
-    def pid_step(self, error: Timed_Value, process_variable: float) -> float:
-        self.add_error(error)
-        self.add_process_variable(process_variable)
-
-        return self.output_process
+    @staticmethod
+    def check_limit_diff(error, lim):
+        return abs(error) < lim
 
     @property
     def proportional_term(self) -> float:
@@ -170,11 +141,24 @@ class PID_Controller:
 
     @property
     def integral_term(self) -> float:
-        return self.controller_gain * self.error_integral / self.tauI
+        # index_error_list = len(self._error_list)
+
+        # if index_error_list > self._error_integral_cache_index:
+        #     self._error_integral += calculate_area(
+        #         self._error_list[self._error_integral_cache_index :]
+        #     )
+        #     self._error_integral_cache_index = index_error_list
+
+        return (
+            self.controller_gain
+            * calculate_area([error.value for error in self.error_list])
+            / self.tauI
+        )
 
     @property
     def derivative_term(self) -> float:
-        return self.controller_gain * self.tauD * self.derivative_process_variable
+        gradient = calculate_gradient(self.process_variable_list)
+        return -self.controller_gain * self.tauD * gradient
 
     @property
     def output_process(self) -> float:
@@ -186,14 +170,17 @@ class PID_Controller:
         """
         return (
             self.controller_output_zero
-            + self.proportional_term
-            + self.integral_term
-            - self.derivative_term
+            + self.term.proportional[-1]
+            + self.term.integral[-1]
+            + self.term.derivative[-1]
         )
 
 
 def calculate_area(function: List[float]) -> float:
-    return float(np.trapz(function))
+    if len(function) > 1:
+        return float(np.trapz(function))
+    else:
+        return 0
 
 
 def calculate_gradient(function: List[float]) -> float:
