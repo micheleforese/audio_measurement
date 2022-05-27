@@ -160,6 +160,9 @@ def create_latex_file(
     user_id, stderr = exec_command(["id", "-u"])
 
     if debug:
+        console.print(f'USER: {os.environ.get("USER", "")}')
+
+    if debug:
         console.log(user_id)
         console.log(stderr)
 
