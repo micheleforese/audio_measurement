@@ -12,7 +12,6 @@ from matplotlib.figure import Figure
 from rich.console import Group
 from rich.live import Live
 from rich.panel import Panel
-from rich.prompt import Confirm
 from rich.table import Column, Table
 from usbtmc import Instrument
 
@@ -78,6 +77,7 @@ def sampling_curve(
         SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
         SCPI.set_source_voltage_amplitude(1, round(config.rigol.amplitude_pp, 5)),
         SCPI.set_source_frequency(1, round(config.sampling.f_range.min, 5)),
+        # SCPI.set_source_frequency(1, round(145, 5)),
     ]
 
     SCPI.exec_commands(generator, generator_configs)
@@ -124,6 +124,10 @@ def sampling_curve(
         # Sets the Frequency
         generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
 
+        # frequency_temp = 145
+
+        sleep(0.4)
+
         Fs = config.nidaq._max_Fs
 
         if frequency < 20:
@@ -154,11 +158,6 @@ def sampling_curve(
         message: Timer_Message = time.stop()
 
         if rms_value:
-
-            perc_error = percentage_error(
-                exact=(config.rigol.amplitude_pp / 2) / np.math.sqrt(2),
-                approx=rms_value,
-            )
 
             gain_bBV: float = 20 * np.log10(
                 rms_value * 2 * np.math.sqrt(2) / config.rigol.amplitude_pp
@@ -500,7 +499,6 @@ def config_offset(
     gain_dB_list: List[float] = []
 
     k_tot = 0.2745
-
     gain_apparato: Optional[float] = None
 
     level_offset: Optional[float] = None
@@ -524,11 +522,11 @@ def config_offset(
                 gain_apparato = rms_value / voltage_amplitude_start
                 pid.controller_gain = k_tot / gain_apparato
 
-            process_variable_list.append(rms_value)
+            pid.add_process_variable(rms_value)
 
             error: float = Vpp_4dBu_exact - rms_value
 
-            error_list.append(error)
+            pid.add_error(Timed_Value(error))
 
             error_percentage: float = percentage_error(
                 exact=Vpp_4dBu_exact, approx=rms_value
@@ -551,16 +549,16 @@ def config_offset(
                     "red" if gain_dB < 0 else "green",
                     gain_dB,
                 ),
-                f"{pid_term.proportional[-1]:+.8f}",
-                f"{pid_term.integral[-1]:+.8f}",
-                f"{pid_term.derivative[-1]:+.8f}",
+                f"{pid.term.proportional[-1]:+.8f}",
+                f"{pid.term.integral[-1]:+.8f}",
+                f"{pid.term.derivative[-1]:+.8f}",
                 "[{}]{:+.5%}[/]".format(
                     "red" if error > diff_voltage else "green",
                     error_percentage,
                 ),
             )
 
-            if abs(error) < diff_voltage:
+            if pid.check_limit_diff(error, diff_voltage):
                 Vpp_found = True
                 level_offset = voltage_amplitude
 
@@ -591,24 +589,14 @@ def config_offset(
                 console.print(Panel("[PATH] - {}".format(offset_file_path)))
 
             else:
-                pid_term.add_proportional(pid.controller_gain * error)
-                pid_term.add_integral(
-                    pid.controller_gain * calculate_area(error_list) / pid.tauI
-                )
-                pid_term.add_derivative(
-                    -pid.controller_gain
-                    * pid.tauD
-                    * calculate_gradient(process_variable_list)
-                )
 
-                output_variable: float = (
-                    voltage_amplitude_start
-                    + pid_term.proportional[-1]
-                    + pid_term.integral[-1]
-                    + pid_term.derivative[-1]
-                )
+                pid.term.add_proportional(pid.proportional_term)
+                pid.term.add_integral(pid.integral_term)
+                pid.term.add_derivative(pid.derivative_term)
 
-                process_output_list.append(output_variable)
+                output_variable: float = pid.output_process
+
+                pid.add_process_output(output_variable)
 
                 voltage_amplitude = output_variable
 
@@ -624,7 +612,7 @@ def config_offset(
                 iteration += 1
 
         else:
-            console.print("[SAMPLING] - Error retriving rms_value.")
+            console.print("[SAMPLING] - Error retrieving rms_value.")
 
     generator_ac_curves: List[str] = [
         SCPI.set_output(1, Switch.OFF),

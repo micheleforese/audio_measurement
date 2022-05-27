@@ -262,26 +262,30 @@ def read_voltages(
         raise ValueError("The Sampling rate is low: Fs / 2 > frequency.")
 
     try:
+        # 1. Create a NidaqMX Task
         task = nidaqmx.Task("Input Voltage")
 
+        # 2. Add the AI Voltage Channel
         ai_channel = task.ai_channels.add_ai_voltage_chan(
             ch_input, min_val=min_voltage, max_val=max_voltage
         )
 
-        task.start()
-
-        # Sets the Clock sampling rate
+        # 3. Configure the task
+        #   Sets the Clock sampling rate
         task.timing.cfg_samp_clk_timing(Fs)
 
-        # Pre allocate the array
+        # 4. Pre allocate the array
         voltages = np.ndarray(number_of_samples)
 
-        # Sets the task for the stream_reader
+        # 5. Start the Task
+        task.start()
+
+        # 6. Sets the task for the stream_reader
         channel1_stream_reader = nidaqmx.stream_readers.AnalogSingleChannelReader(
             task.in_stream
         )
 
-        # Sampling the voltages
+        # 7. Sampling the voltages
         channel1_stream_reader.read_many_sample(
             voltages, number_of_samples_per_channel=number_of_samples
         )
