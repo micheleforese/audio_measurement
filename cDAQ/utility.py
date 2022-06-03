@@ -1,3 +1,4 @@
+from cmath import sqrt
 import enum
 from typing import List, Optional
 
@@ -214,7 +215,7 @@ class RMS:
         return average * 1.111
 
     @staticmethod
-    def fft(voltages: List[float]) -> float:
+    def fft(voltages) -> float:
         """Calculate the RMS Voltage value with the Fast Fourier Transform
         of the voltage sampling list
 
@@ -228,12 +229,22 @@ class RMS:
         n_samp = len(voltages)
         voltages_fft = fft(voltages, n_samp, workers=-1)
 
-        sum: float = 0
+        sum = 0
 
         for v in voltages_fft:
             sum += (np.abs(v) / n_samp) ** 2
 
-        return np.math.sqrt(abs(sum))
+        # return np.math.sqrt(abs(sum))
+
+        voltages_fft2 = fft(voltages, n_samp)
+
+        sum = 0
+        for v in voltages_fft2:
+            sum += np.float_power(v, 2)
+
+        rms: float = np.absolute(np.sqrt(sum / n_samp))
+
+        return rms
 
     @staticmethod
     def integration(voltages: List[float], Fs: float) -> float:

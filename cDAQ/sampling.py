@@ -70,14 +70,13 @@ def sampling_curve(
 
     # Sets the Configuration for the Voltmeter
     generator_configs: list = [
-        SCPI.clear(),
         # SCPI.reset(),
+        SCPI.clear(),
         SCPI.set_output(1, Switch.OFF),
         SCPI.set_function_voltage_ac(),
         SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
         SCPI.set_source_voltage_amplitude(1, round(config.rigol.amplitude_pp, 5)),
         SCPI.set_source_frequency(1, round(config.sampling.f_range.min, 5)),
-        # SCPI.set_source_frequency(1, round(145, 5)),
     ]
 
     SCPI.exec_commands(generator, generator_configs)
@@ -118,13 +117,12 @@ def sampling_curve(
     ui_t.progress_sweep.start_task(task_sweep)
 
     for frequency in log_scale.f_list:
-
-        ui_t.progress_sweep.update(task_sweep, frequency=round(frequency, 5))
+        ui_t.progress_sweep.update(
+            task_sweep, frequency=f"{round(frequency, 5)}", rms="0"
+        )
 
         # Sets the Frequency
         generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
-
-        # frequency_temp = 145
 
         sleep(0.4)
 
@@ -158,6 +156,14 @@ def sampling_curve(
         message: Timer_Message = time.stop()
 
         if rms_value:
+
+            console.print(f"RMS: {rms_value}")
+
+            ui_t.progress_sweep.update(
+                task_sweep,
+                frequency=f"{round(frequency, 5)}",
+                rms="{}".format(round(rms_value, 5)),
+            )
 
             gain_bBV: float = 20 * np.log10(
                 rms_value * 2 * np.math.sqrt(2) / config.rigol.amplitude_pp

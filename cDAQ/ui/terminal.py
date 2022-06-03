@@ -30,7 +30,9 @@ progress_sweep = Progress(
     TimeElapsedColumn(),
     "•",
     MofNCompleteColumn(),
-    TextColumn(" - Frequency: [bold green]{task.fields[frequency]}"),
+    TextColumn(
+        " - Frequency: [bold green]{task.fields[frequency]} - RMS: {task.fields[rms]}"
+    ),
     console=console,
     transient=True,
 )

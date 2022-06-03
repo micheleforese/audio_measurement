@@ -204,7 +204,7 @@ def sweep(
 
     aplitude_base_level = float(offset_file.read_text())
 
-    config.rigol.amplitude_pp = aplitude_base_level
+    # config.rigol.amplitude_pp = aplitude_base_level
 
     if y_offset:
         config.plot.y_offset = y_offset
