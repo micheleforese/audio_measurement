@@ -1,12 +1,15 @@
+import pathlib
 import numpy as np
 from matplotlib import pyplot as plt
+import pandas as pd
 from scipy.fft import fft, fftfreq, rfft, rfftfreq
+from rich.panel import Panel
 
 from cDAQ.console import console
 
 
 def generate_sine_wave(freq, amplitude, sample_rate, duration):
-    x = np.linspace(0, duration, sample_rate * duration, endpoint=False)
+    x = np.linspace(0.0, duration, int(sample_rate * duration), endpoint=False)
 
     # 2pi because np.sin takes radians
     y = amplitude * np.sin((2 * np.pi) * freq * x)
@@ -15,17 +18,25 @@ def generate_sine_wave(freq, amplitude, sample_rate, duration):
 
 def test_fft():
 
-    FREQUENCY = 400
+    FREQUENCY = 0.9
 
     OVER_SAMP_RATE = 6
 
     SAMPLE_RATE = FREQUENCY * OVER_SAMP_RATE
-    DURATION = 5  # Seconds
+    DURATION = 2  # Seconds
 
-    AMPLITUDE_PEAK = 2
+    AMPLITUDE_PEAK = 0.25
     AMPLITUDE_PEAK_TO_PEAK = AMPLITUDE_PEAK * 2
 
     t, nice_tone = generate_sine_wave(FREQUENCY, AMPLITUDE_PEAK, SAMPLE_RATE, DURATION)
+
+    # pd.DataFrame(nice_tone).to_csv(
+    #     pathlib.Path.cwd().absolute().resolve(),
+    #     header=["voltage"],
+    #     index=None,
+    # )
+
+    # plt.plot(nice_tone, "0")
 
     # Number of samples in normalized_tone
     N = len(t)
@@ -36,20 +47,7 @@ def test_fft():
     for y in yf:
         sum += np.float_power(y, 2)
 
-    rms: float = np.sqrt(sum) / N
+    rms: float = np.absolute(np.sqrt(sum) / N)
 
-    console.print(f"RMS: {np.absolute(rms)}")
-
-    ###############################
-
-    n_samp = len(nice_tone)
-    voltages_fft = fft(nice_tone, n_samp, workers=-1)
-
-    sum = 0
-
-    for v in voltages_fft:
-        sum += (np.abs(v) / n_samp) ** 2
-
-    rms: float = np.sqrt(sum / n_samp)
-
-    console.print(f"RMS: {np.absolute(rms)}")
+    console.print("\n")
+    console.print(Panel(f"RMS: {rms}"))

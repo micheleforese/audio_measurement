@@ -41,6 +41,7 @@ def use_package(packages: List[Package]):
 def create_latex_file(
     image_file: pathlib.Path,
     home: pathlib.Path,
+    latex_home: pathlib.Path,
     debug: bool = False,
 ):
 
@@ -118,7 +119,7 @@ def create_latex_file(
         + r"\begin{tikzpicture}[remember picture,overlay,shift={(current page.north east)}]"
         + "\n"
         + r"\node[anchor=north east,xshift=-3cm,yshift=-2.5cm]{\includegraphics[width=2cm]{"
-        + "{}".format("logo-acme_systems.jpeg")
+        + "{}".format("../logo-acme_systems.jpeg")
         + "}};"
         + "\n"
         + r"\end{tikzpicture}"
@@ -126,7 +127,7 @@ def create_latex_file(
         + r"\begin{tikzpicture}[remember picture,overlay,shift={(current page.north west)}]"
         + "\n"
         + r"\node[anchor=north west,xshift=3.5cm,yshift=-1.5cm]{\includegraphics[width=2cm]{"
-        + "{}".format("logo-livio_argentini.jpeg")
+        + "{}".format("../logo-livio_argentini.jpeg")
         + "}};"
         + "\n"
         + r"\end{tikzpicture}"
@@ -184,8 +185,9 @@ def create_latex_file(
             group=1000,
         ),
         volume=Volume(local=home.absolute().resolve(), remote="/data"),
-        command="pdflatex -output-format={} {}".format(
+        command='pdflatex -output-format="{}" -output-directory="{}" "{}"'.format(
             "pdf",
+            latex_home.name,
             docker_latex_file_path,
         ),
     )

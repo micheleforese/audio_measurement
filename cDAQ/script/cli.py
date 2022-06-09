@@ -1,10 +1,11 @@
+import datetime
 import pathlib
 from code import interact
 from datetime import datetime
 from pathlib import Path
 from time import sleep
 from timeit import timeit
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import click
 import matplotlib.pyplot as plt
@@ -27,7 +28,12 @@ from cDAQ.config.type import ModAuto, Range
 from cDAQ.console import console
 from cDAQ.docker import Docker_CLI
 from cDAQ.docker.latex import create_latex_file
-from cDAQ.math import INTERPOLATION_KIND, logx_interpolation_model
+from cDAQ.math import (
+    INTERPOLATION_KIND,
+    find_sin_zero_offset,
+    interpolation_model,
+    logx_interpolation_model,
+)
 from cDAQ.math.pid import (
     PID_TERM,
     PID_Controller,
@@ -41,7 +47,7 @@ from cDAQ.script.gui import GuiAudioMeasurements
 from cDAQ.script.test import testTimer
 from cDAQ.timer import Timer, Timer_Message, timeit, timer
 from cDAQ.usbtmc import UsbTmc, get_device_list, print_devices_list
-from cDAQ.utility import RMS, percentage_error, transfer_function
+from cDAQ.utility import RMS, get_subfolder, percentage_error, transfer_function
 
 
 @click.group()
@@ -204,7 +210,7 @@ def sweep(
 
     aplitude_base_level = float(offset_file.read_text())
 
-    # config.rigol.amplitude_pp = aplitude_base_level
+    config.rigol.amplitude_pp = aplitude_base_level
 
     if y_offset:
         config.plot.y_offset = y_offset
@@ -229,19 +235,23 @@ def sweep(
     if time:
         timer.start()
 
+    measurements_dir: pathlib.Path = HOME_PATH / "{}".format(datetime_now)
+
+    measurements_file: pathlib.Path = measurements_dir / "sweep.csv"
+    image_file: pathlib.Path = measurements_dir / "sweep.png"
+
+    measurements_dir.mkdir(parents=True, exist_ok=True)
+
     if not simulate:
 
         sampling_curve(
             config=config,
-            measurements_file_path=HOME_PATH / "audio-{}.csv".format(datetime_now),
+            measurements_file_path=measurements_file,
             debug=debug,
         )
 
     if time:
         timer.stop().print()
-
-    measurements_file = HOME_PATH / "audio-{}.csv".format(datetime_now)
-    image_file = HOME_PATH / "audio-{}.png".format(datetime_now)
 
     if not simulate:
 
@@ -252,7 +262,9 @@ def sweep(
             debug=debug,
         )
 
-        create_latex_file(image_file, home=HOME_PATH, debug=debug)
+        create_latex_file(
+            image_file, home=HOME_PATH, latex_home=measurements_dir, debug=debug
+        )
 
 
 @cli.command(help="Plot from a csv file.")
@@ -321,7 +333,7 @@ def plot(
 ):
     HOME_PATH = home.absolute()
     csv_file: pathlib.Path = pathlib.Path()
-    plot_file: pathlib.Path = pathlib.Path()
+    plot_file: Optional[pathlib.Path] = None
 
     y_offset_mode: Optional[Union[float, ModAuto]] = None
     if y_offset:
@@ -344,6 +356,7 @@ def plot(
     )
 
     is_most_recent_file: bool = False
+    plot_file: Optional[pathlib.Path] = None
 
     if csv:
         if csv.exists() and csv.is_file():
@@ -362,35 +375,31 @@ def plot(
         is_most_recent_file = True
 
     if is_most_recent_file:
-        # Take the most recent csv File.
-        csv_file_list: List[pathlib.Path] = [
-            csv for csv in HOME_PATH.glob("*.csv") if csv.is_file()
-        ]
 
-        csv_file_list.sort(
-            key=lambda name: datetime.strptime(name.stem, f"audio-%Y-%m-%d--%H-%M-%f"),
-            # reverse=True,
-        )
-        try:
-            csv_file = csv_file_list.pop()
-            # date_pattern = datetime.now().strftime(f"%Y-%m-%d--%H-%M-%f")
+        measurement_dirs: List[pathlib.Path] = get_subfolder(HOME_PATH)
 
-            plot_file = HOME_PATH / pathlib.Path(csv_file).with_suffix("")
-        except IndexError:
+        if len(measurement_dirs) > 0:
+            csv_file = measurement_dirs[-1] / "sweep.csv"
+
+            if csv_file.exists() and csv_file.is_file():
+                plot_file = csv_file.with_suffix("")
+        else:
             console.print("There is no csv file available.", style="error")
-            exit()
 
-    for plot_file_format in format:
-        plot_file = plot_file.with_suffix("." + plot_file_format)
-        console.print('Plotting file: "{}"'.format(plot_file.absolute()))
-        plot_from_csv(
-            measurements_file_path=csv_file,
-            plot_file_path=plot_file,
-            plot_config=plot_config,
-            debug=debug,
-        )
-        if plot_file_format == "png":
-            create_latex_file(plot_file, home=home)
+    if plot_file:
+        for plot_file_format in format:
+            plot_file = plot_file.with_suffix("." + plot_file_format)
+            console.print('Plotting file: "{}"'.format(plot_file.absolute()))
+            plot_from_csv(
+                measurements_file_path=csv_file,
+                plot_file_path=plot_file,
+                plot_config=plot_config,
+                debug=debug,
+            )
+            if plot_file_format == "png":
+                create_latex_file(plot_file, home=home)
+    else:
+        console.print("Cannot create a plot file.", style="error")
 
 
 @cli.command(help="Gets the config Offset Through PID Controller.")
@@ -475,6 +484,151 @@ def config(
         plot_file_path=home / "audio-{}.config.png".format(datetime_now),
         debug=debug,
     )
+
+
+@cli.command()
+@click.option(
+    "--home",
+    type=pathlib.Path,
+    help="Home path, where the plot image will be created.",
+    default=pathlib.Path.cwd(),
+    show_default=True,
+)
+@click.option(
+    "--sweep-dir",
+    "sweep_dir",
+    type=pathlib.Path,
+    help="Home path, where the plot image will be created.",
+    default=None,
+)
+def sweep_debug(home, sweep_dir):
+
+    measurement_dirs: List[pathlib.Path] = get_subfolder(home)
+
+    dir: pathlib.Path
+
+    if len(measurement_dirs) > 0:
+        dir = measurement_dirs[-1] / "sweep"
+    else:
+        console.print("Cannot create the debug info from sweep csvs.", style="error")
+        exit()
+
+    csv_files = [
+        csv
+        for csv in dir.glob("*.csv")
+        if csv.is_file()
+        and csv.name.find(".intr") == -1
+        and csv.name.find(".rms_intr.csv")
+    ]
+
+    for csv in csv_files:
+        frequency = float(csv.with_suffix("").name)
+        plot_image = csv.with_suffix(".png")
+
+        data: pd.DataFrame = pd.read_csv(csv.absolute().resolve(), header=0)
+
+        # data.plot(kind="scatter")
+        plot: Tuple[Figure, Dict[str, Axes]] = plt.subplot_mosaic(
+            [
+                ["samp", "samp", "rms_samp"],
+                ["intr_samp", "intr_samp", "rms_intr_samp"],
+                ["intr_samp_offset", "intr_samp_offset", "rms_intr_samp_offset"],
+            ],
+            figsize=(24, 20),
+            dpi=300,
+        )
+
+        fig, axd = plot
+
+        fig.suptitle(f"Frequency: {frequency} Hz.", fontsize=30)
+
+        voltages = list(data["voltage"].values)
+        voltages = voltages[0:200]
+
+        plot_samp = axd["samp"]
+        plot_samp.plot(voltages, "o")
+        rms_samp = RMS.fft(voltages)
+        plot_samp.legend([f"Samples rms={rms_samp:.5}"], loc="best")
+
+        plot_intr_samp = axd["intr_samp"]
+        x_interpolated, y_interpolated = interpolation_model(
+            range(0, len(voltages)),
+            voltages,
+            int(len(voltages) * 5),
+            kind=INTERPOLATION_KIND.CUBIC,
+        )
+
+        pd.DataFrame(y_interpolated).to_csv(
+            csv.with_suffix(".intr.csv").absolute().resolve(),
+            header=["voltage"],
+            index=None,
+        )
+        plot_intr_samp.plot(
+            x_interpolated,
+            y_interpolated,
+            "-",
+            linewidth=0.5,
+            label="Interpolated",
+        )
+        rms_intr = RMS.fft(y_interpolated)
+        plot_intr_samp.legend([f"Interpolated Samples rms={rms_intr:.5}"], loc="best")
+
+        plot_rms_samp = axd["rms_samp"]
+        rms_samp_iter_list: List[float] = [0]
+        for n in range(1, len(voltages)):
+            rms_samp_iter_list.append(RMS.fft(voltages[0:n]))
+
+        plot_rms_samp.plot(rms_samp_iter_list)
+        plot_rms_samp.legend([f"Iterations Sample RMS"], loc="best")
+
+        plot_rms_intr_samp = axd["rms_intr_samp"]
+        rms_intr_samp_iter_list: List[float] = [0]
+        for n in range(1, len(y_interpolated), 3):
+            rms_intr_samp_iter_list.append(RMS.fft(y_interpolated[0:n]))
+
+        plot_rms_intr_samp.plot(rms_intr_samp_iter_list)
+        plot_rms_intr_samp.legend([f"Iterations Interpolated Sample RMS"], loc="best")
+
+        # PLOT: Interpolated Sample, Zero Offset for complete Cycles
+        offset_interpolated = find_sin_zero_offset(y_interpolated)
+
+        plot_intr_samp_offset = axd["intr_samp_offset"]
+        rms_intr_offset = RMS.fft(offset_interpolated)
+        plot_intr_samp_offset.plot(
+            offset_interpolated,
+            linewidth=0.7,
+        )
+        plot_intr_samp_offset.legend(
+            [f"Interpolated Samples with Offset rms={rms_intr_offset:.5}"], loc="best"
+        )
+
+        plot_rms_intr_samp_offset = axd["rms_intr_samp_offset"]
+        rms_intr_samp_offset_iter_list: List[float] = [0]
+
+        for n in range(1, len(offset_interpolated), 3):
+            rms_intr_samp_offset_iter_list.append(RMS.fft(offset_interpolated[0:n]))
+
+        pd.DataFrame(rms_intr_samp_offset_iter_list).to_csv(
+            csv.with_suffix(".rms_intr.csv").absolute().resolve(),
+            header=["voltage"],
+            index=None,
+        )
+
+        plot_rms_intr_samp_offset.plot(rms_intr_samp_offset_iter_list)
+        plot_rms_intr_samp_offset.legend(
+            [f"Iterations Interpolated Sample with Offset RMS"], loc="best"
+        )
+
+        plt.savefig(plot_image)
+        plt.close(fig)
+        plt.clf()
+        plt.cla()
+
+        # console.print(
+        #     f"Plotted Frequency: [blue]{frequency:7.5}[/] - rms_samp: {rms_samp:2.5} - rms_intr: {rms_intr:2.5}."
+        # )
+
+        console.print(f"Plotted Frequency: [blue]{frequency:7.5}[/].")
 
 
 @cli.group()

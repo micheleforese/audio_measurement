@@ -1,5 +1,6 @@
 from code import interact
 from pathlib import Path
+import pathlib
 from time import sleep
 from typing import List, Optional, Tuple
 
@@ -25,8 +26,6 @@ from cDAQ.math.pid import (
     PID_TERM,
     PID_Controller,
     Timed_Value,
-    calculate_area,
-    calculate_gradient,
 )
 from cDAQ.scpi import SCPI, Bandwidth, Switch
 from cDAQ.timer import Timer, Timer_Message
@@ -39,6 +38,9 @@ def sampling_curve(
     measurements_file_path: Path,
     debug: bool = False,
 ):
+    home = measurements_file_path.parent
+
+    pathlib.Path(home / "sweep").mkdir(parents=True, exist_ok=True)
 
     live_group = Group(
         Panel(Group(ui_t.progress_list_task, ui_t.progress_sweep, ui_t.progress_task)),
@@ -51,7 +53,7 @@ def sampling_curve(
     live.start()
 
     task_sampling = ui_t.progress_list_task.add_task(
-        "Sampling", start=False, task="Retriving Devices"
+        "Sampling", start=False, task="Retrieving Devices"
     )
     ui_t.progress_list_task.start_task(task_sampling)
 
@@ -151,6 +153,7 @@ def sampling_curve(
             min_voltage=config.nidaq.min_voltage,
             number_of_samples=config.sampling.number_of_samples,
             time_report=False,
+            save_file=home / "sweep" / f"{round(frequency, 5)}.csv",
         )
 
         message: Timer_Message = time.stop()

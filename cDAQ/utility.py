@@ -1,5 +1,7 @@
-from cmath import sqrt
+import datetime
 import enum
+import pathlib
+from cmath import sqrt
 from typing import List, Optional
 
 import nidaqmx
@@ -8,6 +10,7 @@ import nidaqmx.stream_readers
 import nidaqmx.stream_writers
 import nidaqmx.system
 import numpy as np
+import pandas as pd
 from nidaqmx._task_modules.channels.ai_channel import AIChannel
 from nidaqmx._task_modules.channels.ao_channel import AOChannel
 from nidaqmx.system._collections.device_collection import DeviceCollection
@@ -161,6 +164,7 @@ class RMS:
         min_voltage: float,
         rms_mode: RMS_MODE = RMS_MODE.FFT,
         time_report: bool = False,
+        save_file: Optional[pathlib.Path] = None,
     ) -> Optional[float]:
 
         timer = Timer()
@@ -175,6 +179,14 @@ class RMS:
                 max_voltage=max_voltage,
                 min_voltage=min_voltage,
             )
+
+            if save_file:
+                pd.DataFrame(voltages).to_csv(
+                    save_file.absolute().resolve(),
+                    header=["voltage"],
+                    index=None,
+                )
+
             rms: Optional[float] = None
 
             if time_report:
@@ -230,19 +242,10 @@ class RMS:
         voltages_fft = fft(voltages, n_samp, workers=-1)
 
         sum = 0
-
         for v in voltages_fft:
-            sum += (np.abs(v) / n_samp) ** 2
+            sum += np.float_power(np.absolute(v), 2)
 
-        # return np.math.sqrt(abs(sum))
-
-        voltages_fft2 = fft(voltages, n_samp)
-
-        sum = 0
-        for v in voltages_fft2:
-            sum += np.float_power(v, 2)
-
-        rms: float = np.absolute(np.sqrt(sum / n_samp))
+        rms: float = np.sqrt(sum) / n_samp
 
         return rms
 
@@ -305,3 +308,22 @@ def read_voltages(
         console.print("[EXCEPTION] - {}".format(e))
 
     return voltages
+
+
+def get_subfolder(
+    home: pathlib.Path, pattern: str = r"%Y-%m-%d--%H-%M-%f"
+) -> List[pathlib.Path]:
+    measurement_dirs: List[pathlib.Path] = []
+
+    for dir in home.iterdir():
+        try:
+            datetime.datetime.strptime(dir.name, pattern)
+            measurement_dirs.append(dir)
+        except ValueError:
+            continue
+
+    measurement_dirs.sort(
+        key=lambda name: datetime.datetime.strptime(name.stem, pattern),
+    )
+
+    return measurement_dirs
