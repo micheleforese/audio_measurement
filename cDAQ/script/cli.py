@@ -33,6 +33,7 @@ from cDAQ.math import (
     find_sin_zero_offset,
     interpolation_model,
     logx_interpolation_model,
+    rms_full_cycle,
 )
 from cDAQ.math.pid import (
     PID_TERM,
@@ -518,7 +519,7 @@ def sweep_debug(home, sweep_dir):
         for csv in dir.glob("*.csv")
         if csv.is_file()
         and csv.name.find(".intr") == -1
-        and csv.name.find(".rms_intr.csv")
+        and csv.name.find(".rms_intr.csv") == -1
     ]
 
     for csv in csv_files:
@@ -533,8 +534,23 @@ def sweep_debug(home, sweep_dir):
                 ["samp", "samp", "rms_samp"],
                 ["intr_samp", "intr_samp", "rms_intr_samp"],
                 ["intr_samp_offset", "intr_samp_offset", "rms_intr_samp_offset"],
+                [
+                    "rms_intr_samp_offset_trim",
+                    "rms_intr_samp_offset_trim",
+                    "rms_intr_samp_offset_trim",
+                ],
+                [
+                    "rms_intr_samp_offset_trim_gradient",
+                    "rms_intr_samp_offset_trim_gradient",
+                    "rms_intr_samp_offset_trim_gradient",
+                ],
+                [
+                    "rms_intr_samp_offset_trim_average",
+                    "rms_intr_samp_offset_trim_average",
+                    "rms_intr_samp_offset_trim_average",
+                ],
             ],
-            figsize=(24, 20),
+            figsize=(24, 25),
             dpi=300,
         )
 
@@ -617,6 +633,39 @@ def sweep_debug(home, sweep_dir):
         plot_rms_intr_samp_offset.plot(rms_intr_samp_offset_iter_list)
         plot_rms_intr_samp_offset.legend(
             [f"Iterations Interpolated Sample with Offset RMS"], loc="best"
+        )
+
+        # PLOT: RMS every sine period
+        plot_rms_intr_samp_offset_trim = axd["rms_intr_samp_offset_trim"]
+        (plot_rms_fft_intr_samp_offset_trim_list) = rms_full_cycle(offset_interpolated)
+
+        plot_rms_intr_samp_offset_trim.plot(plot_rms_fft_intr_samp_offset_trim_list)
+        plot_rms_intr_samp_offset_trim.legend(
+            ["RMS fft per period, Interpolated"],
+            loc="best",
+        )
+
+        plot_rms_intr_samp_offset_trim_gradient = axd[
+            "rms_intr_samp_offset_trim_gradient"
+        ]
+        rms_fft_gradient_list = np.gradient(plot_rms_fft_intr_samp_offset_trim_list)
+        plot_rms_intr_samp_offset_trim_gradient.plot(rms_fft_gradient_list)
+        plot_rms_intr_samp_offset_trim_gradient.legend(
+            ["RMS fft per period, Interpolated GRADIENT"],
+            loc="best",
+        )
+
+        plot_rms_intr_samp_offset_trim_average = axd[
+            "rms_intr_samp_offset_trim_average"
+        ]
+        rms_fft_average_list: List[float] = []
+        data_mobile = plot_rms_fft_intr_samp_offset_trim_list[10:]
+        for n in range(1, len(data_mobile)):
+            rms_fft_average_list.append(sum(data_mobile[0:n]) / (n))
+        plot_rms_intr_samp_offset_trim_average.plot(rms_fft_average_list)
+        plot_rms_intr_samp_offset_trim_average.legend(
+            [f"RMS fft per period, Interpolated Average: {rms_fft_average_list[-1]}"],
+            loc="best",
         )
 
         plt.savefig(plot_image)

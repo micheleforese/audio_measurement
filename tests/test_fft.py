@@ -30,14 +30,6 @@ def test_fft():
 
     t, nice_tone = generate_sine_wave(FREQUENCY, AMPLITUDE_PEAK, SAMPLE_RATE, DURATION)
 
-    # pd.DataFrame(nice_tone).to_csv(
-    #     pathlib.Path.cwd().absolute().resolve(),
-    #     header=["voltage"],
-    #     index=None,
-    # )
-
-    # plt.plot(nice_tone, "0")
-
     # Number of samples in normalized_tone
     N = len(t)
 

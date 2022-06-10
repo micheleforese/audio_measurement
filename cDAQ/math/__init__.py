@@ -5,6 +5,8 @@ from typing import Callable, List, Optional, Tuple
 import numpy as np
 from scipy.interpolate import interp1d
 
+from cDAQ.utility import RMS
+
 
 def unit_normalization(value: float) -> int:
     return int(value / abs(value))
@@ -146,7 +148,7 @@ def find_sin_zero_offset(sample: List[float]) -> List[float]:
         return []
 
     if found:
-        console.print(f"[Sample] - Index: {index_start:4} - {index_end:4}")
+        # console.print(f"[Sample] - Index: {index_start:4} - {index_end:4}")
 
         if index_end - index_start > 1:
             return sample[index_start:index_end]
@@ -154,3 +156,31 @@ def find_sin_zero_offset(sample: List[float]) -> List[float]:
             return []
     else:
         return []
+
+
+def rms_full_cycle(sample: List[float]) -> List[float]:
+
+    rms_fft_cycle_list: List[float] = []
+
+    start_slope = sample[1] - sample[0]
+
+    # From start to end
+    for n in range(2, len(sample)):
+        samp_curr_index = n
+        samp_prev_index = n - 1
+        samp_curr = sample[samp_curr_index]
+        samp_prev = sample[samp_prev_index]
+
+        slope = samp_curr - samp_prev
+
+        norm: float = (samp_prev * samp_curr) / np.abs(samp_prev * samp_curr)
+
+        if norm < 0 and start_slope * slope > 0:
+            index = (
+                samp_curr_index
+                if np.abs(samp_curr) < np.abs(samp_prev)
+                else samp_prev_index
+            )
+            rms_fft_cycle_list.append(RMS.fft(sample[0:index]))
+
+    return rms_fft_cycle_list
