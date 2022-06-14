@@ -1,6 +1,7 @@
 from code import interact
 from pathlib import Path
 import pathlib
+from this import d
 from time import sleep
 from typing import List, Optional, Tuple
 
@@ -30,7 +31,7 @@ from cDAQ.math.pid import (
 from cDAQ.scpi import SCPI, Bandwidth, Switch
 from cDAQ.timer import Timer, Timer_Message
 from cDAQ.usbtmc import UsbTmc, get_device_list, print_devices_list
-from cDAQ.utility import RMS, percentage_error, transfer_function
+from cDAQ.utility import RMS, percentage_error, transfer_function, trim_value
 
 
 def sampling_curve(
@@ -95,8 +96,16 @@ def sampling_curve(
         config.sampling.points_per_decade,
     )
 
-    f = open(measurements_file_path, "w")
-    f.write("{},{},{}\n".format("Frequency", "RMS Value", "dbV"))
+    # f = open(measurements_file_path, "w")
+    # f.write("{},{},{}\n".format("Frequency", "RMS Value", "dbV"))
+
+    frequency_list: List[float] = []
+    rms_list: List[float] = []
+    dBV_list: List[float] = []
+    fs_list: List[float] = []
+    oversampling_ratio_list: List[float] = []
+    n_periods_list: List[float] = []
+    n_samples_list: List[int] = []
 
     frequency: float = round(config.sampling.f_range.min, 5)
 
@@ -128,18 +137,19 @@ def sampling_curve(
 
         sleep(0.4)
 
-        Fs = config.nidaq._max_Fs
+        Fs = trim_value(frequency * 100, max_value=100000)
 
-        if frequency < 20:
-            Fs = frequency * config.sampling.n_fs
-            config.sampling.number_of_samples = 90
-        elif frequency <= 1000:
-            Fs = frequency * config.sampling.n_fs
-        elif frequency <= 10000:
-            Fs = frequency * config.sampling.n_fs
+        if Fs == 100000:
+            config.sampling.number_of_samples = 900
 
-        if Fs > config.nidaq.max_Fs:
-            Fs = config.nidaq.max_Fs
+        oversampling_ratio = Fs / frequency
+        n_periods = config.sampling.number_of_samples / oversampling_ratio
+
+        frequency_list.append(frequency)
+        fs_list.append(Fs)
+        oversampling_ratio_list.append(oversampling_ratio)
+        n_periods_list.append(n_periods)
+        n_samples_list.append(config.sampling.number_of_samples)
 
         time = Timer()
         time.start()
@@ -159,6 +169,8 @@ def sampling_curve(
         message: Timer_Message = time.stop()
 
         if rms_value:
+
+            rms_list.append(rms_value)
 
             console.print(f"RMS: {rms_value}")
 
@@ -192,26 +204,57 @@ def sampling_curve(
                 "[cyan]{}[/]".format(message.elapsed_time),
             )
 
+            dBV_list.append(gain_bBV)
+
             """File Writing"""
-            f.write(
-                "{},{},{}\n".format(
-                    frequency,
-                    rms_value,
-                    gain_bBV,
-                )
-            )
+            # f.write(
+            #     "{},{},{}\n".format(
+            #         frequency,
+            #         rms_value,
+            #         gain_bBV,
+            #     )
+            # )
 
             ui_t.progress_sweep.update(task_sweep, advance=1)
 
         else:
-            console.print("[ERROR] - Error retriving rms_value.", style="error")
+            console.print("[ERROR] - Error retrieving rms_value.", style="error")
+
+    sampling_data = pd.DataFrame(
+        list(
+            zip(
+                frequency_list,
+                rms_list,
+                dBV_list,
+                fs_list,
+                oversampling_ratio_list,
+                n_periods_list,
+                n_samples_list,
+            )
+        ),
+        columns=[
+            "frequency",
+            "rms",
+            "dBV",
+            "fs",
+            "oversampling_ratio",
+            "n_periods",
+            "n_samples",
+        ],
+    )
+
+    sampling_data.to_csv(
+        measurements_file_path.absolute().resolve(),
+        header=True,
+        index=None,
+    )
 
     if debug:
         console.print(table)
 
     ui_t.progress_sweep.remove_task(task_sweep)
 
-    f.close()
+    # f.close()
 
     ui_t.progress_list_task.update(task_sampling, task="Shutting down the Channel 1")
 
@@ -267,12 +310,21 @@ def plot_from_csv(
     ui_t.progress_list_task.update(task_plotting, task="Read Measurements")
 
     measurements = pd.read_csv(
-        measurements_file_path, header=0, names=["Frequency", "RMS Value", "dbV"]
+        measurements_file_path,
+        header=0,
+        names=[
+            "frequency",
+            "rms",
+            "dBV",
+            "fs",
+            "oversampling_ratio",
+            "n_periods",
+            "n_samples",
+        ],
     )
 
-    for i, row in measurements.iterrows():
-        y_dBV.append(row["dbV"])
-        x_frequency.append(row["Frequency"])
+    x_frequency = list(measurements["frequency"].values)
+    y_dBV = list(measurements["dBV"].values)
 
     if debug:
         console.print(

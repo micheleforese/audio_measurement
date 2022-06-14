@@ -21,6 +21,7 @@ from rich.tree import Tree
 from scipy.fft import fft
 
 from cDAQ.console import console
+from cDAQ.math import INTERPOLATION_KIND, find_sin_zero_offset, interpolation_model
 from cDAQ.timer import Timer
 
 
@@ -187,6 +188,15 @@ class RMS:
                     index=None,
                 )
 
+            x_interpolated, y_interpolated = interpolation_model(
+                range(0, len(voltages)),
+                voltages,
+                int(len(voltages) * 10),
+                kind=INTERPOLATION_KIND.CUBIC,
+            )
+
+            voltages = find_sin_zero_offset(y_interpolated)
+
             rms: Optional[float] = None
 
             if time_report:
@@ -327,3 +337,7 @@ def get_subfolder(
     )
 
     return measurement_dirs
+
+
+def trim_value(value: float, max_value: float):
+    return max_value if value > max_value else value

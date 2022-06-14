@@ -5,8 +5,6 @@ from typing import Callable, List, Optional, Tuple
 import numpy as np
 from scipy.interpolate import interp1d
 
-from cDAQ.utility import RMS
-
 
 def unit_normalization(value: float) -> int:
     return int(value / abs(value))
@@ -159,6 +157,7 @@ def find_sin_zero_offset(sample: List[float]) -> List[float]:
 
 
 def rms_full_cycle(sample: List[float]) -> List[float]:
+    from cDAQ.utility import RMS
 
     rms_fft_cycle_list: List[float] = []
 

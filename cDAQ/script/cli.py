@@ -559,18 +559,26 @@ def sweep_debug(home, sweep_dir):
         fig.suptitle(f"Frequency: {frequency} Hz.", fontsize=30)
 
         voltages = list(data["voltage"].values)
-        voltages = voltages[0:200]
 
         plot_samp = axd["samp"]
-        plot_samp.plot(voltages, "o")
+        plot_samp.plot(voltages[50:80], "o-")
         rms_samp = RMS.fft(voltages)
         plot_samp.legend([f"Samples rms={rms_samp:.5}"], loc="best")
 
+        plot_rms_samp = axd["rms_samp"]
+        rms_samp_iter_list: List[float] = [0]
+        for n in range(1, len(voltages), 5):
+            rms_samp_iter_list.append(RMS.fft(voltages[0:n]))
+
+        plot_rms_samp.plot(rms_samp_iter_list)
+        plot_rms_samp.legend([f"Iterations Sample RMS"], loc="best")
+
         plot_intr_samp = axd["intr_samp"]
+        voltages_to_interpolate = voltages
         x_interpolated, y_interpolated = interpolation_model(
-            range(0, len(voltages)),
-            voltages,
-            int(len(voltages) * 5),
+            range(0, len(voltages_to_interpolate)),
+            voltages_to_interpolate,
+            int(len(voltages_to_interpolate) * 10),
             kind=INTERPOLATION_KIND.CUBIC,
         )
 
@@ -579,27 +587,19 @@ def sweep_debug(home, sweep_dir):
             header=["voltage"],
             index=None,
         )
+
         plot_intr_samp.plot(
             x_interpolated,
             y_interpolated,
             "-",
             linewidth=0.5,
-            label="Interpolated",
         )
         rms_intr = RMS.fft(y_interpolated)
         plot_intr_samp.legend([f"Interpolated Samples rms={rms_intr:.5}"], loc="best")
 
-        plot_rms_samp = axd["rms_samp"]
-        rms_samp_iter_list: List[float] = [0]
-        for n in range(1, len(voltages)):
-            rms_samp_iter_list.append(RMS.fft(voltages[0:n]))
-
-        plot_rms_samp.plot(rms_samp_iter_list)
-        plot_rms_samp.legend([f"Iterations Sample RMS"], loc="best")
-
         plot_rms_intr_samp = axd["rms_intr_samp"]
         rms_intr_samp_iter_list: List[float] = [0]
-        for n in range(1, len(y_interpolated), 3):
+        for n in range(1, len(y_interpolated), 10):
             rms_intr_samp_iter_list.append(RMS.fft(y_interpolated[0:n]))
 
         plot_rms_intr_samp.plot(rms_intr_samp_iter_list)
@@ -621,7 +621,7 @@ def sweep_debug(home, sweep_dir):
         plot_rms_intr_samp_offset = axd["rms_intr_samp_offset"]
         rms_intr_samp_offset_iter_list: List[float] = [0]
 
-        for n in range(1, len(offset_interpolated), 3):
+        for n in range(1, len(offset_interpolated), 10):
             rms_intr_samp_offset_iter_list.append(RMS.fft(offset_interpolated[0:n]))
 
         pd.DataFrame(rms_intr_samp_offset_iter_list).to_csv(
@@ -648,25 +648,23 @@ def sweep_debug(home, sweep_dir):
         plot_rms_intr_samp_offset_trim_gradient = axd[
             "rms_intr_samp_offset_trim_gradient"
         ]
-        rms_fft_gradient_list = np.gradient(plot_rms_fft_intr_samp_offset_trim_list)
-        plot_rms_intr_samp_offset_trim_gradient.plot(rms_fft_gradient_list)
-        plot_rms_intr_samp_offset_trim_gradient.legend(
-            ["RMS fft per period, Interpolated GRADIENT"],
-            loc="best",
-        )
+        # rms_fft_gradient_list = np.gradient(plot_rms_fft_intr_samp_offset_trim_list)
+        # plot_rms_intr_samp_offset_trim_gradient.plot(rms_fft_gradient_list)
+        # plot_rms_intr_samp_offset_trim_gradient.legend(
+        #     ["RMS fft per period, Interpolated GRADIENT"],
+        #     loc="best",
+        # )
 
         plot_rms_intr_samp_offset_trim_average = axd[
             "rms_intr_samp_offset_trim_average"
         ]
-        rms_fft_average_list: List[float] = []
-        data_mobile = plot_rms_fft_intr_samp_offset_trim_list[10:]
-        for n in range(1, len(data_mobile)):
-            rms_fft_average_list.append(sum(data_mobile[0:n]) / (n))
-        plot_rms_intr_samp_offset_trim_average.plot(rms_fft_average_list)
-        plot_rms_intr_samp_offset_trim_average.legend(
-            [f"RMS fft per period, Interpolated Average: {rms_fft_average_list[-1]}"],
-            loc="best",
-        )
+        # data_frame = pd.Series(plot_rms_fft_intr_samp_offset_trim_list)
+        # rms_sma = data_frame.rolling(4).mean().tolist()[4:]
+        # plot_rms_intr_samp_offset_trim_average.plot(rms_sma)
+        # plot_rms_intr_samp_offset_trim_average.legend(
+        #     [f"RMS fft per period, Interpolated Average: {rms_sma[-1]}"],
+        #     loc="best",
+        # )
 
         plt.savefig(plot_image)
         plt.close(fig)
@@ -678,6 +676,8 @@ def sweep_debug(home, sweep_dir):
         # )
 
         console.print(f"Plotted Frequency: [blue]{frequency:7.5}[/].")
+
+        break
 
 
 @cli.group()
