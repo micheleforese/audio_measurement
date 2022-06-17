@@ -166,6 +166,8 @@ class RMS:
         rms_mode: RMS_MODE = RMS_MODE.FFT,
         time_report: bool = False,
         save_file: Optional[pathlib.Path] = None,
+        trim: bool = True,
+        interpolation_rate: float = 10,
     ) -> Optional[float]:
 
         timer = Timer()
@@ -182,20 +184,24 @@ class RMS:
             )
 
             if save_file:
-                pd.DataFrame(voltages).to_csv(
-                    save_file.absolute().resolve(),
-                    header=["voltage"],
-                    index=None,
-                )
+                with open(save_file.absolute().resolve(), "w") as f:
+                    f.write("# frequency: {}\n".format(round(frequency, 5)))
+                    f.write("# Fs: {}\n".format(round(Fs, 5)))
+                    pd.DataFrame(voltages).to_csv(
+                        f,
+                        header=["voltage"],
+                        index=None,
+                    )
 
             x_interpolated, y_interpolated = interpolation_model(
                 range(0, len(voltages)),
                 voltages,
-                int(len(voltages) * 10),
+                int(len(voltages) * interpolation_rate),
                 kind=INTERPOLATION_KIND.CUBIC,
             )
 
-            voltages = find_sin_zero_offset(y_interpolated)
+            if trim:
+                voltages = find_sin_zero_offset(y_interpolated)
 
             rms: Optional[float] = None
 

@@ -209,9 +209,9 @@ def sweep(
     if x_lim:
         config.plot.x_limit = Range(*x_lim)
 
-    aplitude_base_level = float(offset_file.read_text())
+    amplitude_base_level = float(offset_file.read_text())
 
-    config.rigol.amplitude_pp = aplitude_base_level
+    config.rigol.amplitude_pp = amplitude_base_level
 
     if y_offset:
         config.plot.y_offset = y_offset
@@ -514,19 +514,18 @@ def sweep_debug(home, sweep_dir):
         console.print("Cannot create the debug info from sweep csvs.", style="error")
         exit()
 
-    csv_files = [
-        csv
-        for csv in dir.glob("*.csv")
-        if csv.is_file()
-        and csv.name.find(".intr") == -1
-        and csv.name.find(".rms_intr.csv") == -1
-    ]
+    csv_files = [csv for csv in dir.rglob("sample.csv") if csv.is_file()]
 
     for csv in csv_files:
-        frequency = float(csv.with_suffix("").name)
-        plot_image = csv.with_suffix(".png")
+        csv_parent = csv.parent
+        frequency = float(csv_parent.name.replace("_", "."))
+        plot_image = csv_parent / "plot.png"
 
-        data: pd.DataFrame = pd.read_csv(csv.absolute().resolve(), header=0)
+        data: pd.DataFrame = pd.read_csv(
+            csv.absolute().resolve(),
+            header=0,
+            comment="#",
+        )
 
         # data.plot(kind="scatter")
         plot: Tuple[Figure, Dict[str, Axes]] = plt.subplot_mosaic(
@@ -550,7 +549,7 @@ def sweep_debug(home, sweep_dir):
                     "rms_intr_samp_offset_trim_average",
                 ],
             ],
-            figsize=(24, 25),
+            figsize=(30, 25),
             dpi=300,
         )
 
@@ -561,7 +560,11 @@ def sweep_debug(home, sweep_dir):
         voltages = list(data["voltage"].values)
 
         plot_samp = axd["samp"]
-        plot_samp.plot(voltages[50:80], "o-")
+        plot_samp.plot(
+            voltages,
+            marker=".",
+            markersize=5,
+        )
         rms_samp = RMS.fft(voltages)
         plot_samp.legend([f"Samples rms={rms_samp:.5}"], loc="best")
 
@@ -583,7 +586,7 @@ def sweep_debug(home, sweep_dir):
         )
 
         pd.DataFrame(y_interpolated).to_csv(
-            csv.with_suffix(".intr.csv").absolute().resolve(),
+            pathlib.Path(csv_parent / "interpolation_sample.csv").absolute().resolve(),
             header=["voltage"],
             index=None,
         )
@@ -599,7 +602,7 @@ def sweep_debug(home, sweep_dir):
 
         plot_rms_intr_samp = axd["rms_intr_samp"]
         rms_intr_samp_iter_list: List[float] = [0]
-        for n in range(1, len(y_interpolated), 10):
+        for n in range(1, len(y_interpolated), 20):
             rms_intr_samp_iter_list.append(RMS.fft(y_interpolated[0:n]))
 
         plot_rms_intr_samp.plot(rms_intr_samp_iter_list)
@@ -621,11 +624,11 @@ def sweep_debug(home, sweep_dir):
         plot_rms_intr_samp_offset = axd["rms_intr_samp_offset"]
         rms_intr_samp_offset_iter_list: List[float] = [0]
 
-        for n in range(1, len(offset_interpolated), 10):
+        for n in range(1, len(offset_interpolated), 20):
             rms_intr_samp_offset_iter_list.append(RMS.fft(offset_interpolated[0:n]))
 
         pd.DataFrame(rms_intr_samp_offset_iter_list).to_csv(
-            csv.with_suffix(".rms_intr.csv").absolute().resolve(),
+            pathlib.Path(csv_parent / "interpolation_rms.csv").absolute().resolve(),
             header=["voltage"],
             index=None,
         )
@@ -676,8 +679,6 @@ def sweep_debug(home, sweep_dir):
         # )
 
         console.print(f"Plotted Frequency: [blue]{frequency:7.5}[/].")
-
-        break
 
 
 @cli.group()

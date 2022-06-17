@@ -41,7 +41,9 @@ def sampling_curve(
 ):
     home = measurements_file_path.parent
 
-    pathlib.Path(home / "sweep").mkdir(parents=True, exist_ok=True)
+    sweep_path = home / "sweep"
+
+    sweep_path.mkdir(parents=True, exist_ok=True)
 
     live_group = Group(
         Panel(Group(ui_t.progress_list_task, ui_t.progress_sweep, ui_t.progress_task)),
@@ -95,9 +97,6 @@ def sampling_curve(
         config.sampling.f_range.max,
         config.sampling.points_per_decade,
     )
-
-    # f = open(measurements_file_path, "w")
-    # f.write("{},{},{}\n".format("Frequency", "RMS Value", "dbV"))
 
     frequency_list: List[float] = []
     rms_list: List[float] = []
@@ -154,6 +153,13 @@ def sampling_curve(
         time = Timer()
         time.start()
 
+        sweep_frequency_path = sweep_path / "{}".format(round(frequency, 5)).replace(
+            ".", "_", 1
+        )
+        sweep_frequency_path.mkdir(parents=True, exist_ok=True)
+
+        save_file_path = sweep_frequency_path / "sample.csv"
+
         # GET MEASUREMENTS
         rms_value: Optional[float] = RMS.rms(
             frequency=frequency,
@@ -163,7 +169,7 @@ def sampling_curve(
             min_voltage=config.nidaq.min_voltage,
             number_of_samples=config.sampling.number_of_samples,
             time_report=False,
-            save_file=home / "sweep" / f"{round(frequency, 5)}.csv",
+            save_file=save_file_path,
         )
 
         message: Timer_Message = time.stop()
@@ -206,15 +212,6 @@ def sampling_curve(
 
             dBV_list.append(gain_bBV)
 
-            """File Writing"""
-            # f.write(
-            #     "{},{},{}\n".format(
-            #         frequency,
-            #         rms_value,
-            #         gain_bBV,
-            #     )
-            # )
-
             ui_t.progress_sweep.update(task_sweep, advance=1)
 
         else:
@@ -253,8 +250,6 @@ def sampling_curve(
         console.print(table)
 
     ui_t.progress_sweep.remove_task(task_sweep)
-
-    # f.close()
 
     ui_t.progress_list_task.update(task_sampling, task="Shutting down the Channel 1")
 
