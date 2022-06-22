@@ -162,6 +162,7 @@ def rms_full_cycle(sample: List[float]) -> List[float]:
     rms_fft_cycle_list: List[float] = []
 
     start_slope = sample[1] - sample[0]
+    last_slope = 0
 
     # From start to end
     for n in range(2, len(sample)):
@@ -175,11 +176,15 @@ def rms_full_cycle(sample: List[float]) -> List[float]:
         norm: float = (samp_prev * samp_curr) / np.abs(samp_prev * samp_curr)
 
         if norm < 0 and start_slope * slope > 0:
+            last_slope = slope
             index = (
                 samp_curr_index
                 if np.abs(samp_curr) < np.abs(samp_prev)
                 else samp_prev_index
             )
             rms_fft_cycle_list.append(RMS.fft(sample[0:index]))
+
+    if start_slope * last_slope < -1:
+        rms_fft_cycle_list.append(RMS.fft(sample))
 
     return rms_fft_cycle_list

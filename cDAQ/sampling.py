@@ -1,7 +1,6 @@
 from code import interact
 from pathlib import Path
 import pathlib
-from this import d
 from time import sleep
 from typing import List, Optional, Tuple
 
@@ -16,9 +15,10 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.table import Column, Table
 from usbtmc import Instrument
+from cDAQ.model.sweep import SweepData
 
 import cDAQ.ui.terminal as ui_t
-from cDAQ.alghorithm import LogaritmicScale
+from cDAQ.algorithm import LogarithmicScale
 from cDAQ.config import Config, Plot
 from cDAQ.config.type import ModAuto
 from cDAQ.console import console
@@ -92,7 +92,7 @@ def sampling_curve(
 
     SCPI.exec_commands(generator, generator_ac_curves)
 
-    log_scale: LogaritmicScale = LogaritmicScale(
+    log_scale: LogarithmicScale = LogarithmicScale(
         config.sampling.f_range.min,
         config.sampling.f_range.max,
         config.sampling.points_per_decade,
@@ -136,7 +136,7 @@ def sampling_curve(
 
         sleep(0.4)
 
-        Fs = trim_value(frequency * 100, max_value=100000)
+        Fs = trim_value(frequency * config.sampling.n_fs, max_value=100000)
 
         if Fs == 100000:
             config.sampling.number_of_samples = 900
@@ -240,11 +240,13 @@ def sampling_curve(
         ],
     )
 
-    sampling_data.to_csv(
-        measurements_file_path.absolute().resolve(),
-        header=True,
-        index=None,
-    )
+    with open(measurements_file_path.absolute().resolve(), "w") as f:
+        f.write("# amplitude: {}\n".format(round(config.rigol.amplitude_pp, 5)))
+        sampling_data.to_csv(
+            f,
+            header=True,
+            index=None,
+        )
 
     if debug:
         console.print(table)
@@ -304,22 +306,10 @@ def plot_from_csv(
 
     ui_t.progress_list_task.update(task_plotting, task="Read Measurements")
 
-    measurements = pd.read_csv(
-        measurements_file_path,
-        header=0,
-        names=[
-            "frequency",
-            "rms",
-            "dBV",
-            "fs",
-            "oversampling_ratio",
-            "n_periods",
-            "n_samples",
-        ],
-    )
+    sweep_data = SweepData(measurements_file_path)
 
-    x_frequency = list(measurements["frequency"].values)
-    y_dBV = list(measurements["dBV"].values)
+    x_frequency = list(sweep_data.frequency.values)
+    y_dBV = list(sweep_data.dBV.values)
 
     if debug:
         console.print(
@@ -347,8 +337,14 @@ def plot_from_csv(
                 console.print('y_offset should be "max", "min" or "no".', style="error")
 
         if y_offset:
+
+            # TODO: BOH
+            y_offset_dBV: float = 20 * np.log10(
+                y_offset * 2 * np.math.sqrt(2) / sweep_data.amplitude
+            )
+
             for i in range(len(y_dBV)):
-                y_dBV[i] = y_dBV[i] - y_offset
+                y_dBV[i] = y_dBV[i] - y_offset_dBV
 
     ui_t.progress_list_task.update(task_plotting, task="Interpolate")
 
@@ -460,7 +456,7 @@ def config_offset(
     voltage_amplitude = voltage_amplitude_start
     frequency = 1000
     Fs = frequency * config.sampling.n_fs
-    diff_voltage = 0.0005
+    diff_voltage = 0.001
     Vpp_4dBu_exact = 1.227653
 
     table = Table(
@@ -497,7 +493,7 @@ def config_offset(
     live.start()
 
     task_sampling = ui_t.progress_list_task.add_task(
-        "CONFIGURING", start=False, task="Retriving Devices"
+        "CONFIGURING", start=False, task="Retrieving Devices"
     )
     ui_t.progress_list_task.start_task(task_sampling)
 
@@ -547,11 +543,7 @@ def config_offset(
         controller_output_zero=voltage_amplitude_start,
     )
 
-    pid_term = PID_TERM()
-
     process_output_list: List[float] = [voltage_amplitude_start]
-    process_variable_list: List[float] = []
-    error_list: List[float] = []
     gain_dB_list: List[float] = []
 
     k_tot = 0.2745
@@ -680,6 +672,8 @@ def config_offset(
 
     console.print(Panel("Voltage Offset: {}".format(voltage_amplitude)))
 
+    console.print(plot_file_path)
+
     sp = np.full(iteration, Vpp_4dBu_exact)
 
     plt.figure(1, figsize=(16, 9))
@@ -692,7 +686,7 @@ def config_offset(
         label="Setpoint (SP)",
     )
     plt.plot(
-        process_variable_list,
+        pid.process_variable_list,
         "r:",
         linewidth=1,
         label="Process Variable (PV)",
@@ -701,17 +695,23 @@ def config_offset(
 
     plt.subplot(2, 2, 2)
     plt.plot(
-        pid_term.proportional, "g.-", linewidth=2, label=r"Proportional = $K_c \; e(t)$"
+        pid.term.proportional,
+        color="g",
+        linestyle="-",
+        linewidth=2,
+        label=r"Proportional = $K_c \; e(t)$",
     )
     plt.plot(
-        pid_term.integral,
-        "b-",
+        pid.term.integral,
+        color="b",
+        linestyle="-",
         linewidth=2,
         label=r"Integral = $\frac{K_c}{\tau_I} \int_{i=0}^{n_t} e(t) \; dt $",
     )
     plt.plot(
-        pid_term.derivative,
-        "r--",
+        pid.term.derivative,
+        color="r",
+        linestyle="--",
         linewidth=2,
         label=r"Derivative = $-K_c \tau_D \frac{d(PV)}{dt}$",
     )
@@ -719,8 +719,9 @@ def config_offset(
 
     plt.subplot(2, 2, 3)
     plt.plot(
-        error_list,
-        "m--",
+        [error.value for error in pid.error_list],
+        color="m",
+        linestyle="--",
         linewidth=2,
         label="Error (e=SP-PV)",
     )
@@ -728,8 +729,9 @@ def config_offset(
 
     plt.subplot(2, 2, 4)
     plt.plot(
-        process_output_list,
-        "b--",
+        pid.process_output_list,
+        color="b",
+        linestyle="--",
         linewidth=2,
         label="Controller Output (OP)",
     )

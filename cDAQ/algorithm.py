@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 
-class LogaritmicScale:
+class LogarithmicScale:
     min_Hz: float
     max_Hz: float
 

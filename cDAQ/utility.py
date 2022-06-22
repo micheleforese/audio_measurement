@@ -322,6 +322,7 @@ def read_voltages(
         task.close()
     except Exception as e:
         console.print("[EXCEPTION] - {}".format(e))
+        task.close()
 
     return voltages
 

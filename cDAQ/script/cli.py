@@ -20,9 +20,10 @@ from rich.panel import Panel
 from rich.prompt import Confirm
 from rich.table import Column, Table
 from usbtmc import Instrument
+from cDAQ.model.sweep import SingleSweepData
 
 import cDAQ.ui.terminal as ui_t
-from cDAQ.alghorithm import LogaritmicScale
+from cDAQ.algorithm import LogarithmicScale
 from cDAQ.config import Config, Plot
 from cDAQ.config.type import ModAuto, Range
 from cDAQ.console import console
@@ -48,7 +49,13 @@ from cDAQ.script.gui import GuiAudioMeasurements
 from cDAQ.script.test import testTimer
 from cDAQ.timer import Timer, Timer_Message, timeit, timer
 from cDAQ.usbtmc import UsbTmc, get_device_list, print_devices_list
-from cDAQ.utility import RMS, get_subfolder, percentage_error, transfer_function
+from cDAQ.utility import (
+    RMS,
+    get_subfolder,
+    percentage_error,
+    transfer_function,
+    trim_value,
+)
 
 
 @click.group()
@@ -155,6 +162,13 @@ def cli():
     help="Will Simulate the Sweep.",
     default=False,
 )
+@click.option(
+    "--no-pdf",
+    "no_pdf",
+    is_flag=True,
+    help="Will Simulate the Sweep.",
+    default=False,
+)
 def sweep(
     config_path: pathlib.Path,
     home: pathlib.Path,
@@ -171,6 +185,7 @@ def sweep(
     time: bool,
     debug: bool,
     simulate: bool,
+    no_pdf: bool,
 ):
 
     HOME_PATH = home.absolute().resolve()
@@ -212,6 +227,9 @@ def sweep(
     amplitude_base_level = float(offset_file.read_text())
 
     config.rigol.amplitude_pp = amplitude_base_level
+
+    # TODO: da mettere come parametro (default è questo sotto)
+    y_offset = 1.227653
 
     if y_offset:
         config.plot.y_offset = y_offset
@@ -263,9 +281,10 @@ def sweep(
             debug=debug,
         )
 
-        create_latex_file(
-            image_file, home=HOME_PATH, latex_home=measurements_dir, debug=debug
-        )
+        if not no_pdf:
+            create_latex_file(
+                image_file, home=HOME_PATH, latex_home=measurements_dir, debug=debug
+            )
 
 
 @cli.command(help="Plot from a csv file.")
@@ -502,7 +521,14 @@ def config(
     help="Home path, where the plot image will be created.",
     default=None,
 )
-def sweep_debug(home, sweep_dir):
+@click.option(
+    "--iteration-rms",
+    "iteration_rms",
+    is_flag=True,
+    help="Home path, where the plot image will be created.",
+    default=False,
+)
+def sweep_debug(home, sweep_dir, iteration_rms: bool):
 
     measurement_dirs: List[pathlib.Path] = get_subfolder(home)
 
@@ -518,16 +544,10 @@ def sweep_debug(home, sweep_dir):
 
     for csv in csv_files:
         csv_parent = csv.parent
-        frequency = float(csv_parent.name.replace("_", "."))
         plot_image = csv_parent / "plot.png"
 
-        data: pd.DataFrame = pd.read_csv(
-            csv.absolute().resolve(),
-            header=0,
-            comment="#",
-        )
+        sweep_data = SingleSweepData(csv)
 
-        # data.plot(kind="scatter")
         plot: Tuple[Figure, Dict[str, Axes]] = plt.subplot_mosaic(
             [
                 ["samp", "samp", "rms_samp"],
@@ -552,32 +572,61 @@ def sweep_debug(home, sweep_dir):
             figsize=(30, 25),
             dpi=300,
         )
+        # plt.tight_layout()
 
         fig, axd = plot
 
-        fig.suptitle(f"Frequency: {frequency} Hz.", fontsize=30)
+        # for ax in axd:
+        #     ax.grid(True)
 
-        voltages = list(data["voltage"].values)
+        fig.suptitle(f"Frequency: {sweep_data.frequency} Hz.", fontsize=30)
 
-        plot_samp = axd["samp"]
-        plot_samp.plot(
-            voltages,
+        # PLOT: Samples on Time Domain
+        ax_time_domain_samples = axd["samp"]
+
+        rms_samp = RMS.fft(sweep_data.voltages.values)
+
+        ax_time_domain_samples.plot(
+            np.linspace(
+                0,
+                len(sweep_data.voltages) / sweep_data.Fs,
+                len(sweep_data.voltages),
+            ),
+            sweep_data.voltages,
             marker=".",
-            markersize=5,
+            markersize=3,
+            linestyle="-",
+            linewidth=1,
+            label=f"Voltage Sample - rms={rms_samp:.5}",
         )
-        rms_samp = RMS.fft(voltages)
-        plot_samp.legend([f"Samples rms={rms_samp:.5}"], loc="best")
+        ax_time_domain_samples.set_title(
+            f"Samples on Time Domain - Frequency: {round(sweep_data.frequency, 5)}"
+        )
+        ax_time_domain_samples.set_ylabel("Voltage [$V$]")
+        ax_time_domain_samples.set_xlabel("Time [$s$]")
+        # ax_time_domain_samples.legend(bbox_to_anchor=(1, 0.5), loc="center left")
+        ax_time_domain_samples.legend(loc="best")
+        ax_time_domain_samples.grid(True)
 
+        # PLOT: RMS iterating every 5 values
         plot_rms_samp = axd["rms_samp"]
         rms_samp_iter_list: List[float] = [0]
-        for n in range(1, len(voltages), 5):
-            rms_samp_iter_list.append(RMS.fft(voltages[0:n]))
+        for n in range(5, len(sweep_data.voltages.values), 5):
+            rms_samp_iter_list.append(RMS.fft(sweep_data.voltages.values[0:n]))
 
-        plot_rms_samp.plot(rms_samp_iter_list)
-        plot_rms_samp.legend([f"Iterations Sample RMS"], loc="best")
+        plot_rms_samp.plot(
+            np.arange(
+                0,
+                len(sweep_data.voltages),
+                5,
+            ),
+            rms_samp_iter_list,
+            label=f"Iterations Sample RMS",
+        )
+        plot_rms_samp.legend(loc="best")
 
         plot_intr_samp = axd["intr_samp"]
-        voltages_to_interpolate = voltages
+        voltages_to_interpolate = sweep_data.voltages.values
         x_interpolated, y_interpolated = interpolation_model(
             range(0, len(voltages_to_interpolate)),
             voltages_to_interpolate,
@@ -591,22 +640,26 @@ def sweep_debug(home, sweep_dir):
             index=None,
         )
 
+        rms_intr = RMS.fft(y_interpolated)
         plot_intr_samp.plot(
             x_interpolated,
             y_interpolated,
-            "-",
+            linestyle="-",
             linewidth=0.5,
+            label=f"Interpolated Samples rms={rms_intr:.5}",
         )
-        rms_intr = RMS.fft(y_interpolated)
-        plot_intr_samp.legend([f"Interpolated Samples rms={rms_intr:.5}"], loc="best")
+        plot_intr_samp.legend(loc="best")
 
         plot_rms_intr_samp = axd["rms_intr_samp"]
         rms_intr_samp_iter_list: List[float] = [0]
         for n in range(1, len(y_interpolated), 20):
             rms_intr_samp_iter_list.append(RMS.fft(y_interpolated[0:n]))
 
-        plot_rms_intr_samp.plot(rms_intr_samp_iter_list)
-        plot_rms_intr_samp.legend([f"Iterations Interpolated Sample RMS"], loc="best")
+        plot_rms_intr_samp.plot(
+            rms_intr_samp_iter_list,
+            label=f"Iterations Interpolated Sample RMS",
+        )
+        plot_rms_intr_samp.legend(loc="best")
 
         # PLOT: Interpolated Sample, Zero Offset for complete Cycles
         offset_interpolated = find_sin_zero_offset(y_interpolated)
@@ -616,10 +669,9 @@ def sweep_debug(home, sweep_dir):
         plot_intr_samp_offset.plot(
             offset_interpolated,
             linewidth=0.7,
+            label=f"Interpolated Samples with Offset rms={rms_intr_offset:.5}",
         )
-        plot_intr_samp_offset.legend(
-            [f"Interpolated Samples with Offset rms={rms_intr_offset:.5}"], loc="best"
-        )
+        plot_intr_samp_offset.legend(loc="best")
 
         plot_rms_intr_samp_offset = axd["rms_intr_samp_offset"]
         rms_intr_samp_offset_iter_list: List[float] = [0]
@@ -633,20 +685,21 @@ def sweep_debug(home, sweep_dir):
             index=None,
         )
 
-        plot_rms_intr_samp_offset.plot(rms_intr_samp_offset_iter_list)
-        plot_rms_intr_samp_offset.legend(
-            [f"Iterations Interpolated Sample with Offset RMS"], loc="best"
+        plot_rms_intr_samp_offset.plot(
+            rms_intr_samp_offset_iter_list,
+            label=f"Iterations Interpolated Sample with Offset RMS",
         )
+        plot_rms_intr_samp_offset.legend(loc="best")
 
         # PLOT: RMS every sine period
         plot_rms_intr_samp_offset_trim = axd["rms_intr_samp_offset_trim"]
         (plot_rms_fft_intr_samp_offset_trim_list) = rms_full_cycle(offset_interpolated)
 
-        plot_rms_intr_samp_offset_trim.plot(plot_rms_fft_intr_samp_offset_trim_list)
-        plot_rms_intr_samp_offset_trim.legend(
-            ["RMS fft per period, Interpolated"],
-            loc="best",
+        plot_rms_intr_samp_offset_trim.plot(
+            plot_rms_fft_intr_samp_offset_trim_list,
+            label="RMS fft per period, Interpolated",
         )
+        plot_rms_intr_samp_offset_trim.legend(loc="best")
 
         plot_rms_intr_samp_offset_trim_gradient = axd[
             "rms_intr_samp_offset_trim_gradient"
@@ -670,15 +723,9 @@ def sweep_debug(home, sweep_dir):
         # )
 
         plt.savefig(plot_image)
-        plt.close(fig)
-        plt.clf()
-        plt.cla()
+        plt.close("all")
 
-        # console.print(
-        #     f"Plotted Frequency: [blue]{frequency:7.5}[/] - rms_samp: {rms_samp:2.5} - rms_intr: {rms_intr:2.5}."
-        # )
-
-        console.print(f"Plotted Frequency: [blue]{frequency:7.5}[/].")
+        console.print(f"Plotted Frequency: [blue]{sweep_data.frequency:7.5}[/].")
 
 
 @cli.group()
@@ -686,19 +733,168 @@ def test():
     pass
 
 
+# @cli.group()
+# def rigol():
+#     pass
+
+
+# @rigol.command()
+# @click.option(
+#     "--debug",
+#     is_flag=True,
+#     help="Will print verbose messages.",
+#     default=False,
+# )
+# def turn_on(debug: bool):
+#     # Asks for the 2 instruments
+#     list_devices: List[Instrument] = get_device_list()
+#     if debug:
+#         print_devices_list(list_devices)
+
+#     generator: UsbTmc = UsbTmc(list_devices[0])
+
+#     generator.open()
+
+#     generator_ac_curves: List[str] = [
+#         SCPI.set_output(1, Switch.ON),
+#     ]
+
+#     SCPI.exec_commands(generator, generator_ac_curves)
+
+#     generator.close()
+
+#     console.print(Panel("[blue]Rigol Turned ON[/]"))
+
+
+# @rigol.command()
+# @click.option(
+#     "--debug",
+#     is_flag=True,
+#     help="Will print verbose messages.",
+#     default=False,
+# )
+# def turn_off(debug: bool):
+#     # Asks for the 2 instruments
+#     list_devices: List[Instrument] = get_device_list()
+#     if debug:
+#         print_devices_list(list_devices)
+
+#     generator: UsbTmc = UsbTmc(list_devices[0])
+
+#     generator.open()
+
+#     generator_ac_curves: List[str] = [
+#         SCPI.set_output(1, Switch.OFF),
+#     ]
+
+#     SCPI.exec_commands(generator, generator_ac_curves)
+
+#     generator.close()
+
+#     console.print(Panel("[blue]Rigol Turned OFF[/]"))
+
+
+# @rigol.command()
+# @click.argument(
+#     "amplitude",
+#     type=float,
+#     help="Amplitude.",
+#     required=True,
+# )
+# @click.option(
+#     "--debug",
+#     is_flag=True,
+#     help="Will print verbose messages.",
+#     default=False,
+# )
+# def set_amplitude(amplitude, debug: bool):
+
+#     # Asks for the 2 instruments
+#     list_devices: List[Instrument] = get_device_list()
+#     if debug:
+#         print_devices_list(list_devices)
+
+#     generator: UsbTmc = UsbTmc(list_devices[0])
+
+#     generator.open()
+
+#     generator_ac_curves: List[str] = [
+#         SCPI.set_source_voltage_amplitude(1, round(amplitude, 5)),
+#     ]
+
+#     SCPI.exec_commands(generator, generator_ac_curves)
+
+#     generator.close()
+
+#     console.print(Panel("[blue]Rigol Amplitude {}[/]".format(amplitude)))
+
+
+# @rigol.command()
+# @click.argument(
+#     "frequency",
+#     type=float,
+#     help="Amplitude.",
+# )
+# @click.option(
+#     "--debug",
+#     is_flag=True,
+#     help="Will print verbose messages.",
+#     default=False,
+# )
+# def set_frequency(frequency, debug: bool):
+
+#     # Asks for the 2 instruments
+#     list_devices: List[Instrument] = get_device_list()
+#     if debug:
+#         print_devices_list(list_devices)
+
+#     generator: UsbTmc = UsbTmc(list_devices[0])
+
+#     generator.open()
+
+#     generator_ac_curves: List[str] = [
+#         SCPI.set_source_frequency(1, round(frequency, 5)),
+#     ]
+
+#     SCPI.exec_commands(generator, generator_ac_curves)
+
+#     generator.close()
+
+#     console.print(Panel("[blue]Rigol Frequency {}[/]".format(frequency)))
+
+
 @cli.group()
-def rigol():
+def ni():
     pass
 
 
-@rigol.command()
+@ni.command()
+@click.option(
+    "--frequency",
+    type=float,
+    help="Frequency.",
+    required=True,
+)
+@click.option(
+    "--amplitude",
+    type=float,
+    help="Amplitude.",
+    required=True,
+)
+@click.option(
+    "--n_sample",
+    "n_sample_cli",
+    type=float,
+    help="Amplitude.",
+    required=True,
+)
 @click.option(
     "--debug",
     is_flag=True,
     help="Will print verbose messages.",
     default=False,
 )
-def off(debug: bool):
+def read_rms(frequency, amplitude, n_sample_cli, debug: bool):
     # Asks for the 2 instruments
     list_devices: List[Instrument] = get_device_list()
     if debug:
@@ -706,15 +902,51 @@ def off(debug: bool):
 
     generator: UsbTmc = UsbTmc(list_devices[0])
 
+    # Open the Instruments interfaces
+    # Auto Close with the destructor
     generator.open()
 
-    generator_ac_curves: List[str] = [
+    # Sets the Configuration for the Voltmeter
+    generator_configs: list = [
+        SCPI.clear(),
         SCPI.set_output(1, Switch.OFF),
+        SCPI.set_function_voltage_ac(),
+        SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
+        SCPI.set_source_voltage_amplitude(1, round(amplitude, 5)),
+        SCPI.set_source_frequency(1, round(frequency, 5)),
+    ]
+
+    SCPI.exec_commands(generator, generator_configs)
+
+    generator_ac_curves: List[str] = [
+        SCPI.set_output(1, Switch.ON),
     ]
 
     SCPI.exec_commands(generator, generator_ac_curves)
 
-    console.print(Panel("[blue]Rigol Turned OFF[/]"))
+    generator.close()
+
+    sleep(1)
+
+    Fs = trim_value(frequency * 100, max_value=100000)
+
+    n_sample = n_sample_cli
+
+    if Fs == 100000:
+        n_sample = 900
+
+    rms_value: Optional[float] = RMS.rms(
+        frequency=frequency,
+        Fs=Fs,
+        ch_input="cDAQ9189-1CDBE0AMod1/ai1",
+        max_voltage=4,
+        min_voltage=-4,
+        number_of_samples=n_sample,
+        time_report=False,
+        save_file=None,
+    )
+
+    console.print(Panel("[blue]RMS {}[/]".format(rms_value)))
 
 
 test.add_command(testTimer)

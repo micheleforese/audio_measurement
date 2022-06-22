@@ -8,7 +8,7 @@ from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import numpy as np
 import usbtmc
-from cDAQ.alghorithm import LogaritmicScale
+from cDAQ.algorithm import LogarithmicScale
 from cDAQ.config import Config
 from cDAQ.console import console
 from cDAQ.scpi import SCPI, Bandwidth, Switch
@@ -71,7 +71,7 @@ def test_error_sampling():
 
     SCPI.exec_commands(generator, generator_configs)
 
-    log_scale: LogaritmicScale = LogaritmicScale(
+    log_scale: LogarithmicScale = LogarithmicScale(
         config.sampling.f_min,
         config.sampling.f_max,
         config.step,
