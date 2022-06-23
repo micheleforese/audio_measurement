@@ -1,6 +1,7 @@
 import click
 from cDAQ.timer import timeit
 from cDAQ.console import console
+from cDAQ.usbtmc import UsbTmc
 
 
 def say_hi():
@@ -16,3 +17,14 @@ def testTimer():
     timed_say_hi()
 
     timeit()(say_hi)()
+
+
+@click.command()
+def print_devices():
+
+    list = UsbTmc.search_devices()
+
+    instr = list[-1]
+    print(instr.ask("*IDN?"))
+
+    console.print(list)

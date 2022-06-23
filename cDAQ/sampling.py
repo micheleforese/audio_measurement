@@ -61,6 +61,7 @@ def sampling_curve(
     ui_t.progress_list_task.start_task(task_sampling)
 
     # Asks for the 2 instruments
+    UsbTmc.search_devices()
     list_devices: List[Instrument] = get_device_list()
     if debug:
         print_devices_list(list_devices)

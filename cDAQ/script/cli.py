@@ -21,6 +21,8 @@ from rich.prompt import Confirm
 from rich.table import Column, Table
 from usbtmc import Instrument
 from cDAQ.model.sweep import SingleSweepData
+from cDAQ.script.ni import read_rms
+from cDAQ.script.rigol import set_amplitude, set_frequency, turn_off, turn_on
 
 import cDAQ.ui.terminal as ui_t
 from cDAQ.algorithm import LogarithmicScale
@@ -46,7 +48,7 @@ from cDAQ.math.pid import (
 from cDAQ.sampling import config_offset, plot_from_csv, sampling_curve
 from cDAQ.scpi import SCPI, Bandwidth, Switch
 from cDAQ.script.gui import GuiAudioMeasurements
-from cDAQ.script.test import testTimer
+from cDAQ.script.test import print_devices, testTimer
 from cDAQ.timer import Timer, Timer_Message, timeit, timer
 from cDAQ.usbtmc import UsbTmc, get_device_list, print_devices_list
 from cDAQ.utility import (
@@ -729,138 +731,14 @@ def sweep_debug(home, sweep_dir, iteration_rms: bool):
 
 
 @cli.group()
-def test():
+def rigol():
     pass
 
 
-# @cli.group()
-# def rigol():
-#     pass
-
-
-# @rigol.command()
-# @click.option(
-#     "--debug",
-#     is_flag=True,
-#     help="Will print verbose messages.",
-#     default=False,
-# )
-# def turn_on(debug: bool):
-#     # Asks for the 2 instruments
-#     list_devices: List[Instrument] = get_device_list()
-#     if debug:
-#         print_devices_list(list_devices)
-
-#     generator: UsbTmc = UsbTmc(list_devices[0])
-
-#     generator.open()
-
-#     generator_ac_curves: List[str] = [
-#         SCPI.set_output(1, Switch.ON),
-#     ]
-
-#     SCPI.exec_commands(generator, generator_ac_curves)
-
-#     generator.close()
-
-#     console.print(Panel("[blue]Rigol Turned ON[/]"))
-
-
-# @rigol.command()
-# @click.option(
-#     "--debug",
-#     is_flag=True,
-#     help="Will print verbose messages.",
-#     default=False,
-# )
-# def turn_off(debug: bool):
-#     # Asks for the 2 instruments
-#     list_devices: List[Instrument] = get_device_list()
-#     if debug:
-#         print_devices_list(list_devices)
-
-#     generator: UsbTmc = UsbTmc(list_devices[0])
-
-#     generator.open()
-
-#     generator_ac_curves: List[str] = [
-#         SCPI.set_output(1, Switch.OFF),
-#     ]
-
-#     SCPI.exec_commands(generator, generator_ac_curves)
-
-#     generator.close()
-
-#     console.print(Panel("[blue]Rigol Turned OFF[/]"))
-
-
-# @rigol.command()
-# @click.argument(
-#     "amplitude",
-#     type=float,
-#     help="Amplitude.",
-#     required=True,
-# )
-# @click.option(
-#     "--debug",
-#     is_flag=True,
-#     help="Will print verbose messages.",
-#     default=False,
-# )
-# def set_amplitude(amplitude, debug: bool):
-
-#     # Asks for the 2 instruments
-#     list_devices: List[Instrument] = get_device_list()
-#     if debug:
-#         print_devices_list(list_devices)
-
-#     generator: UsbTmc = UsbTmc(list_devices[0])
-
-#     generator.open()
-
-#     generator_ac_curves: List[str] = [
-#         SCPI.set_source_voltage_amplitude(1, round(amplitude, 5)),
-#     ]
-
-#     SCPI.exec_commands(generator, generator_ac_curves)
-
-#     generator.close()
-
-#     console.print(Panel("[blue]Rigol Amplitude {}[/]".format(amplitude)))
-
-
-# @rigol.command()
-# @click.argument(
-#     "frequency",
-#     type=float,
-#     help="Amplitude.",
-# )
-# @click.option(
-#     "--debug",
-#     is_flag=True,
-#     help="Will print verbose messages.",
-#     default=False,
-# )
-# def set_frequency(frequency, debug: bool):
-
-#     # Asks for the 2 instruments
-#     list_devices: List[Instrument] = get_device_list()
-#     if debug:
-#         print_devices_list(list_devices)
-
-#     generator: UsbTmc = UsbTmc(list_devices[0])
-
-#     generator.open()
-
-#     generator_ac_curves: List[str] = [
-#         SCPI.set_source_frequency(1, round(frequency, 5)),
-#     ]
-
-#     SCPI.exec_commands(generator, generator_ac_curves)
-
-#     generator.close()
-
-#     console.print(Panel("[blue]Rigol Frequency {}[/]".format(frequency)))
+rigol.add_command(turn_on)
+rigol.add_command(turn_off)
+rigol.add_command(set_frequency)
+rigol.add_command(set_amplitude)
 
 
 @cli.group()
@@ -868,88 +746,16 @@ def ni():
     pass
 
 
-@ni.command()
-@click.option(
-    "--frequency",
-    type=float,
-    help="Frequency.",
-    required=True,
-)
-@click.option(
-    "--amplitude",
-    type=float,
-    help="Amplitude.",
-    required=True,
-)
-@click.option(
-    "--n_sample",
-    "n_sample_cli",
-    type=float,
-    help="Amplitude.",
-    required=True,
-)
-@click.option(
-    "--debug",
-    is_flag=True,
-    help="Will print verbose messages.",
-    default=False,
-)
-def read_rms(frequency, amplitude, n_sample_cli, debug: bool):
-    # Asks for the 2 instruments
-    list_devices: List[Instrument] = get_device_list()
-    if debug:
-        print_devices_list(list_devices)
+ni.add_command(read_rms)
 
-    generator: UsbTmc = UsbTmc(list_devices[0])
 
-    # Open the Instruments interfaces
-    # Auto Close with the destructor
-    generator.open()
-
-    # Sets the Configuration for the Voltmeter
-    generator_configs: list = [
-        SCPI.clear(),
-        SCPI.set_output(1, Switch.OFF),
-        SCPI.set_function_voltage_ac(),
-        SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
-        SCPI.set_source_voltage_amplitude(1, round(amplitude, 5)),
-        SCPI.set_source_frequency(1, round(frequency, 5)),
-    ]
-
-    SCPI.exec_commands(generator, generator_configs)
-
-    generator_ac_curves: List[str] = [
-        SCPI.set_output(1, Switch.ON),
-    ]
-
-    SCPI.exec_commands(generator, generator_ac_curves)
-
-    generator.close()
-
-    sleep(1)
-
-    Fs = trim_value(frequency * 100, max_value=100000)
-
-    n_sample = n_sample_cli
-
-    if Fs == 100000:
-        n_sample = 900
-
-    rms_value: Optional[float] = RMS.rms(
-        frequency=frequency,
-        Fs=Fs,
-        ch_input="cDAQ9189-1CDBE0AMod1/ai1",
-        max_voltage=4,
-        min_voltage=-4,
-        number_of_samples=n_sample,
-        time_report=False,
-        save_file=None,
-    )
-
-    console.print(Panel("[blue]RMS {}[/]".format(rms_value)))
+@cli.group()
+def test():
+    pass
 
 
 test.add_command(testTimer)
+test.add_command(print_devices)
 
 
 @cli.command()

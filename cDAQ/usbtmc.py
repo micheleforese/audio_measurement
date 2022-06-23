@@ -2,8 +2,9 @@ from re import split
 from typing import Any, List, Tuple, Union
 
 import numpy as np
-
+import usb
 import usbtmc
+
 from cDAQ.console import console
 
 ###########################################################
@@ -143,6 +144,23 @@ class UsbTmc:
             aperture (np.float): This is the Aperture of the Instrument
         """
         self.instr.write(f":FREQuency:APERture {aperture}")
+
+    @staticmethod
+    def search_devices() -> List[usbtmc.Instrument]:
+
+        list: List[usb.core.Device] = usbtmc.list_devices()
+
+        for d in list:
+            console.print("----------------------")
+            console.print(d.iSerialNumber)
+
+        instruments: List[usbtmc.Instrument] = []
+
+        for device in list:
+            maj, min = device_maj_min(str(device))
+            instruments.append(usbtmc.Instrument(maj, min))
+
+        return instruments
 
 
 def command_line_():
