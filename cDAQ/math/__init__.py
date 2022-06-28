@@ -77,7 +77,7 @@ def decimal_decompose(x) -> Tuple[float, int]:
 from cDAQ.console import console
 
 
-def find_sin_zero_offset(sample: List[float]) -> List[float]:
+def find_sin_zero_offset(sample: List[float]) -> Tuple[List[float], int, int]:
     # console.print(f"[Sample] - N: {len(sample)}")
 
     found: bool = False
@@ -149,7 +149,7 @@ def find_sin_zero_offset(sample: List[float]) -> List[float]:
         # console.print(f"[Sample] - Index: {index_start:4} - {index_end:4}")
 
         if index_end - index_start > 1:
-            return sample[index_start:index_end]
+            return sample[index_start:index_end], index_start, index_end
         else:
             return []
     else:

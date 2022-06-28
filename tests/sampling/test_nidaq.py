@@ -10,12 +10,10 @@ import nidaqmx.system
 import numpy as np
 import usbtmc
 from cDAQ.console import console
-from cDAQ.scpi import SCPI, Bandwidth, Switch
+from cDAQ.util.scpi import SCPI, Bandwidth, Switch
 from cDAQ.timer import Timer, Timer_Message
-from cDAQ.usbtmc import (
+from cDAQ.usb.usbtmc import (
     exec_commands,
-    get_device_list,
-    print_devices_list,
 )
 from cDAQ.utility import (
     percentage_error,
@@ -109,8 +107,8 @@ def test_ai_voltage(amplitude_pp, frequency, ch_input: int = 0, isLoop: bool = F
 
 def test_rigol_ni_output(amplitude_pp: float = 2, frequency: float = 1000):
     """Asks for the 2 instruments"""
-    list_devices: List[Instrument] = get_device_list()
-    print_devices_list(list_devices)
+    list_devices: List[Instrument] = UsbTmc.search_devices()
+    UsbTmc.print_devices_list(list_devices)
 
     gen: usbtmc.Instrument = list_devices[0]
 
@@ -218,9 +216,9 @@ def test_rigol_rms_ni_output(
     number_of_samples=1000,
 ):
     """Asks for the 2 instruments"""
-    list_devices: List[Instrument] = get_device_list()
+    list_devices: List[Instrument] = UsbTmc.search_devices()
     if debug:
-        print_devices_list(list_devices)
+        UsbTmc.print_devices_list(list_devices)
 
     gen: usbtmc.Instrument = list_devices[0]
 
@@ -277,7 +275,7 @@ def test_rigol_rms_ni_output(
 def test_lettura_rigol(
     # config_file_path: os.path
 ):
-    list_devices: List[Instrument] = get_device_list()
+    list_devices: List[Instrument] = UsbTmc.search_devices()
     generator: usbtmc.Instrument = list_devices[0]
 
     """Open the Instruments interfaces"""

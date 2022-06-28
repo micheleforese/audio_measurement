@@ -1,5 +1,5 @@
 from re import split
-from typing import Any, List, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union
 
 import numpy as np
 import usb
@@ -7,82 +7,27 @@ import usbtmc
 
 from cDAQ.console import console
 
-###########################################################
 
+class Instrument:
+    instrument: usbtmc.Instrument
 
-def print_info_instrument(instr: usbtmc.Instrument):
-    console.print("-" * 80)
-    console.print(f"Device: {instr.device}")
-    console.print("-" * 80)
-
-
-###########################################################
-
-
-def exec_commands(instr: usbtmc.Instrument, commands: List[str], debug: bool = False):
-    for command in commands:
-        if command.find("?") > 0:
-            response = instr.ask(command)
-
-            if response == "":
-                response = "NULL"
-
-            console.print("{}:\t{}".format(command, response))
+    def __init__(
+        self,
+        dev_maj: Optional[int] = None,
+        dev_min: Optional[int] = None,
+        device: Optional[usb.core.Device] = None,
+    ) -> None:
+        if dev_maj and dev_min:
+            self.instrument = usbtmc.Instrument(dev_maj, dev_min)
+        elif device:
+            dev_maj, dev_min = Instrument.device_maj_min(str(device))
+            self.instrument = usbtmc.Instrument(dev_maj, dev_min)
         else:
-            instr.write(command)
+            raise Exception("No Device specified.")
 
-            if debug:
-                console.print(command)
-
-
-def device_maj_min(instrument: str) -> Tuple[np.int, np.int]:
-    return np.int(instrument[10:14], 16), np.int(instrument[15:19], 16)
-
-
-def get_device_list() -> List[usbtmc.Instrument]:
-    list = usbtmc.list_devices()
-    list_devices = []
-
-    for device in list:
-        list_devices.append(str(device))
-
-    list_instr: List[usbtmc.Instrument] = []
-
-    for device in list_devices:
-        maj, min = device_maj_min(device)
-        list_instr.append(usbtmc.Instrument(maj, min))
-
-    return list_instr
-
-
-def print_devices_list(list_devices: List[usbtmc.Instrument]):
-    for index, device in enumerate(list_devices):
-
-        device_lines = split("\n", str(device.device))
-        console.print(f"Device {index}:")
-
-        for device_line in device_lines:
-
-            line: List[str] = device_line.strip().split()
-
-            if line[0] == "iManufacturer":
-                # console.print(device_line)
-                # console.print([ord(c) for c in device_line])
-
-                option: str = "iManufacturer:\t"
-                for i in range(3, len(line)):
-                    option = option + " " + line[i]
-                console.print(" " + option)
-            elif line[0] == "iProduct":
-                # console.print(device_line)
-                # console.print([ord(c) for c in device_line])
-
-                option2 = "iProduct:\t"
-                for i in range(3, len(line)):
-                    option2 = option2 + " " + line[i]
-                console.print(" " + option2)
-
-        console.print()
+    @staticmethod
+    def device_maj_min(instrument: str) -> Tuple[int, int]:
+        return int(instrument[10:14], 16), int(instrument[15:19], 16)
 
 
 class UsbTmc:
@@ -146,27 +91,49 @@ class UsbTmc:
         self.instr.write(f":FREQuency:APERture {aperture}")
 
     @staticmethod
-    def search_devices() -> List[usbtmc.Instrument]:
+    def search_devices() -> List[Instrument]:
 
-        list: List[usb.core.Device] = usbtmc.list_devices()
-
-        for d in list:
-            console.print("----------------------")
-            console.print(d.iSerialNumber)
+        list_devices: List[usb.core.Device] = usbtmc.list_devices()
 
         instruments: List[usbtmc.Instrument] = []
 
-        for device in list:
-            maj, min = device_maj_min(str(device))
-            instruments.append(usbtmc.Instrument(maj, min))
+        for device in list_devices:
+            instruments.append(Instrument(device=device))
 
         return instruments
 
+    @staticmethod
+    def print_devices_list(list_devices: List[Instrument]):
+
+        for index, device in enumerate(list_devices):
+
+            device_lines = split("\n", str(device.instrument.device))
+            console.print(f"Device {index}:")
+
+            for device_line in device_lines:
+
+                line: List[str] = device_line.strip().split()
+
+                if line[0] == "iManufacturer":
+
+                    option: str = "iManufacturer:\t"
+                    for i in range(3, len(line)):
+                        option = option + " " + line[i]
+                    console.print(" " + option)
+                elif line[0] == "iProduct":
+
+                    option2 = "iProduct:\t"
+                    for i in range(3, len(line)):
+                        option2 = option2 + " " + line[i]
+                    console.print(" " + option2)
+
+            console.print()
+
 
 def command_line_():
-    list_devices: List[usbtmc.Instrument] = get_device_list()
+    list_devices: List[usbtmc.Instrument] = UsbTmc.search_devices()
 
-    print_devices_list(list_devices)
+    UsbTmc.print_devices_list(list_devices)
 
     index_generator: np.int = np.int(input("Which is the Generator? "))
     index_reader: np.int = np.int(input("Which is the Reader? "))
@@ -177,7 +144,7 @@ def command_line_():
     generator.open()
     reader.open()
 
-    """Operations"""
+    # Operations
     isEnded = False
     input_string: str = ""
     console.print("Type the Device index followed by the command you want to execute")

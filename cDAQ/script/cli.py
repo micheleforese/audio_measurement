@@ -1,67 +1,43 @@
 import datetime
 import pathlib
-from code import interact
 from datetime import datetime
-from pathlib import Path
-from time import sleep
-from timeit import timeit
 from typing import Dict, List, Optional, Tuple, Union
 
 import click
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from rich.console import Group
-from rich.live import Live
 from rich.panel import Panel
 from rich.prompt import Confirm
-from rich.table import Column, Table
-from usbtmc import Instrument
-from cDAQ.model.sweep import SingleSweepData
-from cDAQ.script.ni import read_rms
-from cDAQ.script.rigol import set_amplitude, set_frequency, turn_off, turn_on
 
-import cDAQ.ui.terminal as ui_t
-from cDAQ.algorithm import LogarithmicScale
 from cDAQ.config import Config, Plot
 from cDAQ.config.type import ModAuto, Range
 from cDAQ.console import console
-from cDAQ.docker import Docker_CLI
 from cDAQ.docker.latex import create_latex_file
 from cDAQ.math import (
     INTERPOLATION_KIND,
     find_sin_zero_offset,
     interpolation_model,
-    logx_interpolation_model,
     rms_full_cycle,
 )
-from cDAQ.math.pid import (
-    PID_TERM,
-    PID_Controller,
-    Timed_Value,
-    calculate_area,
-    calculate_gradient,
-)
+from cDAQ.model.sweep import SingleSweepData
 from cDAQ.sampling import config_offset, plot_from_csv, sampling_curve
-from cDAQ.scpi import SCPI, Bandwidth, Switch
 from cDAQ.script.gui import GuiAudioMeasurements
+from cDAQ.script.device.ni import read_rms
+from cDAQ.script.device.rigol import set_amplitude, set_frequency, turn_off, turn_on
 from cDAQ.script.test import print_devices, testTimer
-from cDAQ.timer import Timer, Timer_Message, timeit, timer
-from cDAQ.usbtmc import UsbTmc, get_device_list, print_devices_list
+from cDAQ.timer import Timer
 from cDAQ.utility import (
     RMS,
     get_subfolder,
-    percentage_error,
-    transfer_function,
-    trim_value,
 )
 
 
 @click.group()
 def cli():
+    """This is the CLI for the audio measurements tools"""
     pass
 
 
@@ -85,7 +61,7 @@ def cli():
     "offset_file",
     type=pathlib.Path,
     help="Offset file path.",
-    required=True,
+    default=None,
 )
 # Config Overloads
 @click.option(
@@ -147,14 +123,13 @@ def cli():
 )
 # Flags
 @click.option(
-    "--time",
-    is_flag=True,
-    help="Elapsed time.",
+    "--time/--no-time",
+    help="Show elapsed time.",
     default=False,
 )
 @click.option(
-    "--debug",
-    is_flag=True,
+    "--debug/--no-debug",
+    "debug",
     help="Will print verbose messages.",
     default=False,
 )
@@ -165,16 +140,15 @@ def cli():
     default=False,
 )
 @click.option(
-    "--no-pdf",
-    "no_pdf",
-    is_flag=True,
-    help="Will Simulate the Sweep.",
-    default=False,
+    "--pdf/--no-pdf",
+    "pdf",
+    help="Will skip the pdf creation.",
+    default=True,
 )
 def sweep(
     config_path: pathlib.Path,
     home: pathlib.Path,
-    offset_file: pathlib.Path,
+    offset_file: Optional[pathlib.Path],
     amplitude_pp: Optional[float],
     n_fs: Optional[float],
     spd: Optional[float],
@@ -187,12 +161,12 @@ def sweep(
     time: bool,
     debug: bool,
     simulate: bool,
-    no_pdf: bool,
+    pdf: bool,
 ):
 
     HOME_PATH = home.absolute().resolve()
 
-    datetime_now = datetime.now().strftime(f"%Y-%m-%d--%H-%M-%f")
+    datetime_now = datetime.now().strftime(r"%Y-%m-%d--%H-%M-%f")
 
     # Load JSON config
     config: Config = Config()
@@ -226,7 +200,22 @@ def sweep(
     if x_lim:
         config.plot.x_limit = Range(*x_lim)
 
-    amplitude_base_level = float(offset_file.read_text())
+    if offset_file:
+        amplitude_base_level = float(offset_file.read_text())
+    else:
+        set_level_file_list = [
+            set_level_file for set_level_file in HOME_PATH.glob("*.config.offset")
+        ]
+        if len(set_level_file_list) > 0:
+            pattern: str = r"%Y-%m-%d--%H-%M-%f"
+            set_level_file_list.sort(
+                key=lambda name: datetime.datetime.strptime(
+                    name.name.strip(".")[0], pattern
+                ),
+            )
+            amplitude_base_level = float(set_level_file_list[-1].read_text())
+        else:
+            raise Exception
 
     config.rigol.amplitude_pp = amplitude_base_level
 
@@ -256,7 +245,7 @@ def sweep(
     if time:
         timer.start()
 
-    measurements_dir: pathlib.Path = HOME_PATH / "{}".format(datetime_now)
+    measurements_dir: pathlib.Path = HOME_PATH / f"{datetime_now}"
 
     measurements_file: pathlib.Path = measurements_dir / "sweep.csv"
     image_file: pathlib.Path = measurements_dir / "sweep.png"
@@ -283,7 +272,7 @@ def sweep(
             debug=debug,
         )
 
-        if not no_pdf:
+        if pdf:
             create_latex_file(
                 image_file, home=HOME_PATH, latex_home=measurements_dir, debug=debug
             )
@@ -304,7 +293,8 @@ def sweep(
     show_default=True,
 )
 @click.option(
-    "--format",
+    "--format-plot",
+    "format_plot",
     type=click.Choice(["png", "pdf"], case_sensitive=False),
     multiple=True,
     help='Format of the plot, can be: "png" or "pdf".',
@@ -346,7 +336,7 @@ def sweep(
 def plot(
     csv: Optional[pathlib.Path],
     home: pathlib.Path,
-    format: List[str],
+    format_plot: List[str],
     y_lim: Optional[Tuple[float, float]],
     x_lim: Optional[Tuple[float, float]],
     y_offset: Optional[float],
@@ -380,11 +370,13 @@ def plot(
     is_most_recent_file: bool = False
     plot_file: Optional[pathlib.Path] = None
 
+    latex_home: pathlib.Path = pathlib.Path()
+
     if csv:
         if csv.exists() and csv.is_file():
+            latex_home = csv.parent
             csv_file = csv.absolute()
             plot_file = csv_file.with_suffix("")
-            console.print("plot_file: {}".format(plot_file))
         else:
             console.print(
                 Panel("File: '{}' doesn't exists.".format(csv), style="error")
@@ -405,11 +397,12 @@ def plot(
 
             if csv_file.exists() and csv_file.is_file():
                 plot_file = csv_file.with_suffix("")
+                latex_home = csv_file.parent
         else:
             console.print("There is no csv file available.", style="error")
 
     if plot_file:
-        for plot_file_format in format:
+        for plot_file_format in format_plot:
             plot_file = plot_file.with_suffix("." + plot_file_format)
             console.print('Plotting file: "{}"'.format(plot_file.absolute()))
             plot_from_csv(
@@ -419,7 +412,7 @@ def plot(
                 debug=debug,
             )
             if plot_file_format == "png":
-                create_latex_file(plot_file, home=home)
+                create_latex_file(plot_file, home=HOME_PATH, latex_home=latex_home)
     else:
         console.print("Cannot create a plot file.", style="error")
 
@@ -431,12 +424,6 @@ def plot(
     type=pathlib.Path,
     help="Configuration path of the config file in json5 format.",
     required=True,
-)
-@click.option(
-    "--csv",
-    type=pathlib.Path,
-    help="Measurements file path in csv format.",
-    default=None,
 )
 @click.option(
     "--home",
@@ -463,17 +450,16 @@ def plot(
     help="Will print verbose messages.",
     default=False,
 )
-def config(
+def set_level(
     config_path: pathlib.Path,
-    csv: Optional[pathlib.Path],
     home: pathlib.Path,
     y_offset: Optional[float],
     y_offset_auto: Optional[str],
     debug: bool,
 ):
     HOME_PATH = home.absolute().resolve()
-    csv_file: pathlib.Path = pathlib.Path()
-    plot_file: pathlib.Path = pathlib.Path()
+
+    datetime_now = datetime.now().strftime(f"%Y-%m-%d--%H-%M-%f")
 
     config: Config = Config()
 
@@ -499,11 +485,9 @@ def config(
     if debug:
         config.print()
 
-    datetime_now = datetime.now().strftime(f"%Y-%m-%d--%H-%M-%f")
-
     config_offset(
         config=config,
-        plot_file_path=home / "audio-{}.config.png".format(datetime_now),
+        plot_file_path=HOME_PATH / "{}.config.png".format(datetime_now),
         debug=debug,
     )
 
@@ -524,25 +508,40 @@ def config(
     default=None,
 )
 @click.option(
-    "--iteration-rms",
+    "--iteration-rms/--no-iteration-rms",
     "iteration_rms",
-    is_flag=True,
     help="Home path, where the plot image will be created.",
     default=False,
 )
-def sweep_debug(home, sweep_dir, iteration_rms: bool):
+def sweep_debug(
+    home,
+    sweep_dir: Optional[pathlib.Path],
+    iteration_rms: bool,
+):
+    measurement_dir: pathlib.Path = pathlib.Path()
 
-    measurement_dirs: List[pathlib.Path] = get_subfolder(home)
+    if sweep_dir:
+        measurement_dir = sweep_dir / "sweep"
 
-    dir: pathlib.Path
-
-    if len(measurement_dirs) > 0:
-        dir = measurement_dirs[-1] / "sweep"
     else:
-        console.print("Cannot create the debug info from sweep csvs.", style="error")
+        measurement_dirs: List[pathlib.Path] = get_subfolder(home)
+
+        if len(measurement_dirs) > 0:
+            measurement_dir = measurement_dirs[-1] / "sweep"
+        else:
+            console.print(
+                "Cannot create the debug info from sweep csvs.", style="error"
+            )
+            exit()
+
+    if not measurement_dir.exists() or not measurement_dir.is_dir():
+        console.print("The measurement directory doesn't exists.")
         exit()
 
-    csv_files = [csv for csv in dir.rglob("sample.csv") if csv.is_file()]
+    csv_files = [csv for csv in measurement_dir.rglob("sample.csv") if csv.is_file()]
+
+    if len(csv_files) > 0:
+        csv_files.sort(key=lambda name: float(name.parent.name.replace("_", ".")))
 
     for csv in csv_files:
         csv_parent = csv.parent
@@ -578,10 +577,14 @@ def sweep_debug(home, sweep_dir, iteration_rms: bool):
 
         fig, axd = plot
 
-        # for ax in axd:
-        #     ax.grid(True)
+        for ax_key in axd:
+            axd[ax_key].grid(True)
 
         fig.suptitle(f"Frequency: {sweep_data.frequency} Hz.", fontsize=30)
+        fig.subplots_adjust(
+            wspace=0.5,  # the amount of width reserved for blank space between subplots
+            hspace=0.5,  # the amount of height reserved for white space between subplots
+        )
 
         # PLOT: Samples on Time Domain
         ax_time_domain_samples = axd["samp"]
@@ -608,31 +611,32 @@ def sweep_debug(home, sweep_dir, iteration_rms: bool):
         ax_time_domain_samples.set_xlabel("Time [$s$]")
         # ax_time_domain_samples.legend(bbox_to_anchor=(1, 0.5), loc="center left")
         ax_time_domain_samples.legend(loc="best")
-        ax_time_domain_samples.grid(True)
 
         # PLOT: RMS iterating every 5 values
-        plot_rms_samp = axd["rms_samp"]
-        rms_samp_iter_list: List[float] = [0]
-        for n in range(5, len(sweep_data.voltages.values), 5):
-            rms_samp_iter_list.append(RMS.fft(sweep_data.voltages.values[0:n]))
+        if iteration_rms:
+            plot_rms_samp = axd["rms_samp"]
+            rms_samp_iter_list: List[float] = [0]
+            for n in range(5, len(sweep_data.voltages.values), 5):
+                rms_samp_iter_list.append(RMS.fft(sweep_data.voltages.values[0:n]))
 
-        plot_rms_samp.plot(
-            np.arange(
-                0,
-                len(sweep_data.voltages),
-                5,
-            ),
-            rms_samp_iter_list,
-            label=f"Iterations Sample RMS",
-        )
-        plot_rms_samp.legend(loc="best")
+            plot_rms_samp.plot(
+                np.arange(
+                    0,
+                    len(sweep_data.voltages),
+                    5,
+                ),
+                rms_samp_iter_list,
+                label=f"Iterations Sample RMS",
+            )
+            plot_rms_samp.legend(loc="best")
 
         plot_intr_samp = axd["intr_samp"]
         voltages_to_interpolate = sweep_data.voltages.values
+        INTERPOLATION_RATE = 10
         x_interpolated, y_interpolated = interpolation_model(
             range(0, len(voltages_to_interpolate)),
             voltages_to_interpolate,
-            int(len(voltages_to_interpolate) * 10),
+            int(len(voltages_to_interpolate) * INTERPOLATION_RATE),
             kind=INTERPOLATION_KIND.CUBIC,
         )
 
@@ -644,54 +648,72 @@ def sweep_debug(home, sweep_dir, iteration_rms: bool):
 
         rms_intr = RMS.fft(y_interpolated)
         plot_intr_samp.plot(
-            x_interpolated,
+            np.linspace(
+                0,
+                len(y_interpolated) / (sweep_data.Fs * INTERPOLATION_RATE),
+                len(y_interpolated),
+            ),
+            # x_interpolated,
             y_interpolated,
             linestyle="-",
             linewidth=0.5,
-            label=f"Interpolated Samples rms={rms_intr:.5}",
+            label=f"rms={rms_intr:.5}",
         )
+        plot_intr_samp.set_title("Interpolated Samples")
+        plot_intr_samp.set_ylabel("Voltage [$V$]")
+        plot_intr_samp.set_xlabel("Time [$s$]")
         plot_intr_samp.legend(loc="best")
 
-        plot_rms_intr_samp = axd["rms_intr_samp"]
-        rms_intr_samp_iter_list: List[float] = [0]
-        for n in range(1, len(y_interpolated), 20):
-            rms_intr_samp_iter_list.append(RMS.fft(y_interpolated[0:n]))
+        if iteration_rms:
+            plot_rms_intr_samp = axd["rms_intr_samp"]
+            rms_intr_samp_iter_list: List[float] = [0]
+            for n in range(1, len(y_interpolated), 20):
+                rms_intr_samp_iter_list.append(RMS.fft(y_interpolated[0:n]))
 
-        plot_rms_intr_samp.plot(
-            rms_intr_samp_iter_list,
-            label=f"Iterations Interpolated Sample RMS",
-        )
-        plot_rms_intr_samp.legend(loc="best")
+            plot_rms_intr_samp.plot(
+                rms_intr_samp_iter_list,
+                label=f"Iterations Interpolated Sample RMS",
+            )
+            plot_rms_intr_samp.legend(loc="best")
 
         # PLOT: Interpolated Sample, Zero Offset for complete Cycles
-        offset_interpolated = find_sin_zero_offset(y_interpolated)
+        offset_interpolated, idx_start, idx_end = find_sin_zero_offset(y_interpolated)
 
         plot_intr_samp_offset = axd["intr_samp_offset"]
         rms_intr_offset = RMS.fft(offset_interpolated)
         plot_intr_samp_offset.plot(
+            np.linspace(
+                idx_start / sweep_data.Fs,
+                len(offset_interpolated) / (sweep_data.Fs * INTERPOLATION_RATE),
+                len(offset_interpolated),
+            ),
             offset_interpolated,
             linewidth=0.7,
-            label=f"Interpolated Samples with Offset rms={rms_intr_offset:.5}",
+            label=f"rms={rms_intr_offset:.5}",
         )
+        plot_intr_samp_offset.set_title("Interpolated Samples with Offset")
+        plot_intr_samp_offset.set_ylabel("Voltage [$V$]")
+        plot_intr_samp_offset.set_xlabel("Time [$s$]")
         plot_intr_samp_offset.legend(loc="best")
 
-        plot_rms_intr_samp_offset = axd["rms_intr_samp_offset"]
-        rms_intr_samp_offset_iter_list: List[float] = [0]
+        if iteration_rms:
+            plot_rms_intr_samp_offset = axd["rms_intr_samp_offset"]
+            rms_intr_samp_offset_iter_list: List[float] = [0]
 
-        for n in range(1, len(offset_interpolated), 20):
-            rms_intr_samp_offset_iter_list.append(RMS.fft(offset_interpolated[0:n]))
+            for n in range(1, len(offset_interpolated), 20):
+                rms_intr_samp_offset_iter_list.append(RMS.fft(offset_interpolated[0:n]))
 
-        pd.DataFrame(rms_intr_samp_offset_iter_list).to_csv(
-            pathlib.Path(csv_parent / "interpolation_rms.csv").absolute().resolve(),
-            header=["voltage"],
-            index=None,
-        )
+            pd.DataFrame(rms_intr_samp_offset_iter_list).to_csv(
+                pathlib.Path(csv_parent / "interpolation_rms.csv").absolute().resolve(),
+                header=["voltage"],
+                index=None,
+            )
 
-        plot_rms_intr_samp_offset.plot(
-            rms_intr_samp_offset_iter_list,
-            label=f"Iterations Interpolated Sample with Offset RMS",
-        )
-        plot_rms_intr_samp_offset.legend(loc="best")
+            plot_rms_intr_samp_offset.plot(
+                rms_intr_samp_offset_iter_list,
+                label=f"Iterations Interpolated Sample with Offset RMS",
+            )
+            plot_rms_intr_samp_offset.legend(loc="best")
 
         # PLOT: RMS every sine period
         plot_rms_intr_samp_offset_trim = axd["rms_intr_samp_offset_trim"]
@@ -706,10 +728,7 @@ def sweep_debug(home, sweep_dir, iteration_rms: bool):
         plot_rms_intr_samp_offset_trim_gradient = axd[
             "rms_intr_samp_offset_trim_gradient"
         ]
-        # rms_fft_gradient_list = np.gradient(plot_rms_fft_intr_samp_offset_trim_list)
-        # plot_rms_intr_samp_offset_trim_gradient.plot(rms_fft_gradient_list)
-        # plot_rms_intr_samp_offset_trim_gradient.legend(
-        #     ["RMS fft per period, Interpolated GRADIENT"],
+        # rms_fft_gradient_list = np.gradient(plot_rms_fftplot_intr_samp],
         #     loc="best",
         # )
 
@@ -762,5 +781,5 @@ test.add_command(print_devices)
 @click.option("--home", type=pathlib.Path, default=pathlib.Path.cwd())
 def gui(home: pathlib.Path):
     # SimpleApp.run(log="textual.log")
-    App = GuiAudioMeasurements()
+    App = GuiAudioMeasurements(home)
     App.run()

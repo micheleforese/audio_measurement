@@ -11,9 +11,9 @@ import usbtmc
 from cDAQ.algorithm import LogarithmicScale
 from cDAQ.config import Config
 from cDAQ.console import console
-from cDAQ.scpi import SCPI, Bandwidth, Switch
+from cDAQ.util.scpi import SCPI, Bandwidth, Switch
 from cDAQ.timer import Timer, Timer_Message
-from cDAQ.usbtmc import UsbTmc, get_device_list, print_devices_list
+from cDAQ.usb.usbtmc import UsbTmc
 from cDAQ.utility import percentage_error, rms
 from rich.live import Live
 from rich.table import Column, Table
@@ -49,9 +49,9 @@ def test_error_sampling():
     debug = True
 
     """Asks for the 2 instruments"""
-    list_devices: List[Instrument] = get_device_list()
+    list_devices: List[Instrument] = UsbTmc.search_devices()
     if debug:
-        print_devices_list(list_devices)
+        UsbTmc.print_devices_list(list_devices)
 
     generator: UsbTmc = UsbTmc(list_devices[0])
 

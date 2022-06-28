@@ -6,8 +6,8 @@ from rich.panel import Panel
 from usbtmc import Instrument
 
 from cDAQ.console import console
-from cDAQ.scpi import SCPI, Bandwidth, Switch
-from cDAQ.usbtmc import UsbTmc, get_device_list, print_devices_list
+from cDAQ.util.scpi import SCPI, Bandwidth, Switch
+from cDAQ.usb.usbtmc import UsbTmc
 from cDAQ.utility import (
     RMS,
     trim_value,
@@ -42,9 +42,9 @@ from cDAQ.utility import (
 )
 def read_rms(frequency, amplitude, n_sample_cli, debug: bool):
     # Asks for the 2 instruments
-    list_devices: List[Instrument] = get_device_list()
+    list_devices: List[Instrument] = UsbTmc.search_devices()
     if debug:
-        print_devices_list(list_devices)
+        UsbTmc.print_devices_list(list_devices)
 
     generator: UsbTmc = UsbTmc(list_devices[0])
 

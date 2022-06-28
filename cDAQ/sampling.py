@@ -28,9 +28,9 @@ from cDAQ.math.pid import (
     PID_Controller,
     Timed_Value,
 )
-from cDAQ.scpi import SCPI, Bandwidth, Switch
+from cDAQ.util.scpi import SCPI, Bandwidth, Switch
 from cDAQ.timer import Timer, Timer_Message
-from cDAQ.usbtmc import UsbTmc, get_device_list, print_devices_list
+from cDAQ.usb.usbtmc import UsbTmc
 from cDAQ.utility import RMS, percentage_error, transfer_function, trim_value
 
 
@@ -61,10 +61,9 @@ def sampling_curve(
     ui_t.progress_list_task.start_task(task_sampling)
 
     # Asks for the 2 instruments
-    UsbTmc.search_devices()
-    list_devices: List[Instrument] = get_device_list()
+    list_devices: List[Instrument] = UsbTmc.get_device_list()
     if debug:
-        print_devices_list(list_devices)
+        UsbTmc.print_devices_list(list_devices)
 
     generator: UsbTmc = UsbTmc(list_devices[0])
 
@@ -499,9 +498,9 @@ def config_offset(
     ui_t.progress_list_task.start_task(task_sampling)
 
     # Asks for the 2 instruments
-    list_devices: List[Instrument] = get_device_list()
+    list_devices: List[Instrument] = UsbTmc.search_devices()
     if debug:
-        print_devices_list(list_devices)
+        UsbTmc.print_devices_list(list_devices)
 
     generator: UsbTmc = UsbTmc(list_devices[0])
 
@@ -544,7 +543,6 @@ def config_offset(
         controller_output_zero=voltage_amplitude_start,
     )
 
-    process_output_list: List[float] = [voltage_amplitude_start]
     gain_dB_list: List[float] = []
 
     k_tot = 0.2745

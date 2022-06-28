@@ -1,7 +1,7 @@
 import click
 from cDAQ.timer import timeit
 from cDAQ.console import console
-from cDAQ.usbtmc import UsbTmc
+from cDAQ.usb.usbtmc import UsbTmc
 
 
 def say_hi():
