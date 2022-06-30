@@ -1,0 +1,7 @@
+site_name: Audio Measurements
+theme:
+  name: 'readthedocs'
+
+nav:
+  - Home: index.md
+  - Install: install.md

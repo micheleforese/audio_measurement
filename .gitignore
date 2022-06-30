@@ -24,3 +24,7 @@ env
 
 # Test script
 audio-test/**
+
+
+# Docs
+docs/site
