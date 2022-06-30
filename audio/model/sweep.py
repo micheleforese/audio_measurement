@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import pandas as pd
-from pandas import DataFrame, Series
 import yaml
+from pandas import DataFrame, Series
 
 from audio.console import console
 

@@ -2,7 +2,7 @@ from enum import Enum
 from typing import List, Union
 
 from audio.console import console
-from cDAQ.usb.usbtmc import UsbTmc
+from audio.usb.usbtmc import UsbTmc
 
 
 class Switch(Enum):

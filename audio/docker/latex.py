@@ -1,17 +1,15 @@
 import os
 import pathlib
-from struct import pack
 from typing import List, Optional
 
-from matplotlib import use
 from rich.console import Group
 from rich.live import Live
 from rich.panel import Panel
 
-import cDAQ.ui.terminal as ui_t
+import audio.ui.terminal as ui_t
 from audio.console import console
-from cDAQ.docker import Docker_CLI, User, Volume
-from cDAQ.docker.utility import exec_command
+from audio.docker import Docker_CLI, User, Volume
+from audio.docker.utility import exec_command
 
 
 class Package:
@@ -151,7 +149,7 @@ def create_latex_file(
         )
     )
 
-    out_directory = "build"
+    # out_directory = "build"
 
     ui_t.progress_list_task.update(task_latex, task="Docker Image Running")
 

@@ -1,5 +1,5 @@
 import enum
-from typing import Generic, Type, TypeVar
+from typing import Generic, TypeVar
 
 RangeType = TypeVar("RangeType")
 

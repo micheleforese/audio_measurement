@@ -2,23 +2,24 @@ import pathlib
 from abc import ABC, abstractmethod
 from typing import Any, List, Optional, Tuple, Type, TypeVar, Union, cast
 
-import pyjson5 as pjson5
-from cDAQ.config.exception import (
+import pyjson5
+from rich.panel import Panel
+from rich.tree import Tree
+
+from audio.config.exception import (
     ConfigError,
     ConfigException,
     ConfigNoneValueError,
     ConfigNoneValueException,
 )
-from cDAQ.config.type import ModAuto, Range
+from audio.config.type import ModAuto, Range
 from audio.console import console
-from rich.panel import Panel
-from rich.tree import Tree
 
 
 def load_json_config(config_file_path):
     with open(config_file_path) as config_file:
         file_content: str = config_file.read()
-        config = pjson5.decode(file_content)
+        config = pyjson5.decode(file_content)
         return config
 
 

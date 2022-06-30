@@ -6,12 +6,10 @@ from rich.panel import Panel
 from usbtmc import Instrument
 
 from audio.console import console
-from cDAQ.utility.scpi import SCPI, Bandwidth, Switch
-from cDAQ.usb.usbtmc import UsbTmc
-from cDAQ.utility import (
-    RMS,
-    trim_value,
-)
+from audio.math.rms import RMS
+from audio.usb.usbtmc import UsbTmc
+from audio.utility import trim_value
+from audio.utility.scpi import SCPI, Bandwidth, Switch
 
 
 @click.command()

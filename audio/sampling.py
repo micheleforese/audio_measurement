@@ -1,6 +1,4 @@
-from code import interact
 from pathlib import Path
-import pathlib
 from time import sleep
 from typing import List, Optional, Tuple
 
@@ -15,23 +13,25 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.table import Column, Table
 from usbtmc import Instrument
-from cDAQ.model.sweep import SweepData
 
-import cDAQ.ui.terminal as ui_t
-from audio.math.algorithm import LogarithmicScale
-from cDAQ.config import Config, Plot
-from cDAQ.config.type import ModAuto
+import audio.ui.terminal as ui_t
+from audio.config import Config, Plot
+from audio.config.type import ModAuto
 from audio.console import console
-from cDAQ.math import INTERPOLATION_KIND, logx_interpolation_model
-from cDAQ.math.pid import (
-    PID_TERM,
-    PID_Controller,
-    Timed_Value,
+from audio.math import (
+    INTERPOLATION_KIND,
+    logx_interpolation_model,
+    percentage_error,
+    transfer_function,
 )
-from cDAQ.utility.scpi import SCPI, Bandwidth, Switch
+from audio.math.algorithm import LogarithmicScale
+from audio.math.pid import PID_Controller, Timed_Value
+from audio.math.rms import RMS
+from audio.model.sweep import SweepData
+from audio.usb.usbtmc import UsbTmc
+from audio.utility import trim_value
+from audio.utility.scpi import SCPI, Bandwidth, Switch
 from audio.utility.timer import Timer, Timer_Message
-from cDAQ.usb.usbtmc import UsbTmc
-from cDAQ.utility import RMS, percentage_error, transfer_function, trim_value
 
 
 def sampling_curve(
@@ -46,7 +46,13 @@ def sampling_curve(
     sweep_path.mkdir(parents=True, exist_ok=True)
 
     live_group = Group(
-        Panel(Group(ui_t.progress_list_task, ui_t.progress_sweep, ui_t.progress_task)),
+        Panel(
+            Group(
+                ui_t.progress_list_task,
+                ui_t.progress_sweep,
+                ui_t.progress_task,
+            )
+        ),
     )
     live = Live(
         live_group,
@@ -61,7 +67,7 @@ def sampling_curve(
     ui_t.progress_list_task.start_task(task_sampling)
 
     # Asks for the 2 instruments
-    list_devices: List[Instrument] = UsbTmc.get_device_list()
+    list_devices: List[Instrument] = UsbTmc.search_devices()
     if debug:
         UsbTmc.print_devices_list(list_devices)
 
@@ -109,12 +115,12 @@ def sampling_curve(
     frequency: float = round(config.sampling.f_range.min, 5)
 
     table = Table(
-        Column("Frequency [Hz]", justify="right"),
-        Column("Fs [Hz]", justify="right"),
+        Column(r"Frequency [Hz]", justify="right"),
+        Column(r"Fs [Hz]", justify="right"),
         Column("Number of samples", justify="right"),
-        Column("Rms Value [V]", justify="right"),
-        Column("Gain \[dB]", justify="right"),
-        Column("Time \[s]", justify="right"),
+        Column(r"Rms Value [V]", justify="right"),
+        Column(r"Gain [dB]", justify="right"),
+        Column(r"Time [s]", justify="right"),
         title="[blue]Sweep.",
     )
 
@@ -240,7 +246,7 @@ def sampling_curve(
         ],
     )
 
-    with open(measurements_file_path.absolute().resolve(), "w") as f:
+    with open(measurements_file_path.absolute().resolve(), "w", encoding="utf-8") as f:
         f.write("# amplitude: {}\n".format(round(config.rigol.amplitude_pp, 5)))
         sampling_data.to_csv(
             f,

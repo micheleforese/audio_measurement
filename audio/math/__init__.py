@@ -1,9 +1,11 @@
 import enum
 import math
-from typing import Callable, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 from scipy.interpolate import interp1d
+
+from audio.math.rms import RMS
 
 
 def unit_normalization(value: float) -> int:
@@ -72,9 +74,6 @@ def decimal_decompose(x) -> Tuple[float, int]:
     exponent = int(math.floor(np.log10(abs(x)))) if x != 0 else 0
     mantissa = float(x / 10**exponent)
     return mantissa, exponent
-
-
-from audio.console import console
 
 
 def find_sin_zero_offset(sample: List[float]) -> Tuple[List[float], int, int]:
@@ -157,7 +156,6 @@ def find_sin_zero_offset(sample: List[float]) -> Tuple[List[float], int, int]:
 
 
 def rms_full_cycle(sample: List[float]) -> List[float]:
-    from cDAQ.utility import RMS
 
     rms_fft_cycle_list: List[float] = []
 

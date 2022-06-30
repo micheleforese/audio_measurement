@@ -52,7 +52,7 @@ def read_voltages(
         task = nidaqmx.Task("Input Voltage")
 
         # 2. Add the AI Voltage Channel
-        ai_channel = task.ai_channels.add_ai_voltage_chan(
+        task.ai_channels.add_ai_voltage_chan(
             ch_input, min_val=min_voltage, max_val=max_voltage
         )
 

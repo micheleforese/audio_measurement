@@ -1,17 +1,12 @@
-from time import sleep
-from typing import List, Optional
+from typing import List
 
 import click
 from rich.panel import Panel
 from usbtmc import Instrument
 
 from audio.console import console
-from cDAQ.utility.scpi import SCPI, Bandwidth, Switch
-from cDAQ.usb.usbtmc import UsbTmc
-from cDAQ.utility import (
-    RMS,
-    trim_value,
-)
+from audio.usb.usbtmc import UsbTmc
+from audio.utility.scpi import SCPI, Switch
 
 
 @click.command(help="Turn On the Rigol Instrument.")

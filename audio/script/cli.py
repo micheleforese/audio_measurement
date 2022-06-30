@@ -1,4 +1,3 @@
-import datetime
 import pathlib
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Union
@@ -12,27 +11,24 @@ from matplotlib.figure import Figure
 from rich.panel import Panel
 from rich.prompt import Confirm
 
-from audio.cDAQ.config import Config, Plot
-from audio.cDAQ.config.type import ModAuto, Range
+from audio.config import Config, Plot
+from audio.config.type import ModAuto, Range
 from audio.console import console
-from audio.cDAQ.docker.latex import create_latex_file
-from audio.cDAQ.math import (
+from audio.docker.latex import create_latex_file
+from audio.math import (
     INTERPOLATION_KIND,
     find_sin_zero_offset,
     interpolation_model,
     rms_full_cycle,
 )
-from cDAQ.model.sweep import SingleSweepData
+from audio.math.rms import RMS
+from audio.model.sweep import SingleSweepData
 from audio.sampling import config_offset, plot_from_csv, sampling_curve
-from audio.script.gui import GuiAudioMeasurements
 from audio.script.device.ni import read_rms
 from audio.script.device.rigol import set_amplitude, set_frequency, turn_off, turn_on
 from audio.script.test import print_devices, testTimer
+from audio.utility import get_subfolder
 from audio.utility.timer import Timer
-from cDAQ.utility import (
-    RMS,
-    get_subfolder,
-)
 
 
 @click.group()
@@ -459,7 +455,7 @@ def set_level(
 ):
     HOME_PATH = home.absolute().resolve()
 
-    datetime_now = datetime.now().strftime(f"%Y-%m-%d--%H-%M-%f")
+    datetime_now = datetime.now().strftime(r"%Y-%m-%d--%H-%M-%f")
 
     config: Config = Config()
 
@@ -559,18 +555,8 @@ def sweep_debug(
                     "rms_intr_samp_offset_trim",
                     "rms_intr_samp_offset_trim",
                 ],
-                [
-                    "rms_intr_samp_offset_trim_gradient",
-                    "rms_intr_samp_offset_trim_gradient",
-                    "rms_intr_samp_offset_trim_gradient",
-                ],
-                [
-                    "rms_intr_samp_offset_trim_average",
-                    "rms_intr_samp_offset_trim_average",
-                    "rms_intr_samp_offset_trim_average",
-                ],
             ],
-            figsize=(30, 25),
+            figsize=(30, 20),
             dpi=300,
         )
         # plt.tight_layout()
@@ -626,7 +612,7 @@ def sweep_debug(
                     5,
                 ),
                 rms_samp_iter_list,
-                label=f"Iterations Sample RMS",
+                label="Iterations Sample RMS",
             )
             plot_rms_samp.legend(loc="best")
 
@@ -672,7 +658,7 @@ def sweep_debug(
 
             plot_rms_intr_samp.plot(
                 rms_intr_samp_iter_list,
-                label=f"Iterations Interpolated Sample RMS",
+                label="Iterations Interpolated Sample RMS",
             )
             plot_rms_intr_samp.legend(loc="best")
 
@@ -711,7 +697,7 @@ def sweep_debug(
 
             plot_rms_intr_samp_offset.plot(
                 rms_intr_samp_offset_iter_list,
-                label=f"Iterations Interpolated Sample with Offset RMS",
+                label="Iterations Interpolated Sample with Offset RMS",
             )
             plot_rms_intr_samp_offset.legend(loc="best")
 
@@ -724,24 +710,6 @@ def sweep_debug(
             label="RMS fft per period, Interpolated",
         )
         plot_rms_intr_samp_offset_trim.legend(loc="best")
-
-        plot_rms_intr_samp_offset_trim_gradient = axd[
-            "rms_intr_samp_offset_trim_gradient"
-        ]
-        # rms_fft_gradient_list = np.gradient(plot_rms_fftplot_intr_samp],
-        #     loc="best",
-        # )
-
-        plot_rms_intr_samp_offset_trim_average = axd[
-            "rms_intr_samp_offset_trim_average"
-        ]
-        # data_frame = pd.Series(plot_rms_fft_intr_samp_offset_trim_list)
-        # rms_sma = data_frame.rolling(4).mean().tolist()[4:]
-        # plot_rms_intr_samp_offset_trim_average.plot(rms_sma)
-        # plot_rms_intr_samp_offset_trim_average.legend(
-        #     [f"RMS fft per period, Interpolated Average: {rms_sma[-1]}"],
-        #     loc="best",
-        # )
 
         plt.savefig(plot_image)
         plt.close("all")
@@ -775,11 +743,3 @@ def test():
 
 test.add_command(testTimer)
 test.add_command(print_devices)
-
-
-@cli.command()
-@click.option("--home", type=pathlib.Path, default=pathlib.Path.cwd())
-def gui(home: pathlib.Path):
-    # SimpleApp.run(log="textual.log")
-    App = GuiAudioMeasurements(home)
-    App.run()

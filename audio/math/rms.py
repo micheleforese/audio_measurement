@@ -1,27 +1,19 @@
-import datetime
 import enum
 import pathlib
-from cmath import sqrt
 from typing import List, Optional
 
-import nidaqmx
-import nidaqmx.constants
-import nidaqmx.stream_readers
-import nidaqmx.stream_writers
-import nidaqmx.system
 import numpy as np
 import pandas as pd
-from nidaqmx._task_modules.channels.ai_channel import AIChannel
-from nidaqmx._task_modules.channels.ao_channel import AOChannel
-from nidaqmx.system._collections.device_collection import DeviceCollection
-from nidaqmx.system.system import System
-from rich.panel import Panel
-from rich.table import Column, Table
-from rich.tree import Tree
 from scipy.fft import fft
 
 from audio.console import console
-from cDAQ.math import INTERPOLATION_KIND, find_sin_zero_offset, interpolation_model
+from audio.math import (
+    INTERPOLATION_KIND,
+    find_sin_zero_offset,
+    integrate,
+    interpolation_model,
+)
+from audio.utility import read_voltages
 from audio.utility.timer import Timer
 
 
@@ -61,7 +53,7 @@ class RMS:
             )
 
             if save_file:
-                with open(save_file.absolute().resolve(), "w") as f:
+                with open(save_file.absolute().resolve(), "w", encoding="utf-8") as f:
                     f.write("# frequency: {}\n".format(round(frequency, 5)))
                     f.write("# Fs: {}\n".format(round(Fs, 5)))
                     pd.DataFrame(voltages).to_csv(
@@ -134,11 +126,8 @@ class RMS:
         n_samp = len(voltages)
         voltages_fft = fft(voltages, n_samp, workers=-1)
 
-        sum = 0
-        for v in voltages_fft:
-            sum += np.float_power(np.absolute(v), 2)
-
-        rms: float = np.sqrt(sum) / n_samp
+        summation = np.sum([np.float_power(np.absolute(v), 2) for v in voltages_fft])
+        rms: float = np.sqrt(summation) / n_samp
 
         return rms
 

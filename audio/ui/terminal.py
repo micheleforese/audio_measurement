@@ -1,20 +1,12 @@
-from rich.console import Group
-from rich.live import Live
-from rich.panel import Panel
 from rich.progress import (
     BarColumn,
-    DownloadColumn,
     MofNCompleteColumn,
     Progress,
     SpinnerColumn,
-    TaskID,
     TextColumn,
     TimeElapsedColumn,
-    TimeRemainingColumn,
-    TransferSpeedColumn,
 )
-from rich.prompt import Confirm
-from rich.table import Column, Table
+
 from audio.console import console
 
 progress_sweep = Progress(

@@ -151,7 +151,7 @@ def command_line_():
     console.print("Example: 0 TRIG:COUN 3")
     console.print("-" * 50)
 
-    while isEnded != True:
+    while not isEnded:
         input_string = input("> ")
 
         if input_string == "exit":

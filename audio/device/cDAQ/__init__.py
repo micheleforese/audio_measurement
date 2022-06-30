@@ -1,28 +1,11 @@
-import datetime
-import enum
-import pathlib
-from cmath import sqrt
-from typing import List, Optional
-
-import nidaqmx
-import nidaqmx.constants
-import nidaqmx.stream_readers
-import nidaqmx.stream_writers
-import nidaqmx.system
-import numpy as np
-import pandas as pd
-from nidaqmx._task_modules.channels.ai_channel import AIChannel
 from nidaqmx._task_modules.channels.ao_channel import AOChannel
+from nidaqmx.system import System
 from nidaqmx.system._collections.device_collection import DeviceCollection
-from nidaqmx.system.system import System
 from rich.panel import Panel
 from rich.table import Column, Table
 from rich.tree import Tree
-from scipy.fft import fft
 
 from audio.console import console
-from cDAQ.math import INTERPOLATION_KIND, find_sin_zero_offset, interpolation_model
-from audio.utility.timer import Timer
 
 
 class cDAQ:
@@ -35,7 +18,7 @@ class cDAQ:
     def __init__(self) -> None:
 
         # Get the system instance for the nidaqmx-driver
-        self.system = nidaqmx.system.System.local()
+        self.system = System.local()
 
     def print_driver_version(self, debug: bool = False):
         """Prints the Version for the nidaqmx driver

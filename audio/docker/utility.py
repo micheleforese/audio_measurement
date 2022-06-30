@@ -1,5 +1,7 @@
 import subprocess
 
+from audio.console import console
+
 
 def exec_command(command):
     process = subprocess.Popen(
@@ -10,6 +12,6 @@ def exec_command(command):
     try:
         stdout = stdout.decode("utf-8")
         stderr = stderr.decode("utf-8")
-    except:
-        pass
+    except Exception as e:
+        console.print(f"{e}")
     return stdout, stderr

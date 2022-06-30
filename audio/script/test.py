@@ -1,7 +1,8 @@
 import click
-from audio.utility.timer import timeit
+
 from audio.console import console
-from cDAQ.usb.usbtmc import UsbTmc
+from audio.usb.usbtmc import UsbTmc
+from audio.utility.timer import timeit
 
 
 def say_hi():
