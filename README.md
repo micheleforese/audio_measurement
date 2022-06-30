@@ -12,8 +12,8 @@ python3 -m pip install --editable .
 
    ```console
    cd ~
-   mkdir audio
-   cd audio
+   mkdir audio-test
+   cd audio-test
    ```
 
 2. For more information on the CLI go [here](./doc/cli.md)
