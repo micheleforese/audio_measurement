@@ -7,7 +7,7 @@ import nidaqmx.stream_writers
 import nidaqmx.system
 import numpy as np
 
-from cDAQ.console import console
+from audio.console import console
 
 
 class ni9251:

@@ -5,8 +5,8 @@ import click
 from rich.panel import Panel
 from usbtmc import Instrument
 
-from cDAQ.console import console
-from cDAQ.util.scpi import SCPI, Bandwidth, Switch
+from audio.console import console
+from cDAQ.utility.scpi import SCPI, Bandwidth, Switch
 from cDAQ.usb.usbtmc import UsbTmc
 from cDAQ.utility import (
     RMS,

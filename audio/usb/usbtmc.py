@@ -5,7 +5,7 @@ import numpy as np
 import usb
 import usbtmc
 
-from cDAQ.console import console
+from audio.console import console
 
 
 class Instrument:

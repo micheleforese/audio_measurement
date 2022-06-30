@@ -5,7 +5,7 @@ from typing import Optional
 
 from rich.panel import Panel
 
-from cDAQ.console import console
+from audio.console import console
 
 
 class TimerError(Exception):

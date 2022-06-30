@@ -4,7 +4,7 @@ import pandas as pd
 from pandas import DataFrame, Series
 import yaml
 
-from cDAQ.console import console
+from audio.console import console
 
 
 class SingleSweepData:

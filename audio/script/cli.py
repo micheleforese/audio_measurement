@@ -12,23 +12,23 @@ from matplotlib.figure import Figure
 from rich.panel import Panel
 from rich.prompt import Confirm
 
-from cDAQ.config import Config, Plot
-from cDAQ.config.type import ModAuto, Range
-from cDAQ.console import console
-from cDAQ.docker.latex import create_latex_file
-from cDAQ.math import (
+from audio.cDAQ.config import Config, Plot
+from audio.cDAQ.config.type import ModAuto, Range
+from audio.console import console
+from audio.cDAQ.docker.latex import create_latex_file
+from audio.cDAQ.math import (
     INTERPOLATION_KIND,
     find_sin_zero_offset,
     interpolation_model,
     rms_full_cycle,
 )
 from cDAQ.model.sweep import SingleSweepData
-from cDAQ.sampling import config_offset, plot_from_csv, sampling_curve
-from cDAQ.script.gui import GuiAudioMeasurements
-from cDAQ.script.device.ni import read_rms
-from cDAQ.script.device.rigol import set_amplitude, set_frequency, turn_off, turn_on
-from cDAQ.script.test import print_devices, testTimer
-from cDAQ.timer import Timer
+from audio.sampling import config_offset, plot_from_csv, sampling_curve
+from audio.script.gui import GuiAudioMeasurements
+from audio.script.device.ni import read_rms
+from audio.script.device.rigol import set_amplitude, set_frequency, turn_off, turn_on
+from audio.script.test import print_devices, testTimer
+from audio.utility.timer import Timer
 from cDAQ.utility import (
     RMS,
     get_subfolder,

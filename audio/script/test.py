@@ -1,6 +1,6 @@
 import click
-from cDAQ.timer import timeit
-from cDAQ.console import console
+from audio.utility.timer import timeit
+from audio.console import console
 from cDAQ.usb.usbtmc import UsbTmc
 
 

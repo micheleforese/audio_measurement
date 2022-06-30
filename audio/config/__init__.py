@@ -10,7 +10,7 @@ from cDAQ.config.exception import (
     ConfigNoneValueException,
 )
 from cDAQ.config.type import ModAuto, Range
-from cDAQ.console import console
+from audio.console import console
 from rich.panel import Panel
 from rich.tree import Tree
 

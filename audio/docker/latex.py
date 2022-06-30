@@ -9,7 +9,7 @@ from rich.live import Live
 from rich.panel import Panel
 
 import cDAQ.ui.terminal as ui_t
-from cDAQ.console import console
+from audio.console import console
 from cDAQ.docker import Docker_CLI, User, Volume
 from cDAQ.docker.utility import exec_command
 

@@ -18,18 +18,18 @@ from usbtmc import Instrument
 from cDAQ.model.sweep import SweepData
 
 import cDAQ.ui.terminal as ui_t
-from cDAQ.algorithm import LogarithmicScale
+from audio.math.algorithm import LogarithmicScale
 from cDAQ.config import Config, Plot
 from cDAQ.config.type import ModAuto
-from cDAQ.console import console
+from audio.console import console
 from cDAQ.math import INTERPOLATION_KIND, logx_interpolation_model
 from cDAQ.math.pid import (
     PID_TERM,
     PID_Controller,
     Timed_Value,
 )
-from cDAQ.util.scpi import SCPI, Bandwidth, Switch
-from cDAQ.timer import Timer, Timer_Message
+from cDAQ.utility.scpi import SCPI, Bandwidth, Switch
+from audio.utility.timer import Timer, Timer_Message
 from cDAQ.usb.usbtmc import UsbTmc
 from cDAQ.utility import RMS, percentage_error, transfer_function, trim_value
 

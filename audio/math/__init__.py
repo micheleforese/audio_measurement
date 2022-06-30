@@ -74,7 +74,7 @@ def decimal_decompose(x) -> Tuple[float, int]:
     return mantissa, exponent
 
 
-from cDAQ.console import console
+from audio.console import console
 
 
 def find_sin_zero_offset(sample: List[float]) -> Tuple[List[float], int, int]:
@@ -188,3 +188,40 @@ def rms_full_cycle(sample: List[float]) -> List[float]:
         rms_fft_cycle_list.append(RMS.fft(sample))
 
     return rms_fft_cycle_list
+
+
+def percentage_error(exact: float, approx: float) -> float:
+    return (approx - exact) / exact
+
+
+def transfer_function(rms: float, input_rms: float) -> float:
+    return 20 * np.log10(rms / input_rms)
+
+
+def integrate(y_values: List[float], delta) -> float:
+
+    volume: float = 0.0
+
+    for idx, y in enumerate(y_values):
+        # If it's the last element then exit the loop
+        if idx + 1 == len(y_values):
+            break
+        else:
+            y_plus = y_values[idx + 1]
+
+            # Make the calculations
+            if y * y_plus < 0:
+                r_rec: float = abs(y) * delta / 4
+                l_rec: float = abs(y_plus) * delta / 4
+                volume += r_rec + l_rec
+                # console.print("Volume: {}".format(round(volume, 9)))
+            else:
+                r_rec: float = abs(y) * delta
+                l_rec: float = abs(y_plus) * delta
+                triangle: float = abs(r_rec - l_rec) / 2
+
+                volume += min([r_rec, l_rec]) + triangle
+
+                # console.print("Volume: {}".format(round(volume, 9)))
+
+    return volume

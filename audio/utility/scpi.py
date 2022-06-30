@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Union
 
-from cDAQ.console import console
+from audio.console import console
 from cDAQ.usb.usbtmc import UsbTmc
 
 

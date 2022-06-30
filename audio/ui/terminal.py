@@ -15,7 +15,7 @@ from rich.progress import (
 )
 from rich.prompt import Confirm
 from rich.table import Column, Table
-from cDAQ.console import console
+from audio.console import console
 
 progress_sweep = Progress(
     SpinnerColumn(),
