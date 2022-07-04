@@ -1,5 +1,5 @@
 import pathlib
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, abstractproperty
 from typing import Any, List, Optional, Tuple, Type, TypeVar, Union, cast
 
 import pyjson5
@@ -17,7 +17,7 @@ from audio.console import console
 
 
 def load_json_config(config_file_path):
-    with open(config_file_path) as config_file:
+    with open(config_file_path, encoding="utf-8") as config_file:
         file_content: str = config_file.read()
         config = pyjson5.decode(file_content)
         return config
@@ -664,3 +664,19 @@ class Config:
 
     def print(self):
         console.print(Panel(self.tree(), title="Configuration JSON"))
+
+
+class IConfig(ABC):
+    @property
+    @abstractmethod
+    def name_config(self) -> str:
+        pass
+
+    @property
+    @abstractmethod
+    def value(self):
+        pass
+
+
+class MachineConfig:
+    pass

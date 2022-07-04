@@ -30,7 +30,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "audio_measurements = cDAQ.script.cli:cli",
+            "audio_measurements = audio.script.cli:cli",
         ],
     },
 )

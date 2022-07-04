@@ -1,6 +1,6 @@
-from cDAQ.console import console
+from audio.console import console
 
-from cDAQ.utility import cDAQ
+from audio.utility import cDAQ
 
 
 def test_print_device_and_version(self):

@@ -8,11 +8,10 @@ from scipy.fft import fft
 
 from audio.console import console
 from audio.math import (
-    INTERPOLATION_KIND,
     find_sin_zero_offset,
     integrate,
-    interpolation_model,
 )
+from audio.math.interpolation import INTERPOLATION_KIND, interpolation_model
 from audio.utility import read_voltages
 from audio.utility.timer import Timer
 

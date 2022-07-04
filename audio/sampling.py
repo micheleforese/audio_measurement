@@ -19,10 +19,12 @@ from audio.config import Config, Plot
 from audio.config.type import ModAuto
 from audio.console import console
 from audio.math import (
-    INTERPOLATION_KIND,
-    logx_interpolation_model,
     percentage_error,
     transfer_function,
+)
+from audio.math.interpolation import (
+    INTERPOLATION_KIND,
+    logx_interpolation_model,
 )
 from audio.math.algorithm import LogarithmicScale
 from audio.math.pid import PID_Controller, Timed_Value

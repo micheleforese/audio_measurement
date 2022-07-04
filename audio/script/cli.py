@@ -12,16 +12,13 @@ from rich.panel import Panel
 from rich.prompt import Confirm
 
 from audio.config import Config, Plot
+from audio.config.sampling import Sampling
 from audio.config.type import ModAuto, Range
 from audio.console import console
 from audio.docker.latex import create_latex_file
-from audio.math import (
-    INTERPOLATION_KIND,
-    find_sin_zero_offset,
-    interpolation_model,
-    rms_full_cycle,
-)
 from audio.math.rms import RMS
+from audio.math.interpolation import INTERPOLATION_KIND, interpolation_model
+from audio.math import find_sin_zero_offset, rms_full_cycle
 from audio.model.sweep import SingleSweepData
 from audio.sampling import config_offset, plot_from_csv, sampling_curve
 from audio.script.device.ni import read_rms
@@ -743,3 +740,14 @@ def test():
 
 test.add_command(testTimer)
 test.add_command(print_devices)
+
+
+@test.command()
+def config():
+
+    n_fs = 20
+
+    sampling = Sampling(n_fs)
+
+    console.print(sampling.n_fs)
+    console.print(sampling.fs.name_config)

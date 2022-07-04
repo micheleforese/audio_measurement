@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from cDAQ.algorithm import LogarithmicScale
-from cDAQ.console import console
+from audio.math.algorithm import LogarithmicScale
+from audio.console import console
 from rich import inspect
 
 
