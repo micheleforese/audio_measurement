@@ -1,6 +1,6 @@
 import pathlib
-from abc import ABC, abstractmethod, abstractproperty
-from typing import Any, List, Optional, Tuple, Type, TypeVar, Union, cast
+from abc import ABC, abstractmethod
+from typing import Any, Generic, List, Optional, Tuple, Type, TypeVar, Union, cast
 
 import pyjson5
 from rich.panel import Panel
@@ -21,16 +21,6 @@ def load_json_config(config_file_path):
         file_content: str = config_file.read()
         config = pyjson5.decode(file_content)
         return config
-
-
-class NotInitializedError(RuntimeError):
-    def __init__(self, salary, message="Salary is not in (5000, 15000) range"):
-        self.salary = salary
-        self.message = message
-        super().__init__(self.message)
-
-    def __str__(self):
-        return f"{self.salary} -> {self.message}"
 
 
 class NotInitializedWarning(RuntimeWarning):
@@ -670,13 +660,9 @@ class IConfig(ABC):
     @property
     @abstractmethod
     def name_config(self) -> str:
-        pass
+        raise NotImplementedError
 
     @property
     @abstractmethod
     def value(self):
-        pass
-
-
-class MachineConfig:
-    pass
+        raise NotImplementedError
