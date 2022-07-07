@@ -1,45 +1,54 @@
-from typing import Optional, Union
+from typing import Optional, Tuple
 
 import rich.repr
 
-from audio.config import IConfig
-from audio.config.type import ModAuto, Range
+from audio.config import Config_Dict, IConfig
+from audio.config.type import Range
 
 
 @rich.repr.auto
 class YOffset(IConfig):
-    _name_config: str = "y_offset"
+    name_config = "y_offset"
 
-    _value: Optional[Union[float, ModAuto]]
+    _value: Optional[float]
 
-    def __init__(self, value: Optional[Union[float, ModAuto]]):
+    def __init__(self, value: Optional[float] = None):
         self._value = value
 
-    @property
-    def name_config(self) -> str:
-        return self._name_config
+    @classmethod
+    def from_dict(cls, data: Config_Dict):
+        y_offset = data.get_value([cls.name_config], float)
+        if y_offset is not None:
+            return cls(y_offset)
+        else:
+            return None
 
     @property
-    def value(self) -> Optional[Union[float, ModAuto]]:
+    def value(self) -> Optional[float]:
         return self._value
 
     @value.setter
-    def value(self, value: Optional[Union[float, ModAuto]]):
+    def value(self, value: Optional[float]):
         self._value = value
 
 
 @rich.repr.auto
 class LimitXAxis(IConfig):
-    _name_config: str = "x_limit"
+    name_config = "x_limit"
 
     _value: Optional[Range[float]]
 
-    def __init__(self, value: Optional[Range[float]]):
+    def __init__(self, value: Optional[Range[float]] = None):
         self._value = value
 
-    @property
-    def name_config(self) -> str:
-        return self._name_config
+    @classmethod
+    def from_dict(cls, data: Config_Dict):
+        x_limit = data.get_value([cls.name_config], Tuple[float, float])
+
+        if x_limit is not None:
+            return cls(Range(*x_limit))
+        else:
+            return None
 
     @property
     def value(self) -> Optional[Range[float]]:
@@ -52,16 +61,21 @@ class LimitXAxis(IConfig):
 
 @rich.repr.auto
 class LimitYAxis(IConfig):
-    _name_config: str = "y_limit"
+    name_config = "y_limit"
 
     _value: Optional[Range[float]]
 
-    def __init__(self, value: Optional[Range[float]]):
+    def __init__(self, value: Optional[Range[float]] = None):
         self._value = value
 
-    @property
-    def name_config(self) -> str:
-        return self._name_config
+    @classmethod
+    def from_dict(cls, data: Config_Dict):
+        y_limit = data.get_value([cls.name_config], Tuple[float, float])
+
+        if y_limit is not None:
+            return cls(Range(*y_limit))
+        else:
+            return None
 
     @property
     def value(self) -> Optional[Range[float]]:
@@ -74,32 +88,77 @@ class LimitYAxis(IConfig):
 
 @rich.repr.auto
 class Plot:
-    _name_config: str = "plot"
+    name_config = "plot"
 
-    _y_offset: YOffset
-    _x_limit: LimitXAxis
-    _y_limit: LimitYAxis
+    _y_offset: Optional[YOffset]
+    _x_limit: Optional[LimitXAxis]
+    _y_limit: Optional[LimitYAxis]
 
     def __init__(
         self,
-        y_offset: Optional[Union[float, ModAuto]] = None,
+        y_offset: Optional[YOffset] = None,
+        x_limit: Optional[LimitXAxis] = None,
+        y_limit: Optional[LimitYAxis] = None,
+    ) -> None:
+        self._y_offset = y_offset
+        self._x_limit = x_limit
+        self._y_limit = y_limit
+
+    @classmethod
+    def from_value(
+        cls,
+        y_offset: Optional[float] = None,
         x_limit: Optional[Range[float]] = None,
         y_limit: Optional[Range[float]] = None,
-    ) -> None:
-        self._y_offset = YOffset(y_offset)
-        self._x_limit = LimitXAxis(x_limit)
-        self._y_limit = LimitYAxis(y_limit)
+    ):
+        y_offset = YOffset(y_offset)
+        x_limit = LimitXAxis(y_offset)
+        y_limit = LimitYAxis(y_limit)
+
+        return cls(
+            y_offset,
+            x_limit,
+            y_limit,
+        )
+
+    @classmethod
+    def from_config(cls, data: Config_Dict):
+        plot = Config_Dict(data.get_value([cls.name_config]))
+
+        if plot is not None:
+
+            y_offset = YOffset.from_dict(plot)
+            x_limit = LimitXAxis.from_dict(plot)
+            y_limit = LimitYAxis.from_dict(plot)
+            return cls(
+                y_offset,
+                x_limit,
+                y_limit,
+            )
+        else:
+            return None
+
+    def override(
+        self,
+        y_offset: Optional[float] = None,
+        x_limit: Optional[Range[float]] = None,
+        y_limit: Optional[Range[float]] = None,
+    ):
+        if y_offset is not None:
+            self.y_offset = y_offset
+
+        if x_limit is not None:
+            self.x_limit = x_limit
+
+        if y_limit is not None:
+            self.y_limit = y_limit
 
     @property
-    def name_config(self) -> str:
-        return self._name_config
-
-    @property
-    def y_offset(self) -> Optional[Union[float, ModAuto]]:
+    def y_offset(self) -> Optional[float]:
         return self._y_offset.value
 
     @y_offset.setter
-    def y_offset(self, value: Optional[Union[float, ModAuto]]):
+    def y_offset(self, value: Optional[float]):
         self._y_offset = value
 
     @property

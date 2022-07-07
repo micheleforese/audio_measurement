@@ -31,9 +31,9 @@ class Instrument:
 
 
 class UsbTmc:
-    instr: usbtmc.Instrument
+    instr: Instrument
 
-    def __init__(self, instrument: usbtmc.Instrument) -> None:
+    def __init__(self, instrument: Instrument) -> None:
         """The class UsbTmc driver
 
         Args:
@@ -42,29 +42,30 @@ class UsbTmc:
         self.instr = instrument
 
     def __del__(self):
-        self.close()
+        if self.instr.instrument.connected:
+            self.instr.instrument.close()
 
     def open(self):
-        self.instr.open()
+        self.instr.instrument.open()
 
     def close(self):
-        self.instr.close()
+        self.instr.instrument.close()
 
     def write(self, command):
         """Execute a command."""
-        self.instr.write(command)
+        self.instr.instrument.write(command)
 
     def ask(self, command):
         """Asks to retrive a value."""
-        return self.instr.ask(command)
+        return self.instr.instrument.ask(command)
 
     def reset(self):
         """Resets the Instrument to the default options."""
-        self.instr.write("*RST")
+        self.instr.instrument.write("*RST")
 
     def clear_status(self):
         """Clears the status."""
-        self.instr.write("*CLS")
+        self.instr.instrument.write("*CLS")
 
     def query_event_status_register(self) -> Union[list, Any, str]:
         """Asks for the Standard Event Status Registrer.
@@ -72,15 +73,15 @@ class UsbTmc:
         Returns:
             Union[list, Any, str]: the result of the query.
         """
-        return self.instr.ask("*ESR?")
+        return self.instr.instrument.ask("*ESR?")
 
     def query_identification(self):
         """Ask the ID of the instrument."""
-        return self.instr.ask("*IDN?")
+        return self.instr.instrument.ask("*IDN?")
 
     def query_current_state_commands(self):
         """Ask for the commands to arrive at this configuration."""
-        return self.instr.ask("*LRN?")
+        return self.instr.instrument.ask("*LRN?")
 
     def set_aperture(self, aperture: np.float):
         """Sets the frequency's Aperture.
@@ -88,14 +89,14 @@ class UsbTmc:
         Args:
             aperture (np.float): This is the Aperture of the Instrument
         """
-        self.instr.write(f":FREQuency:APERture {aperture}")
+        self.instr.instrument.write(f":FREQuency:APERture {aperture}")
 
     @staticmethod
     def search_devices() -> List[Instrument]:
 
         list_devices: List[usb.core.Device] = usbtmc.list_devices()
 
-        instruments: List[usbtmc.Instrument] = []
+        instruments: List[Instrument] = []
 
         for device in list_devices:
             instruments.append(Instrument(device=device))

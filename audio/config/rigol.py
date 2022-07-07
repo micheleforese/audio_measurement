@@ -8,7 +8,7 @@ from audio.config import Config_Dict, IConfig
 @rich.repr.auto
 class AmplitudePeakToPeak(IConfig):
 
-    _name_config: str = "amplitude_pp"
+    name_config: str = "amplitude_pp"
 
     _value: Optional[float]
 
@@ -18,9 +18,17 @@ class AmplitudePeakToPeak(IConfig):
     ):
         self._value = value
 
-    @property
-    def name_config(self) -> str:
-        return self._name_config
+    @classmethod
+    def from_dict(cls, data: Config_Dict):
+        amplitude_pp = data.get_value([cls.name_config], float)
+
+        if amplitude_pp is not None:
+            return cls(amplitude_pp)
+        else:
+            return None
+
+    def __rich_repr__(self):
+        yield self.name_config, self.value
 
     @property
     def value(self) -> Optional[float]:
@@ -33,29 +41,44 @@ class AmplitudePeakToPeak(IConfig):
 
 @rich.repr.auto
 class Rigol:
-    _name_config: str = "rigol"
+    name_config: str = "rigol"
 
-    _amplitude_pp: AmplitudePeakToPeak
+    _amplitude_pp: Optional[AmplitudePeakToPeak]
 
     def __init__(
         self,
-        amplitude_pp: Optional[float] = None,
+        amplitude_pp: Optional[AmplitudePeakToPeak] = None,
     ) -> None:
-        self._amplitude_pp.value = AmplitudePeakToPeak(amplitude_pp)
 
-    def init_from_config(self, data: Config_Dict):
-        self.amplitude_pp = data.get_value(
-            [self.name_config, self._amplitude_pp.name_config]
-        )
+        self._amplitude_pp = amplitude_pp
 
-    @property
-    def name_config(self) -> str:
-        return self._name_config
+    @classmethod
+    def from_value(
+        cls,
+        amplitude_pp: Optional[float] = None,
+    ):
+        amplitude_pp = AmplitudePeakToPeak(amplitude_pp)
+
+        return cls(amplitude_pp)
+
+    @classmethod
+    def from_config(cls, data: Config_Dict):
+        rigol = Config_Dict.from_dict(data.get_value([cls.name_config]))
+
+        if rigol is not None:
+            amplitude_pp = AmplitudePeakToPeak.from_dict(rigol)
+
+            return cls(amplitude_pp)
+        else:
+            return None
+
+    def override(
+        self,
+        amplitude_pp: Optional[float] = None,
+    ):
+        if amplitude_pp is not None:
+            self._amplitude_pp = amplitude_pp
 
     @property
     def amplitude_pp(self) -> Optional[float]:
-        return self._amplitude_pp
-
-    @amplitude_pp.setter
-    def amplitude_pp(self, value: Optional[float]):
-        self._amplitude_pp = value
+        return self._amplitude_pp.value

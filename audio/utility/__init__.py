@@ -61,7 +61,7 @@ def read_voltages(
         task.timing.cfg_samp_clk_timing(Fs)
 
         # 4. Pre allocate the array
-        voltages = np.ndarray(number_of_samples)
+        voltages = np.ndarray(number_of_samples, dtype=float)
 
         # 5. Start the Task
         task.start()

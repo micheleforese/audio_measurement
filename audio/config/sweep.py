@@ -1,13 +1,16 @@
 import pathlib
 from typing import Optional
+
+import rich
+
 import audio.config as cfg
-
-from audio.config.rigol import Rigol
 from audio.config.nidaq import NiDaq
-from audio.config.sampling import Sampling
 from audio.config.plot import Plot
+from audio.config.rigol import Rigol
+from audio.config.sampling import Sampling
 
 
+@rich.repr.auto
 class SweepConfig:
 
     _rigol: Optional[Rigol]
@@ -15,30 +18,38 @@ class SweepConfig:
     _sampling: Optional[Sampling]
     _plot: Optional[Plot]
 
-    def __init__(self) -> None:
-        self._rigol = None
-        self._nidaq = None
-        self._sampling = None
-        self._plot = None
+    def __init__(
+        self,
+        rigol: Optional[Rigol] = None,
+        nidaq: Optional[NiDaq] = None,
+        sampling: Optional[Sampling] = None,
+        plot: Optional[Plot] = None,
+    ) -> None:
+        self._rigol = rigol
+        self._nidaq = nidaq
+        self._sampling = sampling
+        self._plot = plot
 
-    def from_file(self, config_file_path: pathlib.Path):
-        self._init_config_from_file(
-            cfg.Config_Dict(cfg.load_json_config(config_file_path))
-        )
+    @classmethod
+    def from_file(cls, config_file_path: pathlib.Path):
+        data = cfg.Config_Dict.from_json(config_file_path)
 
-    def _init_config_from_file(self, data: cfg.Config_Dict):
+        if data is not None:
+            # Rigol Class
+            rigol = Rigol.from_config(data)
 
-        # Rigol Class
-        self._rigol = Rigol(data)
+            # NiDaq Class
+            nidaq = NiDaq.from_config(data)
 
-        # NiDaq Class
-        self._nidaq = NiDaq(data)
+            # Sampling Class
+            sampling = Sampling.from_config(data)
 
-        # Sampling Class
-        self._sampling = Sampling(data)
+            # Plot Class
+            plot = Plot.from_config(data)
 
-        # Plot Class
-        self._plot = Plot(data)
+            return cls(rigol, nidaq, sampling, plot)
+        else:
+            return None
 
     @property
     def rigol(self):

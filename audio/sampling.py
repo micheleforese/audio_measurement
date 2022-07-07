@@ -637,7 +637,7 @@ def config_offset(
 
                 offset_file_path = plot_file_path.with_suffix(".offset")
 
-                f = open(offset_file_path, "w")
+                f = open(offset_file_path, "w", encoding="utf-8")
                 f.write("{}".format(level_offset))
                 f.close()
 
@@ -665,7 +665,6 @@ def config_offset(
                 sleep(0.4)
 
                 iteration += 1
-
         else:
             console.print("[SAMPLING] - Error retrieving rms_value.")
 

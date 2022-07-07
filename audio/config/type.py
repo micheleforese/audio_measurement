@@ -1,9 +1,11 @@
 import enum
 from typing import Generic, TypeVar
+import rich
 
 RangeType = TypeVar("RangeType")
 
 
+@rich.repr.auto
 class Range(Generic[RangeType]):
     _min: RangeType
     _max: RangeType

@@ -61,7 +61,7 @@ class RMS:
                         index=None,
                     )
 
-            x_interpolated, y_interpolated = interpolation_model(
+            _, y_interpolated = interpolation_model(
                 range(0, len(voltages)),
                 voltages,
                 int(len(voltages) * interpolation_rate),
@@ -69,7 +69,7 @@ class RMS:
             )
 
             if trim:
-                voltages = find_sin_zero_offset(y_interpolated)
+                voltages, _, _ = find_sin_zero_offset(y_interpolated)
 
             rms: Optional[float] = None
 

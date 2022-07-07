@@ -1,14 +1,13 @@
 import pathlib
 from abc import ABC, abstractmethod
-from typing import Any, Generic, List, Optional, Tuple, Type, TypeVar, Union, cast
+from typing import Any, List, Optional, Tuple, Type, TypeVar, Union, cast
 
-import pyjson5
+from pyjson5 import decode as py_json5_decode
 from rich.panel import Panel
 from rich.tree import Tree
 
 from audio.config.exception import (
     ConfigError,
-    ConfigException,
     ConfigNoneValueError,
     ConfigNoneValueException,
 )
@@ -19,8 +18,11 @@ from audio.console import console
 def load_json_config(config_file_path):
     with open(config_file_path, encoding="utf-8") as config_file:
         file_content: str = config_file.read()
-        config = pyjson5.decode(file_content)
-        return config
+        config = py_json5_decode(file_content)
+        if config is not None:
+            return config
+        else:
+            return None
 
 
 class NotInitializedWarning(RuntimeWarning):
@@ -32,6 +34,24 @@ class Config_Dict:
 
     def __init__(self, data: Any) -> None:
         self.data = data
+
+    @classmethod
+    def from_json(cls, config_file_path: pathlib.Path):
+        with open(config_file_path, encoding="utf-8") as config_file:
+            file_content: str = config_file.read()
+            config = py_json5_decode(file_content)
+
+            if config is not None:
+                return cls(config)
+            else:
+                return None
+
+    @classmethod
+    def from_dict(cls, data: Optional[Any]):
+        if data is not None:
+            return cls(data)
+        else:
+            return None
 
     # TODO: Fix type overrride
     T = TypeVar("T")
@@ -633,13 +653,13 @@ class Config:
 
         self._plot = value
 
-    @property
-    def step(self) -> float:
-        if self.sampling.points_per_decade:
-            self._step = 1 / self.sampling.points_per_decade
-        else:
-            raise ConfigException
-        return self._step
+    # @property
+    # def step(self) -> float:
+    #     if self.sampling.points_per_decade:
+    #         self._step = 1 / self.sampling.points_per_decade
+    #     else:
+    #         raise ConfigException
+    #     return self._step
 
     def tree(self) -> Tree:
         tree = Tree("Configuration JSON", style="bold")
@@ -657,10 +677,7 @@ class Config:
 
 
 class IConfig(ABC):
-    @property
-    @abstractmethod
-    def name_config(self) -> str:
-        raise NotImplementedError
+    name_config: str
 
     @property
     @abstractmethod

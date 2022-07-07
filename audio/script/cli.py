@@ -13,12 +13,13 @@ from rich.prompt import Confirm
 
 from audio.config import Config, Plot
 from audio.config.sampling import Sampling
+from audio.config.sweep import SweepConfig
 from audio.config.type import ModAuto, Range
 from audio.console import console
 from audio.docker.latex import create_latex_file
-from audio.math.rms import RMS
-from audio.math.interpolation import INTERPOLATION_KIND, interpolation_model
 from audio.math import find_sin_zero_offset, rms_full_cycle
+from audio.math.interpolation import INTERPOLATION_KIND, interpolation_model
+from audio.math.rms import RMS
 from audio.model.sweep import SingleSweepData
 from audio.sampling import config_offset, plot_from_csv, sampling_curve
 from audio.script.device.ni import read_rms
@@ -50,10 +51,10 @@ def cli():
     show_default=True,
 )
 @click.option(
-    "--offset",
-    "offset_file",
+    "--set_level_file",
+    "set_level_file",
     type=pathlib.Path,
-    help="Offset file path.",
+    help="Set Level file path.",
     default=None,
 )
 # Config Overloads
@@ -108,12 +109,6 @@ def cli():
     help="Offset value.",
     default=None,
 )
-@click.option(
-    "--y_offset_auto",
-    type=click.Choice(["min", "max", "no"], case_sensitive=False),
-    help='Offset Mode, can be: "min", "max" or "no".',
-    default=None,
-)
 # Flags
 @click.option(
     "--time/--no-time",
@@ -141,7 +136,7 @@ def cli():
 def sweep(
     config_path: pathlib.Path,
     home: pathlib.Path,
-    offset_file: Optional[pathlib.Path],
+    set_level_file: Optional[pathlib.Path],
     amplitude_pp: Optional[float],
     n_fs: Optional[float],
     spd: Optional[float],
@@ -150,7 +145,6 @@ def sweep(
     y_lim: Optional[Tuple[float, float]],
     x_lim: Optional[Tuple[float, float]],
     y_offset: Optional[float],
-    y_offset_auto: Optional[str],
     time: bool,
     debug: bool,
     simulate: bool,
@@ -162,39 +156,25 @@ def sweep(
     datetime_now = datetime.now().strftime(r"%Y-%m-%d--%H-%M-%f")
 
     # Load JSON config
-    config: Config = Config()
-
     config_file = config_path.absolute()
-    config.from_file(config_file)
+    config = SweepConfig.from_file(config_file)
 
     if debug:
-        console.print(Panel(config.tree(), title="Configuration JSON - FROM FILE"))
+        console.print(config)
 
     # Override Configurations
-    if amplitude_pp:
-        config.rigol.amplitude_pp = amplitude_pp
+    config.rigol.override(amplitude_pp)
 
-    if n_fs:
-        config.sampling.n_fs = n_fs
+    config.sampling.override(
+        fs=n_fs,
+        points_per_decade=spd,
+        number_of_samples=n_samp,
+        f_min=f_range[0] if f_range else None,
+        f_max=f_range[1] if f_range else None,
+    )
 
-    if n_samp:
-        config.sampling.number_of_samples = n_samp
-
-    if f_range:
-        f_min, f_max = f_range
-        config.sampling.f_range = Range(f_min, f_max)
-
-    if spd:
-        config.sampling.points_per_decade = spd
-
-    if y_lim:
-        config.plot.y_limit = Range(*y_lim)
-
-    if x_lim:
-        config.plot.x_limit = Range(*x_lim)
-
-    if offset_file:
-        amplitude_base_level = float(offset_file.read_text())
+    if set_level_file:
+        amplitude_base_level = float(set_level_file.read_text())
     else:
         set_level_file_list = [
             set_level_file for set_level_file in HOME_PATH.glob("*.config.offset")
@@ -210,29 +190,19 @@ def sweep(
         else:
             raise Exception
 
-    config.rigol.amplitude_pp = amplitude_base_level
+    config.rigol.override(amplitude_pp=amplitude_base_level)
 
     # TODO: da mettere come parametro (default è questo sotto)
     y_offset = 1.227653
 
-    if y_offset:
-        config.plot.y_offset = y_offset
-    elif y_offset_auto and not isinstance(config.plot.y_offset, float):
-        if y_offset_auto == ModAuto.NO.value:
-            config.plot.y_offset = ModAuto.NO
-        elif y_offset_auto == ModAuto.MIN.value:
-            config.plot.y_offset = ModAuto.MIN
-        elif y_offset_auto == ModAuto.MAX.value:
-            config.plot.y_offset = ModAuto.MAX
-        else:
-            config.plot.y_offset = None
-
-    if config.validate():
-        console.print("Config Error.")
-        exit()
+    config.plot.override(
+        y_offset=y_offset,
+        x_limit=Range(*x_lim) if x_lim else None,
+        y_limit=Range(*y_lim) if y_lim else None,
+    )
 
     if debug:
-        config.print()
+        console.print(config)
 
     timer = Timer("Sweep time")
     if time:
