@@ -23,7 +23,7 @@ def interpolation_model(
     kind: INTERPOLATION_KIND = INTERPOLATION_KIND.LINEAR,
 ):
 
-    interpolation_model = interp1d(xx, yy, kind=kind.value)
+    intrp_model = interp1d(xx, yy, kind=kind.value)
 
     x_interpolated = np.linspace(
         min(xx),
@@ -31,7 +31,7 @@ def interpolation_model(
         interpolation_rate,
     )
 
-    y_interpolated = interpolation_model(x_interpolated)
+    y_interpolated: np.ndarray = intrp_model(x_interpolated)
 
     return x_interpolated, y_interpolated
 
@@ -44,7 +44,7 @@ def logx_interpolation_model(
 ) -> Tuple[List[float], List[float]]:
     x_log = [np.log10(x) for x in x_log]
 
-    interpolation_model = interp1d(x_log, yy, kind=kind.value)
+    intrp_model = interp1d(x_log, yy, kind=kind.value)
 
     x_log_interpolated = np.linspace(
         min(x_log),
@@ -54,6 +54,6 @@ def logx_interpolation_model(
 
     x_interpolated = [np.float_power(10, x_intrp) for x_intrp in x_log_interpolated]
 
-    y_interpolated = interpolation_model(x_log_interpolated)
+    y_interpolated = intrp_model(x_log_interpolated)
 
     return x_interpolated, y_interpolated

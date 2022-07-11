@@ -51,6 +51,26 @@ class SweepConfig:
         else:
             return None
 
+    @classmethod
+    def from_dict(cls, config: cfg.Config_Dict):
+
+        if config is not None:
+            # Rigol Class
+            rigol = Rigol.from_config(config)
+
+            # NiDaq Class
+            nidaq = NiDaq.from_config(config)
+
+            # Sampling Class
+            sampling = Sampling.from_config(config)
+
+            # Plot Class
+            plot = Plot.from_config(config)
+
+            return cls(rigol, nidaq, sampling, plot)
+        else:
+            return None
+
     @property
     def rigol(self):
         return self._rigol

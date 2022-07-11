@@ -12,7 +12,6 @@ from rich.panel import Panel
 from rich.prompt import Confirm
 
 from audio.config import Config, Plot
-from audio.config.sampling import Sampling
 from audio.config.sweep import SweepConfig
 from audio.config.type import ModAuto, Range
 from audio.console import console
@@ -24,6 +23,7 @@ from audio.model.sweep import SingleSweepData
 from audio.sampling import config_offset, plot_from_csv, sampling_curve
 from audio.script.device.ni import read_rms
 from audio.script.device.rigol import set_amplitude, set_frequency, turn_off, turn_on
+from audio.script.procedure import procedure
 from audio.script.test import print_devices, testTimer
 from audio.utility import get_subfolder
 from audio.utility.timer import Timer
@@ -424,32 +424,14 @@ def set_level(
 
     datetime_now = datetime.now().strftime(r"%Y-%m-%d--%H-%M-%f")
 
-    config: Config = Config()
-
     config_file = config_path.absolute()
-    config.from_file(config_file)
-
-    if y_offset:
-        config.plot.y_offset = y_offset
-    elif y_offset_auto and not isinstance(config.plot.y_offset, float):
-        if y_offset_auto == ModAuto.NO.value:
-            config.plot.y_offset = ModAuto.NO
-        elif y_offset_auto == ModAuto.MIN.value:
-            config.plot.y_offset = ModAuto.MIN
-        elif y_offset_auto == ModAuto.MAX.value:
-            config.plot.y_offset = ModAuto.MAX
-        else:
-            config.plot.y_offset = None
-
-    if config.validate():
-        console.print("Config Error.")
-        exit()
+    config: SweepConfig = SweepConfig.from_file(config_file)
 
     if debug:
-        config.print()
+        console.print(config)
 
     config_offset(
-        config=config,
+        config=config.sampling,
         plot_file_path=HOME_PATH / "{}.config.png".format(datetime_now),
         debug=debug,
     )
@@ -684,6 +666,9 @@ def sweep_debug(
         console.print(f"Plotted Frequency: [blue]{sweep_data.frequency:7.5}[/].")
 
 
+cli.add_command(procedure)
+
+
 @cli.group()
 def rigol():
     pass
@@ -715,9 +700,4 @@ test.add_command(print_devices)
 @test.command()
 def config():
 
-    n_fs = 20
-
-    sampling = Sampling(n_fs)
-
-    console.print(sampling.n_fs)
-    console.print(sampling.fs.name_config)
+    pass

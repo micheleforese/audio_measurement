@@ -13,6 +13,7 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.table import Column, Table
 from usbtmc import Instrument
+from audio.config.sweep import SweepConfig
 
 import audio.ui.terminal as ui_t
 from audio.config import Config, Plot
@@ -455,7 +456,7 @@ def plot_from_csv(
 
 
 def config_offset(
-    config: Config,
+    config: SweepConfig,
     plot_file_path: Path,
     debug: bool = False,
 ):
@@ -463,7 +464,7 @@ def config_offset(
     voltage_amplitude_start: float = 0.01
     voltage_amplitude = voltage_amplitude_start
     frequency = 1000
-    Fs = frequency * config.sampling.n_fs
+    Fs = frequency * config.sampling.fs
     diff_voltage = 0.001
     Vpp_4dBu_exact = 1.227653
 
