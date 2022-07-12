@@ -13,11 +13,10 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.table import Column, Table
 from usbtmc import Instrument
+from audio.config.plot import Plot
 from audio.config.sweep import SweepConfig
 
 import audio.ui.terminal as ui_t
-from audio.config import Config, Plot
-from audio.config.type import ModAuto
 from audio.console import console
 from audio.math import (
     percentage_error,
@@ -38,7 +37,7 @@ from audio.utility.timer import Timer, Timer_Message
 
 
 def sampling_curve(
-    config: Config,
+    config: SweepConfig,
     measurements_file_path: Path,
     debug: bool = False,
 ):
@@ -90,7 +89,7 @@ def sampling_curve(
         SCPI.set_function_voltage_ac(),
         SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
         SCPI.set_source_voltage_amplitude(1, round(config.rigol.amplitude_pp, 5)),
-        SCPI.set_source_frequency(1, round(config.sampling.f_range.min, 5)),
+        SCPI.set_source_frequency(1, round(config.sampling.f_min, 5)),
     ]
 
     SCPI.exec_commands(generator, generator_configs)
@@ -102,8 +101,8 @@ def sampling_curve(
     SCPI.exec_commands(generator, generator_ac_curves)
 
     log_scale: LogarithmicScale = LogarithmicScale(
-        config.sampling.f_range.min,
-        config.sampling.f_range.max,
+        config.sampling.f_min,
+        config.sampling.f_max,
         config.sampling.points_per_decade,
     )
 
@@ -115,7 +114,7 @@ def sampling_curve(
     n_periods_list: List[float] = []
     n_samples_list: List[int] = []
 
-    frequency: float = round(config.sampling.f_range.min, 5)
+    frequency: float = round(config.sampling.f_min, 5)
 
     table = Table(
         Column(r"Frequency [Hz]", justify="right"),
@@ -145,9 +144,9 @@ def sampling_curve(
 
         sleep(0.4)
 
-        Fs = trim_value(frequency * config.sampling.n_fs, max_value=100000)
+        Fs = trim_value(frequency * config.sampling.fs, max_value=config.nidaq.max_Fs)
 
-        if Fs == 100000:
+        if Fs == config.nidaq.max_Fs:
             config.sampling.number_of_samples = 900
 
         oversampling_ratio = Fs / frequency
@@ -279,9 +278,7 @@ def sampling_curve(
 
     console.print(
         Panel(
-            '[bold][[blue]FILE[/blue] - [cyan]CSV[/cyan]][/bold] - "[bold green]{}[/bold green]"'.format(
-                measurements_file_path.absolute().resolve()
-            )
+            f'[bold][[blue]FILE[/blue] - [cyan]CSV[/cyan]][/bold] - "[bold green]{measurements_file_path.absolute()}[/bold green]"'
         )
     )
 
@@ -333,25 +330,15 @@ def plot_from_csv(
 
     y_offset: Optional[float] = None
     if plot_config.y_offset:
-        if isinstance(plot_config.y_offset, float):
-            y_offset = plot_config.y_offset
-        elif isinstance(plot_config.y_offset, ModAuto):
-            if plot_config.y_offset == ModAuto.MIN:
-                y_offset = float(min(y_dBV))
-            elif plot_config.y_offset == ModAuto.MAX:
-                y_offset = float(max(y_dBV))
-            elif plot_config.y_offset == ModAuto.NO:
-                y_offset = None
-            else:
-                console.print('y_offset should be "max", "min" or "no".', style="error")
+        y_offset = plot_config.y_offset
 
         if y_offset:
-
-            # TODO: BOH
+            # Transform the offset from float to dBV
             y_offset_dBV: float = 20 * np.log10(
                 y_offset * 2 * np.math.sqrt(2) / sweep_data.amplitude
             )
 
+            # Apply the offset
             for i in range(len(y_dBV)):
                 y_dBV[i] = y_dBV[i] - y_offset_dBV
 
@@ -381,7 +368,7 @@ def plot_from_csv(
         *xy_interpolated,
         linewidth=4,
     )
-    # Added Line to y = 3
+    # Added Line to y = -3
     axes.plot(
         [0, max(x_interpolated)],
         [-3, -3],

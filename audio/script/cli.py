@@ -1,6 +1,6 @@
 import pathlib
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 import click
 import matplotlib.pyplot as plt
@@ -11,9 +11,9 @@ from matplotlib.figure import Figure
 from rich.panel import Panel
 from rich.prompt import Confirm
 
-from audio.config import Config, Plot
+from audio.config.plot import Plot
 from audio.config.sweep import SweepConfig
-from audio.config.type import ModAuto, Range
+from audio.config.type import Range
 from audio.console import console
 from audio.docker.latex import create_latex_file
 from audio.math import find_sin_zero_offset, rms_full_cycle
@@ -157,15 +157,15 @@ def sweep(
 
     # Load JSON config
     config_file = config_path.absolute()
-    config = SweepConfig.from_file(config_file)
+    cfg = SweepConfig.from_file(config_file)
 
     if debug:
-        console.print(config)
+        console.print(cfg)
 
     # Override Configurations
-    config.rigol.override(amplitude_pp)
+    cfg.rigol.override(amplitude_pp)
 
-    config.sampling.override(
+    cfg.sampling.override(
         fs=n_fs,
         points_per_decade=spd,
         number_of_samples=n_samp,
@@ -190,48 +190,47 @@ def sweep(
         else:
             raise Exception
 
-    config.rigol.override(amplitude_pp=amplitude_base_level)
+    cfg.rigol.override(amplitude_pp=amplitude_base_level)
 
     # TODO: da mettere come parametro (default è questo sotto)
     y_offset = 1.227653
 
-    config.plot.override(
+    cfg.plot.override(
         y_offset=y_offset,
         x_limit=Range(*x_lim) if x_lim else None,
         y_limit=Range(*y_lim) if y_lim else None,
     )
 
     if debug:
-        console.print(config)
-
-    timer = Timer("Sweep time")
-    if time:
-        timer.start()
+        console.print(cfg)
 
     measurements_dir: pathlib.Path = HOME_PATH / f"{datetime_now}"
+    measurements_dir.mkdir(parents=True, exist_ok=True)
 
     measurements_file: pathlib.Path = measurements_dir / "sweep.csv"
     image_file: pathlib.Path = measurements_dir / "sweep.png"
 
-    measurements_dir.mkdir(parents=True, exist_ok=True)
-
     if not simulate:
+        timer = Timer("Sweep time")
+
+        if time:
+            timer.start()
 
         sampling_curve(
-            config=config,
+            config=cfg,
             measurements_file_path=measurements_file,
             debug=debug,
         )
 
-    if time:
-        timer.stop().print()
+        if time:
+            timer.stop().print()
 
     if not simulate:
 
         plot_from_csv(
             measurements_file_path=measurements_file,
             plot_file_path=image_file,
-            plot_config=config.plot,
+            plot_config=cfg.plot,
             debug=debug,
         )
 
@@ -285,12 +284,6 @@ def sweep(
     default=None,
 )
 @click.option(
-    "--y_offset_auto",
-    type=click.Choice(["min", "max", "no"], case_sensitive=False),
-    help='Offset Mode, can be: "min", "max" or "no".',
-    default=None,
-)
-@click.option(
     "--debug",
     is_flag=True,
     help="Will print verbose messages.",
@@ -303,31 +296,16 @@ def plot(
     y_lim: Optional[Tuple[float, float]],
     x_lim: Optional[Tuple[float, float]],
     y_offset: Optional[float],
-    y_offset_auto: Optional[str],
     debug: bool,
 ):
     HOME_PATH = home.absolute()
     csv_file: pathlib.Path = pathlib.Path()
     plot_file: Optional[pathlib.Path] = None
 
-    y_offset_mode: Optional[Union[float, ModAuto]] = None
-    if y_offset:
-        y_offset_mode = y_offset
-    elif y_offset_auto:
-        if y_offset_auto == ModAuto.NO.value:
-            y_offset_mode = ModAuto.NO
-        elif y_offset_auto == ModAuto.MIN.value:
-            y_offset_mode = ModAuto.MIN
-        elif y_offset_auto == ModAuto.MAX.value:
-            y_offset_mode = ModAuto.MAX
-        else:
-            y_offset_mode = None
-
-    plot_config = Plot()
-    plot_config.init(
+    plot_config = Plot.from_value(
+        y_offset=y_offset,
         x_limit=Range(*x_lim) if x_lim else None,
         y_limit=Range(*y_lim) if y_lim else None,
-        y_offset=y_offset_mode,
     )
 
     is_most_recent_file: bool = False
@@ -367,7 +345,7 @@ def plot(
     if plot_file:
         for plot_file_format in format_plot:
             plot_file = plot_file.with_suffix("." + plot_file_format)
-            console.print('Plotting file: "{}"'.format(plot_file.absolute()))
+            console.print(f'Plotting file: "{plot_file.absolute()}"')
             plot_from_csv(
                 measurements_file_path=csv_file,
                 plot_file_path=plot_file,
@@ -396,18 +374,6 @@ def plot(
     show_default=True,
 )
 @click.option(
-    "--y_offset",
-    type=float,
-    help="Offset value.",
-    default=None,
-)
-@click.option(
-    "--y_offset_auto",
-    type=click.Choice(["min", "max", "no"], case_sensitive=False),
-    help='Offset Mode, can be: "min", "max" or "no".',
-    default=None,
-)
-@click.option(
     "--debug",
     is_flag=True,
     help="Will print verbose messages.",
@@ -416,8 +382,6 @@ def plot(
 def set_level(
     config_path: pathlib.Path,
     home: pathlib.Path,
-    y_offset: Optional[float],
-    y_offset_auto: Optional[str],
     debug: bool,
 ):
     HOME_PATH = home.absolute().resolve()
