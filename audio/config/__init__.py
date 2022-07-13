@@ -29,14 +29,17 @@ class Config_Dict:
 
     @classmethod
     def from_json(cls, config_file_path: pathlib.Path):
-        with open(config_file_path, encoding="utf-8") as config_file:
-            file_content: str = config_file.read()
-            config = py_json5_decode(file_content)
+        if config_file_path:
+            with open(config_file_path, encoding="utf-8") as config_file:
+                file_content: str = config_file.read()
+                config = py_json5_decode(file_content)
 
-            if config is not None:
-                return cls(config)
-            else:
-                return None
+                if config is not None:
+                    return cls(config)
+                else:
+                    return None
+        else:
+            return None
 
     @classmethod
     def from_dict(cls, data: Optional[Any]):

@@ -11,7 +11,7 @@ from matplotlib.figure import Figure
 from rich.panel import Panel
 from rich.prompt import Confirm
 
-from audio.config.plot import Plot
+from audio.config.plot import InterpolationRate, Plot
 from audio.config.sweep import SweepConfig
 from audio.config.type import Range
 from audio.console import console
@@ -20,7 +20,7 @@ from audio.math import find_sin_zero_offset, rms_full_cycle
 from audio.math.interpolation import INTERPOLATION_KIND, interpolation_model
 from audio.math.rms import RMS
 from audio.model.sweep import SingleSweepData
-from audio.sampling import config_offset, plot_from_csv, sampling_curve
+from audio.sampling import config_set_level, plot_from_csv, sampling_curve
 from audio.script.device.ni import read_rms
 from audio.script.device.rigol import set_amplitude, set_frequency, turn_off, turn_on
 from audio.script.procedure import procedure
@@ -255,6 +255,13 @@ def sweep(
     show_default=True,
 )
 @click.option(
+    "--config",
+    "config_path",
+    type=pathlib.Path,
+    help="Configuration path of the config file in json5 format.",
+    default=None,
+)
+@click.option(
     "--format-plot",
     "format_plot",
     type=click.Choice(["png", "pdf"], case_sensitive=False),
@@ -284,6 +291,25 @@ def sweep(
     default=None,
 )
 @click.option(
+    "--interpolation_rate",
+    "interpolation_rate",
+    type=float,
+    help="Interpolation Rate.",
+    default=None,
+)
+@click.option(
+    "--dpi",
+    type=int,
+    help="Dpi Resolution for the image.",
+    default=None,
+)
+@click.option(
+    "--pdf/--no-pdf",
+    "pdf",
+    help="Will skip the pdf creation.",
+    default=True,
+)
+@click.option(
     "--debug",
     is_flag=True,
     help="Will print verbose messages.",
@@ -292,21 +318,43 @@ def sweep(
 def plot(
     csv: Optional[pathlib.Path],
     home: pathlib.Path,
+    config_path: Optional[pathlib.Path],
     format_plot: List[str],
     y_lim: Optional[Tuple[float, float]],
     x_lim: Optional[Tuple[float, float]],
     y_offset: Optional[float],
+    interpolation_rate: Optional[float],
+    dpi: Optional[int],
+    pdf: bool,
     debug: bool,
 ):
     HOME_PATH = home.absolute()
     csv_file: pathlib.Path = pathlib.Path()
     plot_file: Optional[pathlib.Path] = None
 
-    plot_config = Plot.from_value(
-        y_offset=y_offset,
-        x_limit=Range(*x_lim) if x_lim else None,
-        y_limit=Range(*y_lim) if y_lim else None,
-    )
+    sweep_config = SweepConfig.from_file(config_path)
+    plot_config: Plot = Plot()
+
+    if sweep_config:
+        plot_config = sweep_config.plot
+
+        plot_config.override(
+            y_offset=y_offset,
+            x_limit=Range(*x_lim) if x_lim else None,
+            y_limit=Range(*y_lim) if y_lim else None,
+            interpolation_rate=interpolation_rate,
+            dpi=dpi,
+        )
+    else:
+        plot_config = plot_config.from_value(
+            y_offset=y_offset,
+            x_limit=Range(*x_lim) if x_lim else None,
+            y_limit=Range(*y_lim) if y_lim else None,
+            interpolation_rate=interpolation_rate,
+            dpi=dpi,
+        )
+
+    console.print(plot_config)
 
     is_most_recent_file: bool = False
     plot_file: Optional[pathlib.Path] = None
@@ -353,7 +401,8 @@ def plot(
                 debug=debug,
             )
             if plot_file_format == "png":
-                create_latex_file(plot_file, home=HOME_PATH, latex_home=latex_home)
+                if pdf:
+                    create_latex_file(plot_file, home=HOME_PATH, latex_home=latex_home)
     else:
         console.print("Cannot create a plot file.", style="error")
 
@@ -394,7 +443,7 @@ def set_level(
     if debug:
         console.print(config)
 
-    config_offset(
+    config_set_level(
         config=config.sampling,
         plot_file_path=HOME_PATH / "{}.config.png".format(datetime_now),
         debug=debug,

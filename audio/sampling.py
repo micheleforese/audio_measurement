@@ -339,12 +339,17 @@ def plot_from_csv(
             )
 
             # Apply the offset
-            for i in range(len(y_dBV)):
-                y_dBV[i] = y_dBV[i] - y_offset_dBV
+            #
+            # for idx, dBV in enumerate(y_dBV):
+            #     y_dBV[idx] = y_dBV[idx] - y_offset_dBV
+
+            y_dBV = [dBV - y_offset_dBV for dBV in y_dBV]
 
     ui_t.progress_list_task.update(task_plotting, task="Interpolate")
 
-    plot: Tuple[Figure, Axes] = plt.subplots(figsize=(16 * 2, 9 * 2), dpi=600)
+    plot: Tuple[Figure, Axes] = plt.subplots(
+        figsize=(16 * 2, 9 * 2), dpi=plot_config.dpi if plot_config.dpi else 300
+    )
 
     fig: Figure
     axes: Axes
@@ -354,7 +359,14 @@ def plot_from_csv(
     x_interpolated, y_interpolated = logx_interpolation_model(
         x_frequency,
         y_dBV,
-        int(len(x_frequency) * 5),
+        int(
+            len(x_frequency)
+            * (
+                plot_config.interpolation_rate
+                if plot_config.interpolation_rate is not None
+                else 5
+            )
+        ),
         kind=INTERPOLATION_KIND.CUBIC,
     )
 
@@ -442,9 +454,10 @@ def plot_from_csv(
     live.stop()
 
 
-def config_offset(
+def config_set_level(
     config: SweepConfig,
     plot_file_path: Path,
+    set_level_file_path: Optional[Path] = None,
     debug: bool = False,
 ):
 
@@ -623,13 +636,14 @@ def config_offset(
 
                 console.print(Panel(table_result))
 
-                offset_file_path = plot_file_path.with_suffix(".offset")
+                if set_level_file_path is None:
+                    set_level_file_path = plot_file_path.with_suffix(".offset")
 
-                f = open(offset_file_path, "w", encoding="utf-8")
+                f = open(set_level_file_path, "w", encoding="utf-8")
                 f.write("{}".format(level_offset))
                 f.close()
 
-                console.print(Panel("[PATH] - {}".format(offset_file_path)))
+                console.print(Panel("[PATH] - {}".format(set_level_file_path)))
 
             else:
 
@@ -661,6 +675,7 @@ def config_offset(
     ]
 
     SCPI.exec_commands(generator, generator_ac_curves)
+    generator.close()
 
     live.stop()
 

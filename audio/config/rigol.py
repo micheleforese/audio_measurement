@@ -39,6 +39,9 @@ class AmplitudePeakToPeak(IConfig):
         self._value = value
 
 
+from audio.console import console
+
+
 @rich.repr.auto
 class Rigol:
     name_config: str = "rigol"

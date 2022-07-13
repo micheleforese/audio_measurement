@@ -1,5 +1,6 @@
 import pathlib
 from typing import List, Optional
+from weakref import ProxyType
 
 import rich
 
@@ -22,7 +23,7 @@ class ProcedureText(ProcedureStep):
     @classmethod
     def from_dict(cls, data: Config_Dict):
 
-        text = data.get_value(["text"], str)
+        text = data.get_rvalue(["text"], str)
         if text is not None:
             return cls(text)
         else:
@@ -32,24 +33,6 @@ class ProcedureText(ProcedureStep):
 @rich.repr.auto
 class ProcedureSetLevel(ProcedureStep):
     name: str
-
-    def __init__(self, name: str) -> None:
-        self.name = name
-
-    @classmethod
-    def from_dict(cls, data: Config_Dict):
-
-        name = data.get_value(["name"], str)
-        if name is not None:
-            return cls(name)
-        else:
-            return None
-
-
-@rich.repr.auto
-class ProcedureSweep(ProcedureStep):
-    name: str
-
     config: SweepConfig
 
     def __init__(self, name: str, config: SweepConfig) -> None:
@@ -59,10 +42,95 @@ class ProcedureSweep(ProcedureStep):
     @classmethod
     def from_dict(cls, data: Config_Dict):
 
-        name = data.get_value(["name"], str)
-        config = SweepConfig.from_dict(Config_Dict(data.get_value(["config"])))
+        name = data.get_rvalue(["name"], str)
+        config = SweepConfig.from_dict(Config_Dict(data.get_rvalue(["config"])))
+
         if name is not None and config is not None:
             return cls(name, config)
+        else:
+            return None
+
+
+@rich.repr.auto
+class ProcedureSweep(ProcedureStep):
+    name: str
+    config: SweepConfig
+
+    def __init__(self, name: str, config: SweepConfig) -> None:
+        self.name = name
+        self.config = config
+
+    @classmethod
+    def from_dict(cls, data: Config_Dict):
+
+        name = data.get_rvalue(["name"], str)
+        config = SweepConfig.from_dict(Config_Dict(data.get_rvalue(["config"])))
+
+        if name is not None and config is not None:
+            return cls(name, config)
+        else:
+            return None
+
+
+@rich.repr.auto
+class ProcedureSerialNumber(ProcedureStep):
+
+    text: str
+
+    def __init__(self, text: str) -> None:
+        self.text = text
+
+    @classmethod
+    def from_dict(cls, data: Config_Dict):
+
+        text = data.get_rvalue(["text"], str)
+
+        if text is not None:
+            return cls(text)
+        else:
+            return None
+
+
+@rich.repr.auto
+class ProcedureInsertionGain(ProcedureStep):
+
+    name: str
+    set_level: str
+
+    def __init__(self, name: str, set_level: str) -> None:
+        self.name = name
+        self.set_level = set_level
+
+    @classmethod
+    def from_dict(cls, data: Config_Dict):
+
+        name = data.get_rvalue(["name"], str)
+        set_level = data.get_rvalue(["set_level"], str)
+
+        if name is not None and set_level is not None:
+            return cls(name, set_level)
+        else:
+            return None
+
+
+@rich.repr.auto
+class ProcedurePrint(ProcedureStep):
+
+    name: str
+    variables: List[str]
+
+    def __init__(self, name: str, variables: List[str]) -> None:
+        self.name = name
+        self.variables = variables
+
+    @classmethod
+    def from_dict(cls, data: Config_Dict):
+
+        name = data.get_rvalue(["name"], str)
+        variables = data.get_rvalue(["variables"], List[str])
+
+        if name is not None and variables is not None:
+            return cls(name, variables)
         else:
             return None
 
@@ -94,7 +162,7 @@ class Procedure:
 
             for idx, step in enumerate(procedure_steps.data):
                 procedure_type: str = step["type"]
-                procedure: Optional[ProcedureStep]
+                procedure: Optional[ProcedureStep] = None
 
                 if procedure_type == "text":
                     procedure = ProcedureText.from_dict(
@@ -108,8 +176,20 @@ class Procedure:
                     procedure = ProcedureSweep.from_dict(
                         Config_Dict.from_dict(step["step"])
                     )
+                elif procedure_type == "serial-number":
+                    procedure = ProcedureSerialNumber.from_dict(
+                        Config_Dict.from_dict(step["step"])
+                    )
+                elif procedure_type == "insertion-gain":
+                    procedure = ProcedureInsertionGain.from_dict(
+                        Config_Dict.from_dict(step["step"])
+                    )
+                elif procedure_type == "print":
+                    procedure = ProcedurePrint.from_dict(
+                        Config_Dict.from_dict(step["step"])
+                    )
                 else:
-                    raise Exception
+                    procedure = ProcedureStep()
 
                 if procedure is not None:
                     steps.append(procedure)
