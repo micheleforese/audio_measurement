@@ -80,6 +80,7 @@ def procedure(
             data[step.name] = set_level_file
 
             console.print(data)
+
         elif isinstance(step, ProcedureSerialNumber):
             step: ProcedureSerialNumber = step
             console.print(f"{idx}: ProcedureSerialNumber()")
