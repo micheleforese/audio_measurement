@@ -54,20 +54,37 @@ class ProcedureSetLevel(ProcedureStep):
 @rich.repr.auto
 class ProcedureSweep(ProcedureStep):
     name: str
-    config: SweepConfig
+    set_level: str
+    name_plot: str
+    config: Optional[SweepConfig]
 
-    def __init__(self, name: str, config: SweepConfig) -> None:
+    def __init__(
+        self,
+        name: str,
+        set_level: str,
+        name_plot: str,
+        config: SweepConfig,
+    ) -> None:
         self.name = name
+        self.set_level = set_level
+        self.name_plot = name_plot
         self.config = config
 
     @classmethod
     def from_dict(cls, data: Config_Dict):
 
         name = data.get_rvalue(["name"], str)
+        set_level = data.get_rvalue(["set_level"], str)
+        name_plot = data.get_rvalue(["name_plot"], str)
         config = SweepConfig.from_dict(Config_Dict(data.get_rvalue(["config"])))
 
-        if name is not None and config is not None:
-            return cls(name, config)
+        if (
+            name is not None
+            and config is not None
+            and set_level is not None
+            and name_plot is not None
+        ):
+            return cls(name, set_level, name_plot, config)
         else:
             return None
 
@@ -116,21 +133,18 @@ class ProcedureInsertionGain(ProcedureStep):
 @rich.repr.auto
 class ProcedurePrint(ProcedureStep):
 
-    name: str
-    variables: List[str]
+    variables: List[str] = []
 
-    def __init__(self, name: str, variables: List[str]) -> None:
-        self.name = name
+    def __init__(self, variables: List[str]) -> None:
         self.variables = variables
 
     @classmethod
     def from_dict(cls, data: Config_Dict):
 
-        name = data.get_rvalue(["name"], str)
         variables = data.get_rvalue(["variables"], List[str])
 
-        if name is not None and variables is not None:
-            return cls(name, variables)
+        if variables is not None:
+            return cls(variables)
         else:
             return None
 

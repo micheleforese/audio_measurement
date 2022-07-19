@@ -84,4 +84,7 @@ class Rigol:
 
     @property
     def amplitude_pp(self) -> Optional[float]:
-        return self._amplitude_pp.value
+        if self._amplitude_pp is not None:
+            return self._amplitude_pp.value
+        else:
+            return None

@@ -69,21 +69,36 @@ def sampling_curve(
     ui_t.progress_list_task.start_task(task_sampling)
 
     # Asks for the 2 instruments
-    list_devices: List[Instrument] = UsbTmc.search_devices()
-    if debug:
-        UsbTmc.print_devices_list(list_devices)
+    try:
+        list_devices: List[Instrument] = UsbTmc.search_devices()
+        if debug:
+            UsbTmc.print_devices_list(list_devices)
 
-    generator: UsbTmc = UsbTmc(list_devices[0])
+        console.print("before init.")
+
+        generator: UsbTmc = UsbTmc(list_devices[0])
+        console.print("after init.")
+
+    except Exception as e:
+        console.print(f"{e}")
 
     ui_t.progress_list_task.update(task_sampling, task="Setting Devices")
 
     # Open the Instruments interfaces
     # Auto Close with the destructor
-    generator.open()
+    console.print("before open.")
+
+    console.print(generator.instr.instrument.connected)
+    try:
+        generator.open()
+    except Exception as e:
+        console.print(f"{e}")
+
+    console.print("after open.")
 
     # Sets the Configuration for the Voltmeter
     generator_configs: list = [
-        # SCPI.reset(),
+        SCPI.reset(),
         SCPI.clear(),
         SCPI.set_output(1, Switch.OFF),
         SCPI.set_function_voltage_ac(),
@@ -94,11 +109,15 @@ def sampling_curve(
 
     SCPI.exec_commands(generator, generator_configs)
 
+    console.print("after generator_configs.")
+
     generator_ac_curves: List[str] = [
         SCPI.set_output(1, Switch.ON),
     ]
 
     SCPI.exec_commands(generator, generator_ac_curves)
+
+    console.print("after generator_ac_curves.")
 
     log_scale: LogarithmicScale = LogarithmicScale(
         config.sampling.f_min,
@@ -126,18 +145,24 @@ def sampling_curve(
         title="[blue]Sweep.",
     )
 
+    console.print("after math.")
+
     max_dB: Optional[float] = None
+
     ui_t.progress_list_task.update(task_sampling, task="Sweep")
 
     task_sweep = ui_t.progress_sweep.add_task(
-        "Sweep", start=False, total=len(log_scale.f_list)
+        "Sweep",
+        start=False,
+        total=len(log_scale.f_list),
+        frequency="",
+        rms="",
     )
     ui_t.progress_sweep.start_task(task_sweep)
 
+    console.print("before for.")
+
     for frequency in log_scale.f_list:
-        ui_t.progress_sweep.update(
-            task_sweep, frequency=f"{round(frequency, 5)}", rms="0"
-        )
 
         # Sets the Frequency
         generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
@@ -147,16 +172,21 @@ def sampling_curve(
         Fs = trim_value(frequency * config.sampling.fs, max_value=config.nidaq.max_Fs)
 
         if Fs == config.nidaq.max_Fs:
-            config.sampling.number_of_samples = 900
+            config.sampling.override(number_of_samples=900)
 
         oversampling_ratio = Fs / frequency
-        n_periods = config.sampling.number_of_samples / oversampling_ratio
+        # TODO: override 900 with parametric variable
+        # n_periods = config.sampling.number_of_samples / oversampling_ratio
+
+        n_periods = 900 / oversampling_ratio
 
         frequency_list.append(frequency)
         fs_list.append(Fs)
         oversampling_ratio_list.append(oversampling_ratio)
         n_periods_list.append(n_periods)
-        n_samples_list.append(config.sampling.number_of_samples)
+        # TODO: override 900
+        # n_samples_list.append(config.sampling.number_of_samples)
+        n_samples_list.append(900)
 
         time = Timer()
         time.start()
@@ -175,7 +205,7 @@ def sampling_curve(
             ch_input=config.nidaq.ch_input,
             max_voltage=config.nidaq.max_voltage,
             min_voltage=config.nidaq.min_voltage,
-            number_of_samples=config.sampling.number_of_samples,
+            number_of_samples=900,
             time_report=False,
             save_file=save_file_path,
         )
@@ -185,8 +215,6 @@ def sampling_curve(
         if rms_value:
 
             rms_list.append(rms_value)
-
-            console.print(f"RMS: {rms_value}")
 
             ui_t.progress_sweep.update(
                 task_sweep,
@@ -210,7 +238,7 @@ def sampling_curve(
             table.add_row(
                 "{:.2f}".format(frequency),
                 "{:.2f}".format(Fs),
-                "{}".format(config.sampling.number_of_samples),
+                "{}".format(900),
                 "{:.5f} ".format(round(rms_value, 5)),
                 "[{}]{:.2f}[/]".format(
                     "red" if gain_bBV <= 0 else "green", transfer_func_dB
@@ -288,9 +316,11 @@ def sampling_curve(
 def plot_from_csv(
     measurements_file_path: Path,
     plot_file_path: Path,
-    plot_config: Plot,
+    sweep_config: SweepConfig,
     debug: bool = False,
 ):
+
+    plot_config = sweep_config.plot
 
     live_group = Group(Panel(ui_t.progress_list_task))
 
@@ -303,9 +333,6 @@ def plot_from_csv(
 
     task_plotting = ui_t.progress_list_task.add_task("Plotting", task="Plotting")
     ui_t.progress_list_task.start_task(task_plotting)
-
-    if debug:
-        console.print(Panel(plot_config.tree(), title="Plot Configurations"))
 
     x_frequency: List[float] = []
     y_dBV: List[float] = []
@@ -335,7 +362,7 @@ def plot_from_csv(
         if y_offset:
             # Transform the offset from float to dBV
             y_offset_dBV: float = 20 * np.log10(
-                y_offset * 2 * np.math.sqrt(2) / sweep_data.amplitude
+                y_offset * 2 * np.math.sqrt(2) / sweep_config.rigol.amplitude_pp
             )
 
             # Apply the offset
@@ -700,6 +727,7 @@ def config_set_level(
         linewidth=1,
         label="Process Variable (PV)",
     )
+    plt.grid(True)
     plt.legend(["Set Point (SP)", "Process Variable (PV)"], loc="best")
 
     plt.subplot(2, 2, 2)
@@ -724,6 +752,7 @@ def config_set_level(
         linewidth=2,
         label=r"Derivative = $-K_c \tau_D \frac{d(PV)}{dt}$",
     )
+    plt.grid(True)
     plt.legend(loc="best")
 
     plt.subplot(2, 2, 3)
@@ -734,6 +763,7 @@ def config_set_level(
         linewidth=2,
         label="Error (e=SP-PV)",
     )
+    plt.grid(True)
     plt.legend(loc="best")
 
     plt.subplot(2, 2, 4)
@@ -744,6 +774,7 @@ def config_set_level(
         linewidth=2,
         label="Controller Output (OP)",
     )
+    plt.grid(True)
     plt.legend(loc="best")
 
     plt.savefig(plot_file_path)

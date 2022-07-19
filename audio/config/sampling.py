@@ -265,7 +265,10 @@ class Sampling:
 
     @property
     def number_of_samples(self) -> Optional[int]:
-        return self._number_of_samples.value
+        if self._number_of_samples is not None:
+            return self._number_of_samples.value
+        else:
+            return None
 
     @number_of_samples.setter
     def number_of_samples(self, value: Optional[int]):

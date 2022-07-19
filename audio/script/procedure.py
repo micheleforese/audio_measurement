@@ -5,6 +5,9 @@ import pathlib
 from typing import Optional
 import click
 from audio.config import Dict
+from audio.config import sweep
+from audio.config.rigol import Rigol
+from audio.config.sweep import SweepConfig
 from audio.console import console
 from audio.procedure import (
     Procedure,
@@ -13,13 +16,15 @@ from audio.procedure import (
     ProcedureSerialNumber,
     ProcedureSetLevel,
     ProcedureStep,
+    ProcedureSweep,
     ProcedureText,
 )
 
 from rich.prompt import Prompt
 from rich.prompt import Confirm
+from rich.panel import Panel
 
-from audio.sampling import config_set_level
+from audio.sampling import config_set_level, plot_from_csv, sampling_curve
 
 
 @click.command(
@@ -55,7 +60,7 @@ def procedure(
 
         if isinstance(step, ProcedureText):
             step: ProcedureText = step
-            console.print(f"{idx}: ProcedureText()")
+            console.print(Panel(f"{idx}: ProcedureText()"))
 
             confirm: bool = False
 
@@ -64,7 +69,7 @@ def procedure(
 
         elif isinstance(step, ProcedureSetLevel):
             step: ProcedureSetLevel = step
-            console.print(f"{idx}: ProcedureSetLevel()")
+            console.print(Panel(f"{idx}: ProcedureSetLevel()"))
 
             sampling_config = step.config
 
@@ -83,7 +88,7 @@ def procedure(
 
         elif isinstance(step, ProcedureSerialNumber):
             step: ProcedureSerialNumber = step
-            console.print(f"{idx}: ProcedureSerialNumber()")
+            console.print(Panel(f"{idx}: ProcedureSerialNumber()"))
 
             console.print(step.text)
 
@@ -100,8 +105,11 @@ def procedure(
 
             console.print(f"Create Dir at: '{root}'")
             root.mkdir(parents=True, exist_ok=True)
+
         elif isinstance(step, ProcedureInsertionGain):
             step: ProcedureInsertionGain = step
+
+            console.print(Panel(f"{idx}: ProcedureInsertionGain()"))
 
             calibration_path: pathlib.Path = pathlib.Path(
                 HOME_PATH / "calibration.config.set_level"
@@ -117,9 +125,14 @@ def procedure(
 
             gain_file_path.write_text(f"{gain:.5}", encoding="utf-8")
 
+            data[step.name] = gain_file_path
+
             console.print(f"GAIN: {gain} dB.")
+
         elif isinstance(step, ProcedurePrint):
             step: ProcedurePrint = step
+
+            console.print(Panel(f"{idx}: ProcedurePrint()"))
 
             for var in step.variables:
                 console.print(
@@ -128,5 +141,45 @@ def procedure(
                     )
                 )
 
+        elif isinstance(step, ProcedureSweep):
+            step: ProcedureSweep = step
+            console.print(Panel(f"{idx}: ProcedureSweep()"))
+
+            sweep_config: Optional[SweepConfig] = step.config
+
+            console.print(sweep_config)
+
+            Confirm.ask()
+
+            if sweep_config is None:
+                console.print("sweep_config is None.", style="error")
+
+            set_level = float(
+                pathlib.Path(data[step.set_level]).read_text(encoding="utf-8")
+            )
+
+            sweep_config.rigol = Rigol.from_value(set_level)
+
+            measurement_file: pathlib.Path = root / (step.name + ".csv")
+            plot_file: pathlib.Path = root / (step.name_plot + ".png")
+
+            console.print(f"Measurement File: '{measurement_file}'")
+            console.print(f"PLot File: '{plot_file}'")
+
+            Confirm.ask()
+
+            sampling_curve(
+                config=sweep_config,
+                measurements_file_path=measurement_file,
+                debug=True,
+            )
+
+            plot_from_csv(
+                measurements_file_path=measurement_file,
+                plot_file_path=plot_file,
+                sweep_config=sweep_config,
+                debug=True,
+            )
+
         elif isinstance(step, ProcedureStep):
-            console.print(f"{idx}: ProcedureStep()")
+            console.print(Panel(f"{idx}: ProcedureStep()"))
