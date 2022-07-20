@@ -2,6 +2,7 @@ from typing import Optional
 import rich.repr
 from audio.console import console
 from audio.config import Config_Dict, IConfig
+from audio.type import Dictionary, Option
 
 
 @rich.repr.auto
@@ -289,3 +290,55 @@ class Sampling:
     @f_max.setter
     def f_max(self, value: Optional[float]):
         self._f_max = value
+
+
+@rich.repr.auto
+class SamplingConfig(Dictionary):
+    def __rich_repr__(self):
+        if not self.n_fs.is_null:
+            yield "n_fs", self.n_fs.value
+
+    @property
+    def n_fs(self) -> Option[float]:
+
+        return Option[float](self.get_property("n_fs", float))
+
+    @property
+    def points_per_decade(self) -> Option[float]:
+
+        points_per_decade: Option[float] = self.get_property("points_per_decade", float)
+
+        if not points_per_decade.is_null:
+            return Option[float](points_per_decade.value)
+
+        return Option[float].null()
+
+    @property
+    def number_of_samples(self) -> Option[float]:
+
+        number_of_samples: Option[float] = self.get_property("number_of_samples", float)
+
+        if not number_of_samples.is_null:
+            return Option[float](number_of_samples.value)
+
+        return Option[float].null()
+
+    @property
+    def f_min(self) -> Option[float]:
+
+        f_min: Option[float] = self.get_property("f_min", float)
+
+        if not f_min.is_null:
+            return Option[float](f_min.value)
+
+        return Option[float].null()
+
+    @property
+    def f_max(self) -> Option[float]:
+
+        f_max: Option[float] = self.get_property("f_max", float)
+
+        if not f_max.is_null:
+            return Option[float](f_max.value)
+
+        return Option[float].null()

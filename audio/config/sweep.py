@@ -1,17 +1,23 @@
+from __future__ import annotations
+
 import pathlib
-from typing import Optional
+from typing import Dict, Optional
 
 import rich
 
 import audio.config as cfg
 from audio.config.nidaq import NiDaq
 from audio.config.plot import Plot
-from audio.config.rigol import Rigol
+from audio.config.rigol import Rigol, RigolConfig
 from audio.config.sampling import Sampling
+from audio.console import console
+from audio.type import Dictionary, Option
 
 
 @rich.repr.auto
 class SweepConfig:
+
+    _config: Dict
 
     _rigol: Optional[Rigol]
     _nidaq: Optional[NiDaq]
@@ -72,7 +78,7 @@ class SweepConfig:
             return None
 
     @property
-    def rigol(self):
+    def rigol(self) -> Optional[Rigol]:
         return self._rigol
 
     @rigol.setter
@@ -80,7 +86,7 @@ class SweepConfig:
         self._rigol = value
 
     @property
-    def nidaq(self):
+    def nidaq(self) -> Optional[NiDaq]:
         return self._nidaq
 
     @nidaq.setter
@@ -88,7 +94,7 @@ class SweepConfig:
         self._nidaq = value
 
     @property
-    def sampling(self):
+    def sampling(self) -> Optional[Sampling]:
         return self._sampling
 
     @sampling.setter
@@ -96,10 +102,66 @@ class SweepConfig:
         self._sampling = value
 
     @property
-    def plot(self):
+    def plot(self) -> Optional[Plot]:
         return self._plot
 
     @plot.setter
     def plot(self, value: Plot):
 
         self._plot = value
+
+
+@rich.repr.auto
+class SweepConfigDict(Dictionary):
+    def __rich_repr__(self):
+        if not self.rigol.is_null:
+            yield "rigol", self.rigol.value
+
+    @classmethod
+    def from_file(
+        cls,
+        config_file_path: pathlib.Path,
+    ) -> Option[SweepConfigDict]:
+
+        data = Dictionary.from_json(config_file_path)
+
+        if not data.is_null:
+            return Option[SweepConfigDict](cls(data.value))
+
+        return Option[SweepConfigDict].null()
+
+    @property
+    def rigol(self) -> Option[RigolConfig]:
+
+        rigol = self.get_property("rigol", RigolConfig)
+
+        if not rigol.is_null:
+            return Option[RigolConfig](RigolConfig(rigol.value))
+        return Option[RigolConfig].null()
+
+    @property
+    def nidaq(self) -> Option[RigolConfig]:
+
+        nidaq = self.get_property("nidaq", RigolConfig)
+
+        if not nidaq.is_null:
+            return Option[RigolConfig](RigolConfig(nidaq.value))
+        return Option[RigolConfig].null()
+
+    @property
+    def sampling(self) -> Option[RigolConfig]:
+
+        sampling = self.get_property("sampling", RigolConfig)
+
+        if not sampling.is_null:
+            return Option[RigolConfig](RigolConfig(sampling.value))
+        return Option[RigolConfig].null()
+
+    @property
+    def plot(self) -> Option[RigolConfig]:
+
+        plot = self.get_property("plot", RigolConfig)
+
+        if not plot.is_null:
+            return Option[RigolConfig](RigolConfig(plot.value))
+        return Option[RigolConfig].null()

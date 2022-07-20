@@ -7,7 +7,7 @@ import click
 from audio.config import Dict
 from audio.config import sweep
 from audio.config.rigol import Rigol
-from audio.config.sweep import SweepConfig
+from audio.config.sweep import SweepConfig, SweepConfigDict
 from audio.console import console
 from audio.procedure import (
     Procedure,
@@ -25,6 +25,7 @@ from rich.prompt import Confirm
 from rich.panel import Panel
 
 from audio.sampling import config_set_level, plot_from_csv, sampling_curve
+from audio.type import Option
 
 
 @click.command(
@@ -46,6 +47,13 @@ def procedure(
     HOME_PATH = home
 
     datetime_now = datetime.now().strftime(r"%Y-%m-%d--%H-%M-%f")
+
+    config: Option[SweepConfigDict] = SweepConfigDict.from_file(procedure_name)
+
+    if not config.is_null:
+        console.print(config.value)
+
+    exit()
 
     procedure = Procedure.from_json(procedure_path=procedure_name)
 

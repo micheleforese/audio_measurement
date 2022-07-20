@@ -3,6 +3,7 @@ from typing import Optional
 import rich
 
 from audio.config import Config_Dict, IConfig
+from audio.type import Dictionary, Option
 
 
 @rich.repr.auto
@@ -88,3 +89,20 @@ class Rigol:
             return self._amplitude_pp.value
         else:
             return None
+
+
+@rich.repr.auto
+class RigolConfig(Dictionary):
+    def __rich_repr__(self):
+        if not self.amplitude_pp.is_null:
+            yield "amplitude", self.amplitude_pp.value
+
+    @property
+    def amplitude_pp(self) -> Option[float]:
+
+        amplitude: Option[float] = self.get_property("amplitude_pp", float)
+
+        if not amplitude.is_null:
+            return Option[float](amplitude.value)
+
+        return Option[float].null()
