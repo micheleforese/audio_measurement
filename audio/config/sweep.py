@@ -1,167 +1,100 @@
 from __future__ import annotations
 
 import pathlib
-from typing import Dict, Optional
+from typing import Any, Dict
 
-import rich
+from audio.config.nidaq import NiDaqConfig
+from audio.config.plot import PlotConfig
 
-import audio.config as cfg
-from audio.config.nidaq import NiDaq
-from audio.config.plot import Plot
-from audio.config.rigol import Rigol, RigolConfig
-from audio.config.sampling import Sampling
-from audio.console import console
+from audio.config.rigol import RigolConfig
+from audio.config.sampling import SamplingConfig
 from audio.type import Dictionary, Option
+from enum import Enum, auto, unique
 
 
-@rich.repr.auto
-class SweepConfig:
-
-    _config: Dict
-
-    _rigol: Optional[Rigol]
-    _nidaq: Optional[NiDaq]
-    _sampling: Optional[Sampling]
-    _plot: Optional[Plot]
-
-    def __init__(
-        self,
-        rigol: Optional[Rigol] = None,
-        nidaq: Optional[NiDaq] = None,
-        sampling: Optional[Sampling] = None,
-        plot: Optional[Plot] = None,
-    ) -> None:
-        self._rigol = rigol
-        self._nidaq = nidaq
-        self._sampling = sampling
-        self._plot = plot
-
-    @classmethod
-    def from_file(cls, config_file_path: pathlib.Path):
-        data = cfg.Config_Dict.from_json(config_file_path)
-
-        if data is not None:
-            # Rigol Class
-            rigol = Rigol.from_config(data)
-
-            # NiDaq Class
-            nidaq = NiDaq.from_config(data)
-
-            # Sampling Class
-            sampling = Sampling.from_config(data)
-
-            # Plot Class
-            plot = Plot.from_config(data)
-
-            return cls(rigol, nidaq, sampling, plot)
-        else:
-            return None
-
-    @classmethod
-    def from_dict(cls, config: cfg.Config_Dict):
-
-        if config is not None:
-            # Rigol Class
-            rigol = Rigol.from_config(config)
-
-            # NiDaq Class
-            nidaq = NiDaq.from_config(config)
-
-            # Sampling Class
-            sampling = Sampling.from_config(config)
-
-            # Plot Class
-            plot = Plot.from_config(config)
-
-            return cls(rigol, nidaq, sampling, plot)
-        else:
-            return None
-
-    @property
-    def rigol(self) -> Optional[Rigol]:
-        return self._rigol
-
-    @rigol.setter
-    def rigol(self, value: Rigol):
-        self._rigol = value
-
-    @property
-    def nidaq(self) -> Optional[NiDaq]:
-        return self._nidaq
-
-    @nidaq.setter
-    def nidaq(self, value: NiDaq):
-        self._nidaq = value
-
-    @property
-    def sampling(self) -> Optional[Sampling]:
-        return self._sampling
-
-    @sampling.setter
-    def sampling(self, value: Sampling):
-        self._sampling = value
-
-    @property
-    def plot(self) -> Optional[Plot]:
-        return self._plot
-
-    @plot.setter
-    def plot(self, value: Plot):
-
-        self._plot = value
+@unique
+class SweepConfigEnum(Enum):
+    RIGOL = auto()
+    NI_DAQ = auto()
+    SAMPLING = auto()
+    PLOT = auto()
 
 
-@rich.repr.auto
-class SweepConfigDict(Dictionary):
+class SweepConfig(Dictionary):
     def __rich_repr__(self):
-        if not self.rigol.is_null:
-            yield "rigol", self.rigol.value
+        yield "rigol", self.rigol
+        yield "nidaq", self.nidaq
+        yield "sampling", self.sampling
+        yield "plot", self.plot
 
     @classmethod
     def from_file(
         cls,
         config_file_path: pathlib.Path,
-    ) -> Option[SweepConfigDict]:
+    ) -> Option[SweepConfig]:
 
         data = Dictionary.from_json(config_file_path)
 
         if not data.is_null:
-            return Option[SweepConfigDict](cls(data.value))
+            return Option[SweepConfig](cls(data.value))
 
-        return Option[SweepConfigDict].null()
+        return Option[SweepConfig].null()
+
+    def exists(self, config: SweepConfigEnum) -> bool:
+        match config:
+            case SweepConfigEnum.RIGOL:
+                return not self.rigol.is_null
+            case SweepConfigEnum.NI_DAQ:
+                return not self.nidaq.is_null
+            case SweepConfigEnum.SAMPLING:
+                return not self.sampling.is_null
+            case SweepConfigEnum.PLOT:
+                return not self.plot.is_null
 
     @property
     def rigol(self) -> Option[RigolConfig]:
-
-        rigol = self.get_property("rigol", RigolConfig)
-
-        if not rigol.is_null:
-            return Option[RigolConfig](RigolConfig(rigol.value))
-        return Option[RigolConfig].null()
+        return self.get_property("rigol", RigolConfig)
 
     @property
-    def nidaq(self) -> Option[RigolConfig]:
-
-        nidaq = self.get_property("nidaq", RigolConfig)
-
-        if not nidaq.is_null:
-            return Option[RigolConfig](RigolConfig(nidaq.value))
-        return Option[RigolConfig].null()
+    def nidaq(self) -> Option[NiDaqConfig]:
+        return self.get_property("nidaq", NiDaqConfig)
 
     @property
-    def sampling(self) -> Option[RigolConfig]:
-
-        sampling = self.get_property("sampling", RigolConfig)
-
-        if not sampling.is_null:
-            return Option[RigolConfig](RigolConfig(sampling.value))
-        return Option[RigolConfig].null()
+    def sampling(self) -> Option[SamplingConfig]:
+        return self.get_property("sampling", SamplingConfig)
 
     @property
-    def plot(self) -> Option[RigolConfig]:
+    def plot(self) -> Option[PlotConfig]:
+        return self.get_property("plot", PlotConfig)
 
-        plot = self.get_property("plot", RigolConfig)
+    def set_rigol(
+        self,
+        override: bool = False,
+    ) -> Option[RigolConfig]:
+        if self.exists(SweepConfigEnum.RIGOL) or override:
+            self.get_dict()["rigol"] = {}
+        return self.rigol
 
-        if not plot.is_null:
-            return Option[RigolConfig](RigolConfig(plot.value))
-        return Option[RigolConfig].null()
+    def set_nidaq(
+        self,
+        override: bool = False,
+    ) -> Option[NiDaqConfig]:
+        if self.exists(SweepConfigEnum.NI_DAQ) or override:
+            self.get_dict()["nidaq"] = {}
+        return self.nidaq
+
+    def set_sampling(
+        self,
+        override: bool = False,
+    ) -> Option[SamplingConfig]:
+        if self.exists(SweepConfigEnum.SAMPLING) or override:
+            self.get_dict()["sampling"] = {}
+        return self.sampling
+
+    def set_plot(
+        self,
+        override: bool = False,
+    ) -> Option[PlotConfig]:
+        if self.exists(SweepConfigEnum.PLOT) or override:
+            self.get_dict()["plot"] = {}
+        return self.plot

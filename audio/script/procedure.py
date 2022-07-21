@@ -5,9 +5,8 @@ import pathlib
 from typing import Optional
 import click
 from audio.config import Dict
-from audio.config import sweep
-from audio.config.rigol import Rigol
-from audio.config.sweep import SweepConfig, SweepConfigDict
+from audio.config.rigol import RigolConfig, RigolConfigEnum
+from audio.config.sweep import SweepConfig, SweepConfig, SweepConfigEnum
 from audio.console import console
 from audio.procedure import (
     Procedure,
@@ -48,10 +47,17 @@ def procedure(
 
     datetime_now = datetime.now().strftime(r"%Y-%m-%d--%H-%M-%f")
 
-    config: Option[SweepConfigDict] = SweepConfigDict.from_file(procedure_name)
+    config: Option[SweepConfig] = SweepConfig.from_file(procedure_name)
 
-    if not config.is_null:
-        console.print(config.value)
+    console.print(config)
+    console.print(config.value.get_dict())
+
+    rigol: Option[RigolConfig] = config.value.set_rigol(override=True)
+    console.print(config.value.get_dict())
+    if not rigol.is_null:
+        rigol.value.set_amplitude_peak_to_peak(5)
+
+    console.print(config.value.get_dict())
 
     exit()
 

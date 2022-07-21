@@ -11,7 +11,6 @@ from matplotlib.figure import Figure
 from rich.panel import Panel
 from rich.prompt import Confirm
 
-from audio.config.plot import InterpolationRate, Plot
 from audio.config.sweep import SweepConfig
 from audio.config.type import Range
 from audio.console import console

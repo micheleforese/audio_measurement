@@ -1,4 +1,5 @@
-from typing import Optional
+from enum import Enum, auto, unique
+from typing import Any, Dict, Optional
 
 import rich
 
@@ -43,66 +44,29 @@ class AmplitudePeakToPeak(IConfig):
 from audio.console import console
 
 
-@rich.repr.auto
-class Rigol:
-    name_config: str = "rigol"
-
-    _amplitude_pp: Optional[AmplitudePeakToPeak]
-
-    def __init__(
-        self,
-        amplitude_pp: Optional[AmplitudePeakToPeak] = None,
-    ) -> None:
-
-        self._amplitude_pp = amplitude_pp
-
-    @classmethod
-    def from_value(
-        cls,
-        amplitude_pp: Optional[float] = None,
-    ):
-        amplitude_pp = AmplitudePeakToPeak(amplitude_pp)
-
-        return cls(amplitude_pp)
-
-    @classmethod
-    def from_config(cls, data: Config_Dict):
-        rigol = Config_Dict.from_dict(data.get_value([cls.name_config]))
-
-        if rigol is not None:
-            amplitude_pp = AmplitudePeakToPeak.from_dict(rigol)
-
-            return cls(amplitude_pp)
-        else:
-            return None
-
-    def override(
-        self,
-        amplitude_pp: Optional[float] = None,
-    ):
-        if amplitude_pp is not None:
-            self._amplitude_pp = amplitude_pp
-
-    @property
-    def amplitude_pp(self) -> Optional[float]:
-        if self._amplitude_pp is not None:
-            return self._amplitude_pp.value
-        else:
-            return None
+@unique
+class RigolConfigEnum(Enum):
+    AMPLITUDE_PEAK_TO_PEAK = auto()
 
 
-@rich.repr.auto
 class RigolConfig(Dictionary):
     def __rich_repr__(self):
-        if not self.amplitude_pp.is_null:
-            yield "amplitude", self.amplitude_pp.value
+        yield "amplitude_pp", self.amplitude_pp
+
+    def exists(self, config: RigolConfigEnum) -> bool:
+        match config:
+            case RigolConfigEnum.AMPLITUDE_PEAK_TO_PEAK:
+                return not self.amplitude_pp.is_null
 
     @property
     def amplitude_pp(self) -> Option[float]:
+        return self.get_property("amplitude_pp", float)
 
-        amplitude: Option[float] = self.get_property("amplitude_pp", float)
-
-        if not amplitude.is_null:
-            return Option[float](amplitude.value)
-
-        return Option[float].null()
+    def set_amplitude_peak_to_peak(
+        self,
+        amplitude_pp: float,
+        override: bool = False,
+    ) -> Option[float]:
+        if self.exists(RigolConfigEnum.AMPLITUDE_PEAK_TO_PEAK) or override:
+            self.get_dict().update({"amplitude_pp": amplitude_pp})
+        return self.amplitude_pp

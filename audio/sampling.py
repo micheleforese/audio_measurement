@@ -13,7 +13,6 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.table import Column, Table
 from usbtmc import Instrument
-from audio.config.plot import Plot
 from audio.config.sweep import SweepConfig
 
 import audio.ui.terminal as ui_t
