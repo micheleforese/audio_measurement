@@ -1,4 +1,6 @@
-from typing import Optional, Tuple
+from __future__ import annotations
+
+from typing import List, Optional, Tuple
 
 import rich.repr
 
@@ -21,15 +23,11 @@ class PlotConfig(Dictionary):
 
     @property
     def y_limit(self) -> Option[Range]:
-        return Option[Range](
-            Range.from_tuple(self.get_property("y_limit", Tuple[float, float]))
-        )
+        return Option[Range](Range.from_list(self.get_property("y_limit", list[float])))
 
     @property
     def x_limit(self) -> Option[float]:
-        return Option[Range](
-            Range.from_tuple(self.get_property("x_limit", Tuple[float, float]))
-        )
+        return Option[Range](Range.from_list(self.get_property("x_limit", list[float])))
 
     @property
     def interpolation_rate(self) -> Option[float]:

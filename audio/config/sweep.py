@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pathlib
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from audio.config.nidaq import NiDaqConfig
 from audio.config.plot import PlotConfig
@@ -66,35 +66,3 @@ class SweepConfig(Dictionary):
     @property
     def plot(self) -> Option[PlotConfig]:
         return self.get_property("plot", PlotConfig)
-
-    def set_rigol(
-        self,
-        override: bool = False,
-    ) -> Option[RigolConfig]:
-        if self.exists(SweepConfigEnum.RIGOL) or override:
-            self.get_dict()["rigol"] = {}
-        return self.rigol
-
-    def set_nidaq(
-        self,
-        override: bool = False,
-    ) -> Option[NiDaqConfig]:
-        if self.exists(SweepConfigEnum.NI_DAQ) or override:
-            self.get_dict()["nidaq"] = {}
-        return self.nidaq
-
-    def set_sampling(
-        self,
-        override: bool = False,
-    ) -> Option[SamplingConfig]:
-        if self.exists(SweepConfigEnum.SAMPLING) or override:
-            self.get_dict()["sampling"] = {}
-        return self.sampling
-
-    def set_plot(
-        self,
-        override: bool = False,
-    ) -> Option[PlotConfig]:
-        if self.exists(SweepConfigEnum.PLOT) or override:
-            self.get_dict()["plot"] = {}
-        return self.plot

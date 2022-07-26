@@ -48,16 +48,9 @@ def procedure(
     datetime_now = datetime.now().strftime(r"%Y-%m-%d--%H-%M-%f")
 
     config: Option[SweepConfig] = SweepConfig.from_file(procedure_name)
-
     console.print(config)
-    console.print(config.value.get_dict())
 
-    rigol: Option[RigolConfig] = config.value.set_rigol(override=True)
-    console.print(config.value.get_dict())
-    if not rigol.is_null:
-        rigol.value.set_amplitude_peak_to_peak(5)
-
-    console.print(config.value.get_dict())
+    config.value.update(["rigol"]).update(["amplitude_pp"], 5, override=True)
 
     exit()
 

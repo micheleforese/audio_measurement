@@ -1,7 +1,18 @@
 from __future__ import annotations
 
 import pathlib
-from typing import Any, Callable, Dict, Generic, Optional, Type, TypeVar, cast, overload
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+    cast,
+    overload,
+)
 
 import rich
 from pyjson5 import decode
@@ -18,9 +29,6 @@ class Option(Generic[T]):
     def __init__(self, value: Optional[T]) -> None:
         self.value = value
 
-    # @overload
-    # def __init__(self, option: Option[T]) -> None:
-    #     self.value = option.value
     def __rich_repr__(self):
         if self.value is not None:
             yield self.value
@@ -71,13 +79,30 @@ class Dictionary:
 
     T = TypeVar("T")
 
-    def update_property(
+    def update(
         self,
-        data: T,
-        data_type: Type[T] = Any,
-    ):
-        data = cast(data, data_type)
-        self._dict.update(data)
+        property: List[str],
+        data: Any = {},
+        override: bool = False,
+    ) -> Dictionary:
+
+        if not len(property) > 0:
+            raise Exception("Property must be at least len = 1")
+
+        config = self.get_dict()
+
+        if len(property) > 1:
+            for p in property[:-1]:
+                if p not in config.keys():
+                    config[p] = {}
+
+                config = config[p]
+
+        prop = property[-1]
+        if prop not in config.keys() or override:
+            config[prop] = data
+
+        return Dictionary(config[prop])
 
     T = TypeVar("T")
 
@@ -88,8 +113,12 @@ class Dictionary:
     ) -> Option[T]:
 
         if property_name in self._dict.keys():  # we don't want KeyError
-            return Option[property_type](
-                cast(self._dict.get(property_name), property_type)
-            )
+            prop = property_type(self._dict.get(property_name))
+
+            # return Option[property_type](
+            #     cast(self._dict.get(property_name), property_type)
+            # )
+            # return Option[property_type](property_type(prop))
+            return Option[property_type](self._dict.get(property_name))
 
         return Option[property_type].null()  # just return None if not found

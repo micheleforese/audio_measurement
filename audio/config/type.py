@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import enum
-from typing import Generic, List, Tuple, TypeVar, overload
-import rich
+from typing import Generic, List, TypeVar, overload
 
 from audio.type import Option
 
@@ -11,37 +12,26 @@ class Range(Generic[RangeType]):
     _min: RangeType
     _max: RangeType
 
-    @overload
     def __init__(self, min: RangeType, max: RangeType) -> None:
         self._min = min
         self._max = max
-
-    @overload
-    def __init__(self, range: Tuple[float, float]) -> None:
-        _min, _max = range
-
-        self._min = _min
-        self._max = _max
-
-    @overload
-    def __init__(self, range: List[float]) -> None:
-        self._min = range[0]
-        self._max = range[1]
 
     def __str__(self) -> str:
         return f"[{self.min} to {self.max}]"
 
     def __rich_repr__(self) -> str:
-        yield f"[{self.min} to {self.max}]"
+        yield self.__str__()
 
     @classmethod
-    def from_tuple(
-        cls, range: Option[Tuple[float, float]]
-    ) -> Option[Tuple[float, float]]:
-        if not range.is_null:
-            return Option[Tuple[Range]](Range(range))
+    def from_list(cls, range: Option[List[RangeType]]) -> Option[Range[RangeType]]:
 
-        return Option[Tuple[float, float]].null()
+        if not range.is_null:
+            if len(range) != 2:
+                raise Exception("Range must be 2.")
+
+            return Option[Range](Range[RangeType](range[0], range[1]))
+
+        return Option[List[RangeType]].null()
 
     @property
     def min(self) -> RangeType:
@@ -58,12 +48,3 @@ class Range(Generic[RangeType]):
     @max.setter
     def max(self, value: RangeType):
         self._max = value
-
-
-class ModAuto(enum.Enum):
-    NO = "no"
-    MIN = "min"
-    MAX = "max"
-
-    def __str__(self) -> str:
-        return "{}".format(self.name)

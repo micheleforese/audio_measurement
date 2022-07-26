@@ -1,5 +1,5 @@
 import pathlib
-from typing import List, Optional
+from typing import Dict, List, Optional
 from weakref import ProxyType
 
 import rich
@@ -7,6 +7,7 @@ import rich
 from audio.config import Config_Dict
 from audio.config.sweep import SweepConfig
 from audio.console import console
+from audio.type import Dictionary
 
 
 class ProcedureStep:
@@ -149,6 +150,15 @@ class ProcedurePrint(ProcedureStep):
             return None
 
 
+class ProcedureDict(Dictionary):
+    def __init__(self, value: Dict) -> None:
+        super().__init__(Dictionary(value).get_property("procedure", Dict))
+
+    @property
+    def procedure(self):
+        return self.get_property("procedure")
+
+
 @rich.repr.auto
 class Procedure:
 
@@ -159,23 +169,23 @@ class Procedure:
         self.name = procedure_name
         self.steps = steps
 
-    @classmethod
+    @classmethod                procedure_type: str = step.
+
     def from_json(cls, procedure_path: pathlib.Path):
-        data = Config_Dict.from_json(procedure_path)
+        data = Dictionary.from_json(procedure_path)
 
         if data is not None:
-            procedure_data = Config_Dict.from_dict(data.get_rvalue(["procedure"]))
+            procedure_data = data.value.get_property("procedure", ProcedureDict)
 
-            procedure_name = procedure_data.get_rvalue(["name"], str)
-
-            procedure_steps = Config_Dict.from_dict(
-                procedure_data.get_rvalue(["steps"])
+            procedure_name = procedure_data.value.get_property("name", str)
+            procedure_steps = procedure_data.value.get_property(
+                "steps", List[Dictionary]
             )
 
             steps: List[ProcedureStep] = []
 
-            for idx, step in enumerate(procedure_steps.data):
-                procedure_type: str = step["type"]
+            for idx, step in enumerate(procedure_steps.value):
+                procedure_type: str = step.
                 procedure: Optional[ProcedureStep] = None
 
                 if procedure_type == "text":
