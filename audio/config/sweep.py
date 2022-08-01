@@ -10,6 +10,8 @@ from audio.config.rigol import RigolConfig
 from audio.config.sampling import SamplingConfig
 from audio.type import Dictionary, Option
 from enum import Enum, auto, unique
+import xml.etree.ElementTree as ET
+from audio.console import console
 
 
 @unique
@@ -35,10 +37,14 @@ class SweepConfig(Dictionary):
 
         data = Dictionary.from_json(config_file_path)
 
-        if not data.is_null:
+        if data.exists():
             return Option[SweepConfig](cls(data.value))
 
         return Option[SweepConfig].null()
+
+    @classmethod
+    def from_dict(cls, dictionary: Dictionary):
+        return Option[SweepConfig](cls(dictionary))
 
     def exists(self, config: SweepConfigEnum) -> bool:
         match config:
@@ -53,7 +59,13 @@ class SweepConfig(Dictionary):
 
     @property
     def rigol(self) -> Option[RigolConfig]:
-        return self.get_property("rigol", RigolConfig)
+        from audio.console import console
+
+        console.print(self.get_dict())
+        data = self.get_property("rigol")
+        if data.exists():
+            return Option[RigolConfig](RigolConfig(dict(data.value)))
+        return Option[RigolConfig].null()
 
     @property
     def nidaq(self) -> Option[NiDaqConfig]:
@@ -66,3 +78,20 @@ class SweepConfig(Dictionary):
     @property
     def plot(self) -> Option[PlotConfig]:
         return self.get_property("plot", PlotConfig)
+
+
+class SweepConfigXML:
+
+    config: ET.ElementTree
+
+    def __init__(self, tree: ET.ElementTree) -> None:
+        root = ET.Element("config")
+        ET.SubElement(root, "rigol").text = "ciao"
+        ET.indent(root)
+
+        self.config = ET.ElementTree(root)
+
+        console.print(print(ET.tostring(self.config.getroot(), encoding="unicode")))
+
+    @classmethod
+    def from_file():

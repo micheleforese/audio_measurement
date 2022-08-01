@@ -29,8 +29,11 @@ class Option(Generic[T]):
     def __init__(self, value: Optional[T]) -> None:
         self.value = value
 
+    # def __str__(self) -> str:
+    #     return f"{self.value}" if self.exists() else "NULL"
+
     def __rich_repr__(self):
-        if self.value is not None:
+        if self.exists():
             yield self.value
         else:
             yield "NONE"
@@ -38,6 +41,9 @@ class Option(Generic[T]):
     @classmethod
     def null(cls) -> Option[T]:
         return cls[T](None)
+
+    def exists(self) -> bool:
+        return not self.is_null
 
     @property
     def is_null(self) -> bool:
@@ -68,9 +74,7 @@ class Dictionary:
                 file_content: str = config_file.read()
                 _dict = dict(decode(file_content))
 
-                config: Option[Dict] = Option[Dict](_dict)
-
-                return Option[Dictionary](config.value)
+                return Option[Dictionary](Dictionary(_dict))
 
         return Option[Dictionary].null()
 
@@ -112,13 +116,11 @@ class Dictionary:
         property_type: Type[T] = Any,
     ) -> Option[T]:
 
-        if property_name in self._dict.keys():  # we don't want KeyError
-            prop = property_type(self._dict.get(property_name))
-
-            # return Option[property_type](
-            #     cast(self._dict.get(property_name), property_type)
-            # )
-            # return Option[property_type](property_type(prop))
+        console.print(self.get_dict())
+        if property_name in self.get_dict().keys():  # we don't want KeyError
             return Option[property_type](self._dict.get(property_name))
 
         return Option[property_type].null()  # just return None if not found
+
+
+import xml.etree.ElementTree as ET

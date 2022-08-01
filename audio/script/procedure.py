@@ -6,7 +6,7 @@ from typing import Optional
 import click
 from audio.config import Dict
 from audio.config.rigol import RigolConfig, RigolConfigEnum
-from audio.config.sweep import SweepConfig, SweepConfig, SweepConfigEnum
+from audio.config.sweep import SweepConfig, SweepConfig, SweepConfigEnum, SweepConfigXML
 from audio.console import console
 from audio.procedure import (
     Procedure,
@@ -47,10 +47,7 @@ def procedure(
 
     datetime_now = datetime.now().strftime(r"%Y-%m-%d--%H-%M-%f")
 
-    config: Option[SweepConfig] = SweepConfig.from_file(procedure_name)
-    console.print(config)
-
-    config.value.update(["rigol"]).update(["amplitude_pp"], 5, override=True)
+    sconfigxml = SweepConfigXML()
 
     exit()
 
