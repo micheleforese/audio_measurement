@@ -67,16 +67,16 @@ class Dictionary:
         self._dict = value
 
     @classmethod
-    def from_json(cls, path: pathlib.Path) -> Option[Dictionary]:
+    def from_json(cls, path: pathlib.Path) -> Optional[Dictionary]:
 
         if path.exists() and path.is_file():
             with open(path, encoding="utf-8") as config_file:
                 file_content: str = config_file.read()
                 _dict = dict(decode(file_content))
 
-                return Option[Dictionary](Dictionary(_dict))
+                return Dictionary(_dict)
 
-        return Option[Dictionary].null()
+        return None
 
     def get_dict(self) -> Dict:
         return self._dict
@@ -114,13 +114,25 @@ class Dictionary:
         self,
         property_name: str,
         property_type: Type[T] = Any,
-    ) -> Option[T]:
+    ) -> Optional[T]:
 
-        console.print(self.get_dict())
         if property_name in self.get_dict().keys():  # we don't want KeyError
-            return Option[property_type](self._dict.get(property_name))
+            return self._dict.get(property_name)
 
-        return Option[property_type].null()  # just return None if not found
+        return None  # just return None if not found
 
+    def get(
+        self,
+        dict_path: str,
+        property_type: Type[T] = Any,
+    ) -> Optional[T]:
 
-import xml.etree.ElementTree as ET
+        dictionary = self.get_dict()
+
+        for property in dict_path.split("."):
+            if property in dictionary.keys():
+                dictionary = dictionary.get(property, None)
+            else:
+                return None
+
+        return dictionary

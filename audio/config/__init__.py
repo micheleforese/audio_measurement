@@ -5,16 +5,15 @@ from typing import Any, List, Optional, Type, TypeVar, cast
 from pyjson5 import decode as py_json5_decode
 
 from audio.console import console
+from audio.type import Dictionary
 
 
-def load_json_config(config_file_path):
+def load_json_config(config_file_path: pathlib.Path):
+
     with open(config_file_path, encoding="utf-8") as config_file:
         file_content: str = config_file.read()
-        config = py_json5_decode(file_content)
-        if config is not None:
-            return config
-        else:
-            return None
+        config: Dict = dict(py_json5_decode(file_content))
+        return config
 
 
 class NotInitializedWarning(RuntimeWarning):

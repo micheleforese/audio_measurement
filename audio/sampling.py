@@ -1,3 +1,4 @@
+from math import sqrt
 from pathlib import Path
 from time import sleep
 from typing import List, Optional, Tuple
@@ -13,7 +14,7 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.table import Column, Table
 from usbtmc import Instrument
-from audio.config.sweep import SweepConfig
+from audio.config.sweep import SweepConfig, SweepConfigXML
 
 import audio.ui.terminal as ui_t
 from audio.console import console
@@ -36,7 +37,7 @@ from audio.utility.timer import Timer, Timer_Message
 
 
 def sampling_curve(
-    config: SweepConfig,
+    config: SweepConfigXML,
     measurements_file_path: Path,
     debug: bool = False,
 ):
@@ -102,8 +103,10 @@ def sampling_curve(
         SCPI.set_output(1, Switch.OFF),
         SCPI.set_function_voltage_ac(),
         SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
-        SCPI.set_source_voltage_amplitude(1, round(config.rigol.amplitude_pp, 5)),
-        SCPI.set_source_frequency(1, round(config.sampling.f_min, 5)),
+        SCPI.set_source_voltage_amplitude(
+            1, round(config.rigol.amplitude_peak_to_peak, 5)
+        ),
+        SCPI.set_source_frequency(1, round(config.sampling.frequency_min, 5)),
     ]
 
     SCPI.exec_commands(generator, generator_configs)
@@ -119,8 +122,8 @@ def sampling_curve(
     console.print("after generator_ac_curves.")
 
     log_scale: LogarithmicScale = LogarithmicScale(
-        config.sampling.f_min,
-        config.sampling.f_max,
+        config.sampling.frequency_min,
+        config.sampling.frequency_max,
         config.sampling.points_per_decade,
     )
 
@@ -132,12 +135,13 @@ def sampling_curve(
     n_periods_list: List[float] = []
     n_samples_list: List[int] = []
 
-    frequency: float = round(config.sampling.f_min, 5)
+    frequency: float = round(config.sampling.frequency_min, 5)
 
     table = Table(
         Column(r"Frequency [Hz]", justify="right"),
         Column(r"Fs [Hz]", justify="right"),
         Column("Number of samples", justify="right"),
+        Column(r"Input Voltage [V]", justify="right"),
         Column(r"Rms Value [V]", justify="right"),
         Column(r"Gain [dB]", justify="right"),
         Column(r"Time [s]", justify="right"),
@@ -168,24 +172,21 @@ def sampling_curve(
 
         sleep(0.4)
 
-        Fs = trim_value(frequency * config.sampling.fs, max_value=config.nidaq.max_Fs)
+        Fs = trim_value(
+            frequency * config.sampling.Fs_multiplier, max_value=config.nidaq.Fs_max
+        )
 
-        if Fs == config.nidaq.max_Fs:
+        if Fs == config.nidaq.Fs_max:
             config.sampling.override(number_of_samples=900)
 
         oversampling_ratio = Fs / frequency
-        # TODO: override 900 with parametric variable
-        # n_periods = config.sampling.number_of_samples / oversampling_ratio
-
-        n_periods = 900 / oversampling_ratio
+        n_periods = config.sampling.number_of_samples / oversampling_ratio
 
         frequency_list.append(frequency)
         fs_list.append(Fs)
         oversampling_ratio_list.append(oversampling_ratio)
         n_periods_list.append(n_periods)
-        # TODO: override 900
-        # n_samples_list.append(config.sampling.number_of_samples)
-        n_samples_list.append(900)
+        n_samples_list.append(config.sampling.number_of_samples)
 
         time = Timer()
         time.start()
@@ -201,10 +202,10 @@ def sampling_curve(
         rms_value: Optional[float] = RMS.rms(
             frequency=frequency,
             Fs=Fs,
-            ch_input=config.nidaq.ch_input,
-            max_voltage=config.nidaq.max_voltage,
-            min_voltage=config.nidaq.min_voltage,
-            number_of_samples=900,
+            ch_input=config.nidaq.input_channel,
+            max_voltage=config.nidaq.voltage_max,
+            min_voltage=config.nidaq.voltage_min,
+            number_of_samples=config.sampling.number_of_samples,
             time_report=False,
             save_file=save_file_path,
         )
@@ -222,11 +223,11 @@ def sampling_curve(
             )
 
             gain_bBV: float = 20 * np.log10(
-                rms_value * 2 * np.math.sqrt(2) / config.rigol.amplitude_pp
+                rms_value * 2 * np.math.sqrt(2) / config.rigol.amplitude_peak_to_peak
             )
 
             transfer_func_dB = transfer_function(
-                rms_value, config.rigol.amplitude_pp / (2 * np.math.sqrt(2))
+                rms_value, config.rigol.amplitude_peak_to_peak / (2 * np.math.sqrt(2))
             )
 
             if max_dB:
@@ -238,6 +239,7 @@ def sampling_curve(
                 "{:.2f}".format(frequency),
                 "{:.2f}".format(Fs),
                 "{}".format(900),
+                "{}".format(config.rigol.amplitude_peak_to_peak),
                 "{:.5f} ".format(round(rms_value, 5)),
                 "[{}]{:.2f}[/]".format(
                     "red" if gain_bBV <= 0 else "green", transfer_func_dB
@@ -276,7 +278,9 @@ def sampling_curve(
     )
 
     with open(measurements_file_path.absolute().resolve(), "w", encoding="utf-8") as f:
-        f.write("# amplitude: {}\n".format(round(config.rigol.amplitude_pp, 5)))
+        f.write(
+            "# amplitude: {}\n".format(round(config.rigol.amplitude_peak_to_peak, 5))
+        )
         sampling_data.to_csv(
             f,
             header=True,
@@ -315,7 +319,7 @@ def sampling_curve(
 def plot_from_csv(
     measurements_file_path: Path,
     plot_file_path: Path,
-    sweep_config: SweepConfig,
+    sweep_config: SweepConfigXML,
     debug: bool = False,
 ):
 
@@ -354,22 +358,8 @@ def plot_from_csv(
 
     ui_t.progress_list_task.update(task_plotting, task="Apply Offset")
 
-    y_offset: Optional[float] = None
     if plot_config.y_offset:
-        y_offset = plot_config.y_offset
-
-        if y_offset:
-            # Transform the offset from float to dBV
-            y_offset_dBV: float = 20 * np.log10(
-                y_offset * 2 * np.math.sqrt(2) / sweep_config.rigol.amplitude_pp
-            )
-
-            # Apply the offset
-            #
-            # for idx, dBV in enumerate(y_dBV):
-            #     y_dBV[idx] = y_dBV[idx] - y_offset_dBV
-
-            y_dBV = [dBV - y_offset_dBV for dBV in y_dBV]
+        y_dBV = [dBV - plot_config.y_offset for dBV in y_dBV]
 
     ui_t.progress_list_task.update(task_plotting, task="Interpolate")
 
@@ -424,7 +414,7 @@ def plot_from_csv(
     )
     axes.set_ylabel(
         "Amplitude ($dB$) ($0 \, dB = {} \, Vpp$)".format(
-            round(y_offset, 5) if y_offset else 0
+            round(plot_config.y_offset, 5) if plot_config.y_offset else 0
         ),
         fontsize=40,
     )
@@ -481,7 +471,7 @@ def plot_from_csv(
 
 
 def config_set_level(
-    config: SweepConfig,
+    config: SweepConfigXML,
     plot_file_path: Path,
     set_level_file_path: Optional[Path] = None,
     debug: bool = False,
@@ -490,7 +480,7 @@ def config_set_level(
     voltage_amplitude_start: float = 0.01
     voltage_amplitude = voltage_amplitude_start
     frequency = 1000
-    Fs = frequency * config.sampling.fs
+    Fs = frequency * config.sampling.Fs_multiplier
     diff_voltage = 0.001
     Vpp_4dBu_exact = 1.227653
 
@@ -591,9 +581,9 @@ def config_set_level(
         rms_value: Optional[float] = RMS.rms(
             frequency=frequency,
             Fs=Fs,
-            ch_input=config.nidaq.ch_input,
-            max_voltage=config.nidaq.max_voltage,
-            min_voltage=config.nidaq.min_voltage,
+            ch_input=config.nidaq.input_channel,
+            max_voltage=config.nidaq.voltage_max,
+            min_voltage=config.nidaq.voltage_min,
             number_of_samples=config.sampling.number_of_samples,
             time_report=False,
         )
@@ -614,7 +604,9 @@ def config_set_level(
                 exact=Vpp_4dBu_exact, approx=rms_value
             )
 
-            gain_dB: float = 20 * np.log10(rms_value / voltage_amplitude)
+            gain_dB: float = 20 * np.log10(
+                rms_value / (voltage_amplitude / (2 * sqrt(2)))
+            )
 
             gain_dB_list.append(gain_dB)
 
@@ -666,7 +658,8 @@ def config_set_level(
                     set_level_file_path = plot_file_path.with_suffix(".offset")
 
                 f = open(set_level_file_path, "w", encoding="utf-8")
-                f.write("{}".format(level_offset))
+                f.write("{}\n".format(level_offset))
+                f.write("{}\n".format(gain_dB))
                 f.close()
 
                 console.print(Panel("[PATH] - {}".format(set_level_file_path)))
@@ -705,7 +698,9 @@ def config_set_level(
 
     live.stop()
 
-    console.print(Panel("Voltage Offset: {}".format(voltage_amplitude)))
+    console.print(
+        Panel("Generator Voltage to obtain +4dBu: {}".format(voltage_amplitude))
+    )
 
     console.print(plot_file_path)
 

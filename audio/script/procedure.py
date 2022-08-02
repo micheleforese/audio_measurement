@@ -7,6 +7,7 @@ import click
 from audio.config import Dict
 from audio.config.rigol import RigolConfig, RigolConfigEnum
 from audio.config.sweep import SweepConfig, SweepConfig, SweepConfigEnum, SweepConfigXML
+from audio.config.type import Range
 from audio.console import console
 from audio.procedure import (
     Procedure,
@@ -47,10 +48,6 @@ def procedure(
 
     datetime_now = datetime.now().strftime(r"%Y-%m-%d--%H-%M-%f")
 
-    sconfigxml = SweepConfigXML()
-
-    exit()
-
     procedure = Procedure.from_json(procedure_path=procedure_name)
 
     console.print(f"Start Procedure: [blue]{procedure.name}")
@@ -84,7 +81,7 @@ def procedure(
                 config=sampling_config,
                 plot_file_path=plot_file,
                 set_level_file_path=set_level_file,
-                debug=False,
+                debug=True,
             )
             data[step.name] = set_level_file
 
@@ -122,8 +119,12 @@ def procedure(
 
             set_level_file: pathlib.Path = pathlib.Path(root / step.set_level)
 
-            calibration: float = float(calibration_path.read_text(encoding="utf-8"))
-            set_level: float = float(set_level_file.read_text(encoding="utf-8"))
+            calibration: float = float(
+                calibration_path.read_text(encoding="utf-8").split("\n")[0]
+            )
+            set_level: float = float(
+                set_level_file.read_text(encoding="utf-8").split("\n")[0]
+            )
 
             gain: float = 20 * log10(calibration / set_level)
 
@@ -149,20 +150,24 @@ def procedure(
             step: ProcedureSweep = step
             console.print(Panel(f"{idx}: ProcedureSweep()"))
 
-            sweep_config: Optional[SweepConfig] = step.config
-
-            console.print(sweep_config)
-
-            Confirm.ask()
+            sweep_config = step.config
 
             if sweep_config is None:
                 console.print("sweep_config is None.", style="error")
 
             set_level = float(
-                pathlib.Path(data[step.set_level]).read_text(encoding="utf-8")
+                pathlib.Path(data[step.set_level])
+                .read_text(encoding="utf-8")
+                .split("\n")[0]
             )
-
-            sweep_config.rigol = Rigol.from_value(set_level)
+            y_offset_dB = float(
+                pathlib.Path(data[step.y_offset_dB])
+                .read_text(encoding="utf-8")
+                .split("\n")[1]
+            )
+            sweep_config.rigol.override(set_level)
+            sweep_config.plot.override(y_offset=y_offset_dB)
+            sweep_config.print()
 
             measurement_file: pathlib.Path = root / (step.name + ".csv")
             plot_file: pathlib.Path = root / (step.name_plot + ".png")

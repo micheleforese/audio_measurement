@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import enum
-from typing import Generic, List, TypeVar, overload
+from typing import Generic, List, Optional, TypeVar, overload
 
 from audio.type import Option
 
@@ -23,15 +23,18 @@ class Range(Generic[RangeType]):
         yield self.__str__()
 
     @classmethod
-    def from_list(cls, range: Option[List[RangeType]]) -> Option[Range[RangeType]]:
+    def from_list(
+        cls,
+        range: Optional[List[RangeType]],
+    ) -> Optional[Range[RangeType]]:
 
-        if not range.is_null:
+        if range:
             if len(range) != 2:
                 raise Exception("Range must be 2.")
 
-            return Option[Range](Range[RangeType](range[0], range[1]))
+            return Range[RangeType](range[0], range[1])
 
-        return Option[List[RangeType]].null()
+        return None
 
     @property
     def min(self) -> RangeType:

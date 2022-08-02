@@ -10,9 +10,11 @@ import rich
 from tomlkit import value
 
 from audio.config import Config_Dict
-from audio.config.sweep import SweepConfig
+from audio.config.sweep import SweepConfig, SweepConfigXML
 from audio.console import console
 from audio.type import Dictionary, Option
+
+import xml.etree.ElementTree as ET
 
 
 class ProcedureStep:
@@ -30,7 +32,7 @@ class ProcedureText(ProcedureStep):
     def from_dict(cls, data: Dictionary):
 
         text = data.get_property("text", str)
-        if text.exists():
+        if text is not None:
             return cls(text)
         else:
             return None
@@ -39,9 +41,9 @@ class ProcedureText(ProcedureStep):
 @rich.repr.auto
 class ProcedureSetLevel(ProcedureStep):
     name: str
-    config: SweepConfig
+    config: SweepConfigXML
 
-    def __init__(self, name: str, config: SweepConfig) -> None:
+    def __init__(self, name: str, config: SweepConfigXML) -> None:
         self.name = name
         self.config = config
 
@@ -51,15 +53,15 @@ class ProcedureSetLevel(ProcedureStep):
         name = data.get_property("name", str)
         config = data.get_property("config")
 
-        if not config.exists():
+        if config is None:
             raise Exception("config is NULL")
 
-        config = Dictionary(dict(config.value))
+        config = Dictionary(dict(config))
 
-        config = SweepConfig.from_dict(config)
+        config = SweepConfigXML.from_dict(config)
 
-        if name.exists() and config.exists():
-            return cls(name.value, config.value)
+        if name is not None and config is not None:
+            return cls(name, config)
         else:
             return None
 
@@ -68,18 +70,21 @@ class ProcedureSetLevel(ProcedureStep):
 class ProcedureSweep(ProcedureStep):
     name: str
     set_level: str
+    y_offset_dB: str
     name_plot: str
-    config: SweepConfig
+    config: SweepConfigXML
 
     def __init__(
         self,
         name: str,
         set_level: str,
+        y_offset_dB: str,
         name_plot: str,
-        config: SweepConfig,
+        config: SweepConfigXML,
     ) -> None:
         self.name = name
         self.set_level = set_level
+        self.y_offset_dB = y_offset_dB
         self.name_plot = name_plot
         self.config = config
 
@@ -88,21 +93,25 @@ class ProcedureSweep(ProcedureStep):
 
         name = data.get_property("name", str)
         set_level = data.get_property("set_level", str)
+        y_offset_dB = data.get_property("y_offset_dB", str)
         name_plot = data.get_property("name_plot", str)
-        config = data.get_property("config")
+        config = data.get_property("config", Dict)
 
-        if not config.exists():
+        if config is None:
             raise Exception("config is NULL")
 
-        config = SweepConfig.from_dict(Dictionary(dict(config.value)))
+        config = Dictionary(dict(config))
+
+        config = SweepConfigXML.from_dict(config)
 
         if (
-            name.exists()
-            and config.exists()
-            and set_level.exists()
-            and name_plot.exists()
+            name is not None
+            and config is not None
+            and set_level is not None
+            and y_offset_dB is not None
+            and name_plot is not None
         ):
-            return cls(name.value, set_level.value, name_plot.value, config.value)
+            return cls(name, set_level, y_offset_dB, name_plot, config)
         else:
             return None
 
@@ -120,8 +129,8 @@ class ProcedureSerialNumber(ProcedureStep):
 
         text = data.get_property("text", str)
 
-        if text.exists():
-            return cls(text.value)
+        if text is not None:
+            return cls(text)
         else:
             return None
 
@@ -142,8 +151,8 @@ class ProcedureInsertionGain(ProcedureStep):
         name = data.get_property("name", str)
         set_level = data.get_property("set_level", str)
 
-        if name.exists() and set_level.exists():
-            return cls(name.value, set_level.value)
+        if name is not None and set_level is not None:
+            return cls(name, set_level)
         else:
             return None
 
@@ -161,8 +170,8 @@ class ProcedurePrint(ProcedureStep):
 
         variables = data.get_property("variables", List[str])
 
-        if variables.exists():
-            return cls(variables.value)
+        if variables is not None:
+            return cls(variables)
         else:
             return None
 
@@ -179,46 +188,50 @@ class Procedure:
 
     @classmethod
     def from_json(cls, procedure_path: pathlib.Path):
-        data = Dictionary.from_json(procedure_path)
+        data: Optional[Dictionary] = Dictionary.from_json(procedure_path)
 
-        if data.exists():
+        if data is not None:
+            procedure = ET.Element("procedure")
 
-            procedure_data = data.value.get_property("procedure")
-            procedure_data = Option[Dictionary](Dictionary(procedure_data.value))
+            name = ET.SubElement(procedure, "name")
+            steps = ET.SubElement(procedure, "steps")
 
-            if not procedure_data.exists():
+            procedure_data = data.get_property("procedure")
+            procedure_data = Dictionary(procedure_data)
+
+            if procedure_data is None:
                 raise Exception("procedure_data is NULL")
 
-            procedure_name = procedure_data.value.get_property("name", str)
-            procedure_steps = procedure_data.value.get_property(
-                "steps", List[Dictionary]
-            )
+            procedure_name = procedure_data.get_property("name", str)
+            procedure_steps = procedure_data.get_property("steps", List[Dictionary])
+
+            name.text = procedure_name
 
             steps: List[ProcedureStep] = []
 
             console.print("------------------------------------")
 
-            for idx, step in enumerate(procedure_steps.value):
-                step: Dictionary = Dictionary(step)
-                procedure_type: Option[str] = step.get_property("type", str)
+            if procedure_steps is None:
+                raise Exception("procedure_steps is NULL")
 
-                if not procedure_type.exists():
+            console.print(procedure_steps)
+
+            for idx, step in enumerate(procedure_steps):
+
+                step = Dictionary(step)
+
+                procedure_type: Optional[str] = step.get_property("type", str)
+                step_dictionary: Optional[Dict] = step.get_property("step", Dict)
+
+                if procedure_type is None:
                     raise Exception(f"procedure_type is NULL at idx: {idx}")
 
-                console.print(procedure_type.value)
+                if step_dictionary is None:
+                    raise Exception(f"step_dictionary is NULL at idx: {idx}")
+
+                step_dictionary = Dictionary(step_dictionary)
 
                 procedure: Optional[ProcedureStep] = None
-
-                procedure_type = procedure_type.value
-
-                console.print(step.get_dict())
-
-                step_obj = step.get_property("step")
-
-                if not step_obj.exists():
-                    raise Exception("step_obj is NULL")
-
-                step_dictionary = Dictionary(dict(step_obj.value))
 
                 if procedure_type == "text":
                     procedure = ProcedureText.from_dict(step_dictionary)
@@ -240,6 +253,6 @@ class Procedure:
                 else:
                     raise Exception
 
-            return cls(procedure_name.value, steps)
+            return cls(procedure_name, steps)
         else:
             return None
