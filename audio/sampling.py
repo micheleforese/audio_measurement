@@ -480,7 +480,9 @@ def config_set_level(
     voltage_amplitude_start: float = 0.01
     voltage_amplitude = voltage_amplitude_start
     frequency = 1000
-    Fs = frequency * config.sampling.Fs_multiplier
+    Fs = trim_value(
+        frequency * config.sampling.Fs_multiplier, max_value=config.nidaq.Fs_max
+    )
     diff_voltage = 0.001
     Vpp_4dBu_exact = 1.227653
 
@@ -585,7 +587,7 @@ def config_set_level(
             max_voltage=config.nidaq.voltage_max,
             min_voltage=config.nidaq.voltage_min,
             number_of_samples=config.sampling.number_of_samples,
-            interpolation_rate=config.plot.interpolation_rate,
+            # interpolation_rate=config.plot.interpolation_rate,
             time_report=False,
         )
 
