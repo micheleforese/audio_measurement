@@ -585,6 +585,7 @@ def config_set_level(
             max_voltage=config.nidaq.voltage_max,
             min_voltage=config.nidaq.voltage_min,
             number_of_samples=config.sampling.number_of_samples,
+            interpolation_rate=config.plot.interpolation_rate,
             time_report=False,
         )
 
