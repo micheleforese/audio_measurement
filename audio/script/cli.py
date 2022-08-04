@@ -11,13 +11,15 @@ from matplotlib.figure import Figure
 from rich.panel import Panel
 from rich.prompt import Confirm
 
-from audio.config.sweep import SweepConfig
+from audio.config.plot import PlotConfigXML
+from audio.config.sweep import SweepConfigXML
 from audio.config.type import Range
 from audio.console import console
 from audio.docker.latex import create_latex_file
 from audio.math import find_sin_zero_offset, rms_full_cycle
 from audio.math.interpolation import INTERPOLATION_KIND, interpolation_model
 from audio.math.rms import RMS
+from audio.model.set_level import SetLevel
 from audio.model.sweep import SingleSweepData
 from audio.sampling import config_set_level, plot_from_csv, sampling_curve
 from audio.script.device.ni import read_rms
@@ -155,55 +157,48 @@ def sweep(
     datetime_now = datetime.now().strftime(r"%Y-%m-%d--%H-%M-%f")
 
     # Load JSON config
-    config_file = config_path.absolute()
-    cfg = SweepConfig.from_file(config_file)
+    cfg = SweepConfigXML.from_file(config_path)
 
     if debug:
-        console.print(cfg)
+        cfg.print()
 
     # Override Configurations
     cfg.rigol.override(amplitude_pp)
 
     cfg.sampling.override(
-        fs=n_fs,
+        Fs_multiplier=n_fs,
         points_per_decade=spd,
         number_of_samples=n_samp,
-        f_min=f_range[0] if f_range else None,
-        f_max=f_range[1] if f_range else None,
+        frequency_min=f_range[0] if f_range else None,
+        frequency_max=f_range[1] if f_range else None,
     )
 
+    amplitude_peak_to_peak: Optional[float] = None
+
     if set_level_file:
-        amplitude_base_level = float(set_level_file.read_text())
+        amplitude_peak_to_peak = SetLevel(set_level_file).set_level
     else:
-        set_level_file_list = [
-            set_level_file for set_level_file in HOME_PATH.glob("*.config.offset")
-        ]
-        if len(set_level_file_list) > 0:
-            pattern: str = r"%Y-%m-%d--%H-%M-%f"
-            set_level_file_list.sort(
-                key=lambda name: datetime.datetime.strptime(
-                    name.name.strip(".")[0], pattern
-                ),
-            )
-            amplitude_base_level = float(set_level_file_list[-1].read_text())
-        else:
-            raise Exception
+        set_level_data = SetLevel.from_most_recent(
+            HOME_PATH,
+            "*.config.offset",
+            r"%Y-%m-%d--%H-%M-%f",
+        )
+        amplitude_peak_to_peak = set_level_data.set_level
 
-    cfg.rigol.override(amplitude_pp=amplitude_base_level)
-
-    # TODO: da mettere come parametro (default è questo sotto)
-    y_offset = 1.227653
+    cfg.rigol.override(
+        amplitude_peak_to_peak=amplitude_peak_to_peak,
+    )
 
     cfg.plot.override(
-        y_offset=y_offset,
-        x_limit=Range(*x_lim) if x_lim else None,
-        y_limit=Range(*y_lim) if y_lim else None,
+        y_offset=set_level_data.y_offset_dB,
+        x_limit=Range.from_list(x_lim),
+        y_limit=Range.from_list(y_lim),
     )
 
     if debug:
-        console.print(cfg)
+        cfg.print()
 
-    measurements_dir: pathlib.Path = HOME_PATH / f"{datetime_now}"
+    measurements_dir: pathlib.Path = pathlib.Path(HOME_PATH / f"{datetime_now}")
     measurements_dir.mkdir(parents=True, exist_ok=True)
 
     measurements_file: pathlib.Path = measurements_dir / "sweep.csv"
@@ -229,7 +224,7 @@ def sweep(
         plot_from_csv(
             measurements_file_path=measurements_file,
             plot_file_path=image_file,
-            plot_config=cfg.plot,
+            sweep_config=cfg,
             debug=debug,
         )
 
@@ -331,27 +326,20 @@ def plot(
     csv_file: pathlib.Path = pathlib.Path()
     plot_file: Optional[pathlib.Path] = None
 
-    sweep_config = SweepConfig.from_file(config_path)
-    plot_config: Plot = Plot()
+    sweep_config = SweepConfigXML.from_file(config_path)
 
-    if sweep_config:
-        plot_config = sweep_config.plot
+    if sweep_config is None:
+        raise Exception("sweep_config is NULL")
 
-        plot_config.override(
-            y_offset=y_offset,
-            x_limit=Range(*x_lim) if x_lim else None,
-            y_limit=Range(*y_lim) if y_lim else None,
-            interpolation_rate=interpolation_rate,
-            dpi=dpi,
-        )
-    else:
-        plot_config = plot_config.from_value(
-            y_offset=y_offset,
-            x_limit=Range(*x_lim) if x_lim else None,
-            y_limit=Range(*y_lim) if y_lim else None,
-            interpolation_rate=interpolation_rate,
-            dpi=dpi,
-        )
+    plot_config: PlotConfigXML = sweep_config.plot
+
+    plot_config.override(
+        y_offset=y_offset,
+        x_limit=Range.from_list(x_lim),
+        y_limit=Range.from_list(y_lim),
+        interpolation_rate=interpolation_rate,
+        dpi=dpi,
+    )
 
     console.print(plot_config)
 
@@ -396,7 +384,7 @@ def plot(
             plot_from_csv(
                 measurements_file_path=csv_file,
                 plot_file_path=plot_file,
-                plot_config=plot_config,
+                sweep_config=sweep_config,
                 debug=debug,
             )
             if plot_file_format == "png":
@@ -437,13 +425,13 @@ def set_level(
     datetime_now = datetime.now().strftime(r"%Y-%m-%d--%H-%M-%f")
 
     config_file = config_path.absolute()
-    config: SweepConfig = SweepConfig.from_file(config_file)
+    config: SweepConfigXML = SweepConfigXML.from_file(config_file)
 
     if debug:
         console.print(config)
 
     config_set_level(
-        config=config.sampling,
+        config=config,
         plot_file_path=HOME_PATH / "{}.config.png".format(datetime_now),
         debug=debug,
     )
@@ -477,7 +465,7 @@ def sweep_debug(
 ):
     measurement_dir: pathlib.Path = pathlib.Path()
 
-    if sweep_dir:
+    if sweep_dir is not None:
         measurement_dir = sweep_dir / "sweep"
 
     else:
@@ -486,14 +474,10 @@ def sweep_debug(
         if len(measurement_dirs) > 0:
             measurement_dir = measurement_dirs[-1] / "sweep"
         else:
-            console.print(
-                "Cannot create the debug info from sweep csvs.", style="error"
-            )
-            exit()
+            raise Exception("Cannot create the debug info from sweep csvs.")
 
     if not measurement_dir.exists() or not measurement_dir.is_dir():
-        console.print("The measurement directory doesn't exists.")
-        exit()
+        raise Exception("The measurement directory doesn't exists.")
 
     csv_files = [csv for csv in measurement_dir.rglob("sample.csv") if csv.is_file()]
 

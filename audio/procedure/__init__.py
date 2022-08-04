@@ -1,20 +1,14 @@
 from __future__ import annotations
-from asyncio import set_event_loop_policy
-from calendar import c
+
 import pathlib
+import xml.etree.ElementTree as ET
 from typing import Dict, List, Optional
-from weakref import ProxyType
-from pytest import console_main
 
 import rich
-from tomlkit import value
 
-from audio.config import Config_Dict
-from audio.config.sweep import SweepConfig, SweepConfigXML
+from audio.config.sweep import SweepConfigXML
 from audio.console import console
-from audio.type import Dictionary, Option
-
-import xml.etree.ElementTree as ET
+from audio.type import Dictionary
 
 
 class ProcedureStep:

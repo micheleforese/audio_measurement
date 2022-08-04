@@ -1,14 +1,14 @@
+import pathlib
 from datetime import datetime
 from math import log10
 
-import pathlib
-from typing import Optional
 import click
+from rich.panel import Panel
+from rich.prompt import Confirm, Prompt
+
 from audio.config import Dict
-from audio.config.rigol import RigolConfig, RigolConfigEnum
-from audio.config.sweep import SweepConfig, SweepConfig, SweepConfigEnum, SweepConfigXML
-from audio.config.type import Range
 from audio.console import console
+from audio.model.set_level import SetLevel
 from audio.procedure import (
     Procedure,
     ProcedureInsertionGain,
@@ -19,13 +19,7 @@ from audio.procedure import (
     ProcedureSweep,
     ProcedureText,
 )
-
-from rich.prompt import Prompt
-from rich.prompt import Confirm
-from rich.panel import Panel
-
 from audio.sampling import config_set_level, plot_from_csv, sampling_curve
-from audio.type import Option
 
 
 @click.command(
@@ -119,12 +113,8 @@ def procedure(
 
             set_level_file: pathlib.Path = pathlib.Path(root / step.set_level)
 
-            calibration: float = float(
-                calibration_path.read_text(encoding="utf-8").split("\n")[0]
-            )
-            set_level: float = float(
-                set_level_file.read_text(encoding="utf-8").split("\n")[0]
-            )
+            calibration: float = SetLevel(calibration_path).set_level
+            set_level: float = SetLevel(set_level_file).set_level
 
             gain: float = 20 * log10(calibration / set_level)
 

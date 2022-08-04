@@ -14,7 +14,7 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.table import Column, Table
 from usbtmc import Instrument
-from audio.config.sweep import SweepConfig, SweepConfigXML
+from audio.config.sweep import SweepConfigXML
 
 import audio.ui.terminal as ui_t
 from audio.console import console
