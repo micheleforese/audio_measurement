@@ -1,6 +1,6 @@
 import enum
 import pathlib
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -36,7 +36,7 @@ class RMS:
         save_file: Optional[pathlib.Path] = None,
         trim: bool = True,
         interpolation_rate: float = 10,
-    ) -> Optional[float]:
+    ) -> Tuple[List[float], Optional[float]]:
 
         timer = Timer()
 
@@ -86,7 +86,7 @@ class RMS:
             if time_report:
                 timer.stop().print()
 
-            return rms
+            return (voltages, rms)
         except Exception as e:
             console.log(e)
 

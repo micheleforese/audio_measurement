@@ -1,6 +1,7 @@
 from datetime import datetime
 import pathlib
 from typing import List
+from audio.console import console
 
 
 class SetLevel:
@@ -15,11 +16,11 @@ class SetLevel:
         lines: List[str] = [
             line
             for line in file.read_text(encoding="utf-8").split("\n")
-            if line.find("#") == -1  # Eliminate any comment
+            if line.find("#") == -1  # Eliminate any comment or empty string
         ]
 
-        if len(lines) != 2:
-            raise Exception("Data must be 2 lines.")
+        # if len(lines) != 2:
+        #     raise Exception("Data must be 2 lines.")
 
         try:
             self.set_level = float(lines[0])

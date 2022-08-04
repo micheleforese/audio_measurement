@@ -145,6 +145,8 @@ def sampling_curve(
         Column(r"Rms Value [V]", justify="right"),
         Column(r"Gain [dB]", justify="right"),
         Column(r"Time [s]", justify="right"),
+        Column(r"Max Voltage [V]", justify="right"),
+        Column(r"Min Voltage [V]", justify="right"),
         title="[blue]Sweep.",
     )
 
@@ -170,14 +172,14 @@ def sampling_curve(
         # Sets the Frequency
         generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
 
-        sleep(0.4)
+        sleep(0.2)
 
         Fs = trim_value(
             frequency * config.sampling.Fs_multiplier, max_value=config.nidaq.Fs_max
         )
-
-        if Fs == config.nidaq.Fs_max:
-            config.sampling.override(number_of_samples=900)
+        # TODO: Setup MAx number_of_samples
+        # if Fs == config.nidaq.Fs_max:
+        #     config.sampling.override(number_of_samples=900)
 
         oversampling_ratio = Fs / frequency
         n_periods = config.sampling.number_of_samples / oversampling_ratio
@@ -199,7 +201,7 @@ def sampling_curve(
         save_file_path = sweep_frequency_path / "sample.csv"
 
         # GET MEASUREMENTS
-        rms_value: Optional[float] = RMS.rms(
+        voltages, rms_value = RMS.rms(
             frequency=frequency,
             Fs=Fs,
             ch_input=config.nidaq.input_channel,
@@ -213,6 +215,8 @@ def sampling_curve(
         message: Timer_Message = time.stop()
 
         if rms_value:
+            max_voltage = max(voltages)
+            min_voltage = min(voltages)
 
             rms_list.append(rms_value)
 
@@ -238,13 +242,15 @@ def sampling_curve(
             table.add_row(
                 "{:.2f}".format(frequency),
                 "{:.2f}".format(Fs),
-                "{}".format(900),
+                "{}".format(config.sampling.number_of_samples),
                 "{}".format(config.rigol.amplitude_peak_to_peak),
                 "{:.5f} ".format(round(rms_value, 5)),
                 "[{}]{:.2f}[/]".format(
                     "red" if gain_bBV <= 0 else "green", transfer_func_dB
                 ),
                 "[cyan]{}[/]".format(message.elapsed_time),
+                "{:.5f}".format(max_voltage),
+                "{:.5f}".format(min_voltage),
             )
 
             dBV_list.append(gain_bBV)
@@ -580,7 +586,7 @@ def config_set_level(
     while not Vpp_found:
 
         # GET MEASUREMENTS
-        rms_value: Optional[float] = RMS.rms(
+        voltages, rms_value = RMS.rms(
             frequency=frequency,
             Fs=Fs,
             ch_input=config.nidaq.input_channel,
