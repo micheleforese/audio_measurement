@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 
 import rich
 
-from audio.config.sweep import SweepConfigXML
+from audio.config.sweep import FileType, SweepConfigXML
 from audio.console import console
 from audio.type import Dictionary
 
@@ -181,16 +181,15 @@ class Procedure:
         self.steps = steps
 
     @classmethod
-    def from_json(cls, procedure_path: pathlib.Path):
-        data: Optional[Dictionary] = Dictionary.from_json(procedure_path)
+    def from_dict(cls, dictionary: Optional[Dictionary]):
 
-        if data is not None:
+        if dictionary is not None:
             procedure = ET.Element("procedure")
 
             name = ET.SubElement(procedure, "name")
             steps = ET.SubElement(procedure, "steps")
 
-            procedure_data = data.get_property("procedure")
+            procedure_data = dictionary.get_property("procedure")
             procedure_data = Dictionary(procedure_data)
 
             if procedure_data is None:
@@ -250,3 +249,15 @@ class Procedure:
             return cls(procedure_name, steps)
         else:
             return None
+
+    @classmethod
+    def from_json5_file(cls, procedure_path: pathlib.Path):
+        data: Optional[Dictionary] = Dictionary.from_json5_file(procedure_path)
+
+        return Procedure.from_dict(data)
+
+    @classmethod
+    def from_json5_string(cls, data: str):
+        data: Optional[Dictionary] = Dictionary.from_json5_string(data)
+
+        return Procedure.from_dict(data)

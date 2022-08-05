@@ -159,6 +159,9 @@ def sweep(
     # Load JSON config
     cfg = SweepConfigXML.from_file(config_path)
 
+    if cfg is None:
+        raise Exception("Configurations not loaded correctly.")
+
     if debug:
         cfg.print()
 
@@ -563,7 +566,9 @@ def sweep_debug(
 
         plot_intr_samp = axd["intr_samp"]
         voltages_to_interpolate = sweep_data.voltages.values
+
         INTERPOLATION_RATE = 10
+
         x_interpolated, y_interpolated = interpolation_model(
             range(0, len(voltages_to_interpolate)),
             voltages_to_interpolate,

@@ -1,11 +1,10 @@
 import pathlib
 import numpy as np
 from matplotlib import pyplot as plt
-import pandas as pd
-from scipy.fft import fft, fftfreq, rfft, rfftfreq
+from scipy.fft import fft
 from rich.panel import Panel
 
-from cDAQ.console import console
+from audio.console import console
 
 
 def generate_sine_wave(freq, amplitude, sample_rate, duration):

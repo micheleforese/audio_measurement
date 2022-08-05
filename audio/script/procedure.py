@@ -1,12 +1,13 @@
 import pathlib
 from datetime import datetime
 from math import log10
+from typing import Dict
 
 import click
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 
-from audio.config import Dict
+# from audio.config import Dict
 from audio.console import console
 from audio.model.set_level import SetLevel
 from audio.procedure import (
@@ -42,7 +43,7 @@ def procedure(
 
     datetime_now = datetime.now().strftime(r"%Y-%m-%d--%H-%M-%f")
 
-    procedure = Procedure.from_json(procedure_path=procedure_name)
+    procedure = Procedure.from_json5_file(procedure_path=procedure_name)
 
     console.print(f"Start Procedure: [blue]{procedure.name}")
 
@@ -145,17 +146,10 @@ def procedure(
             if sweep_config is None:
                 console.print("sweep_config is None.", style="error")
 
-            set_level = float(
-                pathlib.Path(data[step.set_level])
-                .read_text(encoding="utf-8")
-                .split("\n")[0]
-            )
-            y_offset_dB = float(
-                pathlib.Path(data[step.y_offset_dB])
-                .read_text(encoding="utf-8")
-                .split("\n")[1]
-            )
-            sweep_config.rigol.override(set_level)
+            set_level = SetLevel(data[step.set_level]).set_level
+            y_offset_dB = SetLevel(data[step.set_level]).y_offset_dB
+
+            sweep_config.rigol.override(amplitude_peak_to_peak=set_level)
             sweep_config.plot.override(y_offset=y_offset_dB)
             sweep_config.print()
 

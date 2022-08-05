@@ -1,23 +1,18 @@
-from time import sleep
-import pytest
 from pathlib import Path
-from cDAQ.config import Config
-from cDAQ.console import console
 
-from cDAQ.utility import cDAQ
-import os
+import numpy as np
+from rich import inspect
+
+from audio.config.sweep import SweepConfigXML
+from audio.console import console
 
 
 def test_config():
-    config_obj: Config = Config()
 
-    config: Path = Path(
-        Path(__file__).absolute().parent.parent / "config" / "config_template.json5"
-    )
+    THIS_PATH = Path(__file__).parent
 
-    console.print(config)
+    file = THIS_PATH / "config_test.json5"
 
-    config_file = config.absolute()
-    config_obj.from_file(config_file)
+    config = SweepConfigXML.from_file(file)
 
-    config_obj.print()
+    config.print()

@@ -12,21 +12,23 @@ from matplotlib.figure import Figure
 from rich.console import Group
 from rich.live import Live
 from rich.panel import Panel
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 from rich.table import Column, Table
 from usbtmc import Instrument
-from audio.config.sweep import SweepConfigXML
 
 import audio.ui.terminal as ui_t
+from audio.config.sweep import SweepConfigXML
 from audio.console import console
-from audio.math import (
-    percentage_error,
-    transfer_function,
-)
-from audio.math.interpolation import (
-    INTERPOLATION_KIND,
-    logx_interpolation_model,
-)
+from audio.math import percentage_error, transfer_function
 from audio.math.algorithm import LogarithmicScale
+from audio.math.interpolation import INTERPOLATION_KIND, logx_interpolation_model
 from audio.math.pid import PID_Controller, Timed_Value
 from audio.math.rms import RMS
 from audio.model.sweep import SweepData
@@ -41,18 +43,68 @@ def sampling_curve(
     measurements_file_path: Path,
     debug: bool = False,
 ):
-    home = measurements_file_path.parent
+    HOME: Path = measurements_file_path.parent
 
-    sweep_path = home / "sweep"
+    sweep_path = HOME / "sweep"
 
     sweep_path.mkdir(parents=True, exist_ok=True)
+
+    progress_list_task = Progress(
+        SpinnerColumn(),
+        "•",
+        TextColumn(
+            "[bold blue]{task.description}[/] - [bold green]{task.fields[task]}[/]",
+        ),
+        transient=True,
+    )
+    progress_sweep = Progress(
+        SpinnerColumn(),
+        "•",
+        TextColumn(
+            "[bold blue]{task.description}",
+            justify="right",
+        ),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        "•",
+        TimeElapsedColumn(),
+        "•",
+        MofNCompleteColumn(),
+        TextColumn(
+            " - Frequency: [bold green]{task.fields[frequency]} - RMS: {task.fields[rms]}"
+        ),
+        console=console,
+        transient=True,
+    )
+    progress_task = Progress(
+        SpinnerColumn(),
+        "•",
+        TextColumn(
+            "[bold blue]{task.description}",
+        ),
+        transient=True,
+    )
+
+    table = Table(
+        Column(r"Frequency [Hz]", justify="right"),
+        Column(r"Fs [Hz]", justify="right"),
+        Column("Number of samples", justify="right"),
+        Column(r"Input Voltage [V]", justify="right"),
+        Column(r"Rms Value [V]", justify="right"),
+        Column(r"Gain [dB]", justify="right"),
+        Column(r"Time [s]", justify="right"),
+        Column(r"Max Voltage [V]", justify="right"),
+        Column(r"Min Voltage [V]", justify="right"),
+        title="[blue]Sweep.",
+    )
 
     live_group = Group(
         Panel(
             Group(
-                ui_t.progress_list_task,
-                ui_t.progress_sweep,
-                ui_t.progress_task,
+                table,
+                progress_list_task,
+                progress_sweep,
+                progress_task,
             )
         ),
     )
@@ -63,38 +115,27 @@ def sampling_curve(
     )
     live.start()
 
-    task_sampling = ui_t.progress_list_task.add_task(
+    task_sampling = progress_list_task.add_task(
         "Sampling", start=False, task="Retrieving Devices"
     )
-    ui_t.progress_list_task.start_task(task_sampling)
+    progress_list_task.start_task(task_sampling)
 
     # Asks for the 2 instruments
     try:
+        # TODO: Implement proper Error Handling for UsbTmc Class methods
         list_devices: List[Instrument] = UsbTmc.search_devices()
         if debug:
             UsbTmc.print_devices_list(list_devices)
 
-        console.print("before init.")
-
         generator: UsbTmc = UsbTmc(list_devices[0])
-        console.print("after init.")
 
     except Exception as e:
         console.print(f"{e}")
 
-    ui_t.progress_list_task.update(task_sampling, task="Setting Devices")
+    progress_list_task.update(task_sampling, task="Setting Devices")
 
-    # Open the Instruments interfaces
-    # Auto Close with the destructor
-    console.print("before open.")
-
-    console.print(generator.instr.instrument.connected)
-    try:
+    if not generator.instr.instrument.connected:
         generator.open()
-    except Exception as e:
-        console.print(f"{e}")
-
-    console.print("after open.")
 
     # Sets the Configuration for the Voltmeter
     generator_configs: list = [
@@ -111,15 +152,11 @@ def sampling_curve(
 
     SCPI.exec_commands(generator, generator_configs)
 
-    console.print("after generator_configs.")
-
     generator_ac_curves: List[str] = [
         SCPI.set_output(1, Switch.ON),
     ]
 
     SCPI.exec_commands(generator, generator_ac_curves)
-
-    console.print("after generator_ac_curves.")
 
     log_scale: LogarithmicScale = LogarithmicScale(
         config.sampling.frequency_min,
@@ -137,35 +174,18 @@ def sampling_curve(
 
     frequency: float = round(config.sampling.frequency_min, 5)
 
-    table = Table(
-        Column(r"Frequency [Hz]", justify="right"),
-        Column(r"Fs [Hz]", justify="right"),
-        Column("Number of samples", justify="right"),
-        Column(r"Input Voltage [V]", justify="right"),
-        Column(r"Rms Value [V]", justify="right"),
-        Column(r"Gain [dB]", justify="right"),
-        Column(r"Time [s]", justify="right"),
-        Column(r"Max Voltage [V]", justify="right"),
-        Column(r"Min Voltage [V]", justify="right"),
-        title="[blue]Sweep.",
-    )
-
-    console.print("after math.")
-
     max_dB: Optional[float] = None
 
-    ui_t.progress_list_task.update(task_sampling, task="Sweep")
+    progress_list_task.update(task_sampling, task="Sweep")
 
-    task_sweep = ui_t.progress_sweep.add_task(
+    task_sweep = progress_sweep.add_task(
         "Sweep",
         start=False,
         total=len(log_scale.f_list),
         frequency="",
         rms="",
     )
-    ui_t.progress_sweep.start_task(task_sweep)
-
-    console.print("before for.")
+    progress_sweep.start_task(task_sweep)
 
     for frequency in log_scale.f_list:
 
@@ -220,7 +240,7 @@ def sampling_curve(
 
             rms_list.append(rms_value)
 
-            ui_t.progress_sweep.update(
+            progress_sweep.update(
                 task_sweep,
                 frequency=f"{round(frequency, 5)}",
                 rms="{}".format(round(rms_value, 5)),
@@ -255,7 +275,7 @@ def sampling_curve(
 
             dBV_list.append(gain_bBV)
 
-            ui_t.progress_sweep.update(task_sweep, advance=1)
+            progress_sweep.update(task_sweep, advance=1)
 
         else:
             console.print("[ERROR] - Error retrieving rms_value.", style="error")
@@ -296,9 +316,9 @@ def sampling_curve(
     if debug:
         console.print(table)
 
-    ui_t.progress_sweep.remove_task(task_sweep)
+    progress_sweep.remove_task(task_sweep)
 
-    ui_t.progress_list_task.update(task_sampling, task="Shutting down the Channel 1")
+    progress_list_task.update(task_sampling, task="Shutting down the Channel 1")
 
     SCPI.exec_commands(
         generator,
@@ -308,7 +328,7 @@ def sampling_curve(
         ],
     )
 
-    ui_t.progress_list_task.remove_task(task_sampling)
+    progress_list_task.remove_task(task_sampling)
 
     if debug:
         console.print(Panel("max_dB: {}".format(max_dB)))

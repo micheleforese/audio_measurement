@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 from audio.math.algorithm import LogarithmicScale
 from audio.console import console

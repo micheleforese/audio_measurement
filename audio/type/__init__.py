@@ -67,16 +67,20 @@ class Dictionary:
         self._dict = value
 
     @classmethod
-    def from_json(cls, path: pathlib.Path) -> Optional[Dictionary]:
+    def from_json5_file(cls, path: pathlib.Path) -> Optional[Dictionary]:
 
         if path.exists() and path.is_file():
             with open(path, encoding="utf-8") as config_file:
                 file_content: str = config_file.read()
-                _dict = dict(decode(file_content))
-
-                return Dictionary(_dict)
+                return Dictionary.from_json5_string(file_content)
 
         return None
+
+    @classmethod
+    def from_json5_string(cls, data: str) -> Optional[Dictionary]:
+        _dict = dict(decode(data))
+
+        return Dictionary(_dict)
 
     def get_dict(self) -> Dict:
         return self._dict

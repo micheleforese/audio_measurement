@@ -1,4 +1,6 @@
 from __future__ import annotations
+from enum import Enum, auto
+import enum
 
 import pathlib
 import xml.etree.ElementTree as ET
@@ -6,13 +8,19 @@ from typing import Optional
 
 import rich
 
-from audio.config import load_json_config
+from audio.config import json5_string_to_dict, json5_to_dict
 from audio.config.nidaq import NiDaqConfigXML
 from audio.config.plot import PlotConfigXML
 from audio.config.rigol import RigolConfigXML
 from audio.config.sampling import SamplingConfigXML
 from audio.console import console
 from audio.type import Dictionary
+from rich.syntax import Syntax
+
+
+class FileType(enum.Enum):
+    JSON5 = auto()
+    XML = auto()
 
 
 @rich.repr.auto
@@ -56,12 +64,20 @@ class SweepConfigXML:
             return SweepConfigXML._from_file_json5(file)
 
     @classmethod
+    def from_string(cls, data: str, file_type: FileType = FileType.JSON5):
+        if file_type == FileType.JSON5:
+            sweep_config: Dictionary = Dictionary(json5_string_to_dict(data))
+            return cls.from_dict(sweep_config)
+        else:
+            raise Exception("Must be one of FileType: ['JSON5']")
+
+    @classmethod
     def _from_file_json5(cls, file: pathlib.Path):
 
         if not file.exists() and not file.is_file():
             raise Exception("File does not exists.")
 
-        sweep_config: Dictionary = Dictionary(load_json_config(file))
+        sweep_config: Dictionary = Dictionary(json5_to_dict(file))
 
         return cls.from_dict(sweep_config)
 
@@ -126,7 +142,11 @@ class SweepConfigXML:
     def print(self):
         root = self.tree.getroot()
         ET.indent(root)
-        console.print(ET.tostring(root, encoding="unicode"))
+        # console.print(ET.tostring(root, encoding="unicode"))
+        console.print("\n")
+        console.print(
+            Syntax(ET.tostring(root, encoding="unicode"), "xml", theme="one-dark")
+        )
 
     @property
     def tree(self) -> ET.ElementTree:

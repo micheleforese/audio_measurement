@@ -9,23 +9,13 @@ import nidaqmx.stream_writers
 import nidaqmx.system
 import numpy as np
 import usbtmc
-from cDAQ.console import console
-from cDAQ.util.scpi import SCPI, Bandwidth, Switch
-from cDAQ.timer import Timer, Timer_Message
-from cDAQ.usb.usbtmc import (
-    exec_commands,
-)
-from cDAQ.utility import (
-    percentage_error,
-    print_supported_output_types,
-    rms_average,
-    rms_fft,
-    rms_integration,
-)
+from audio.console import console
+from audio.utility.timer import Timer, Timer_Message
+
 from matplotlib import pyplot as plt
 from nidaqmx.errors import DaqError
 from nidaqmx.task import Task
-from numpy.ma.core import log10, sqrt
+from numpy.ma.core import sqrt
 from rich.live import Live
 from rich.panel import Panel
 from rich.table import Column, Table
