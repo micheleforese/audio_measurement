@@ -19,10 +19,13 @@ class SamplingConfigXML:
                 <frequency_min></frequency_min>
                 <frequency_max></frequency_max>
                 <interpolation_rate></interpolation_rate>
+                <delay_measurements></delay_measurements>
             </plot>
             """
         )
     )
+
+    # TODO: Implement delay_measurements field
 
     def __init__(self, tree: ET.ElementTree) -> None:
         self._tree = tree

@@ -192,14 +192,25 @@ def sampling_curve(
         # Sets the Frequency
         generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
 
+        # TODO: Implement delay from config if it exists.
         sleep(0.2)
 
+        # Trim number_of_samples to MAX value
         Fs = trim_value(
             frequency * config.sampling.Fs_multiplier, max_value=config.nidaq.Fs_max
         )
-        # TODO: Setup MAx number_of_samples
-        # if Fs == config.nidaq.Fs_max:
-        #     config.sampling.override(number_of_samples=900)
+
+        # Trim number_of_samples to MAX value
+        if config.sampling.number_of_samples_max is not None:
+            if (
+                config.sampling.number_of_samples
+                > config.sampling.number_of_samples_max
+            ):
+
+                config.sampling.number_of_samples = trim_value(
+                    config.sampling.number_of_samples,
+                    config.sampling.number_of_samples_max,
+                )
 
         oversampling_ratio = Fs / frequency
         n_periods = config.sampling.number_of_samples / oversampling_ratio
@@ -222,13 +233,13 @@ def sampling_curve(
 
         # GET MEASUREMENTS
         voltages, rms_value = RMS.rms(
-            frequency=frequency,
             Fs=Fs,
             ch_input=config.nidaq.input_channel,
             max_voltage=config.nidaq.voltage_max,
             min_voltage=config.nidaq.voltage_min,
             number_of_samples=config.sampling.number_of_samples,
             time_report=False,
+            frequency=frequency,
             save_file=save_file_path,
         )
 

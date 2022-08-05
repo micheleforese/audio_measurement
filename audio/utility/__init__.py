@@ -1,6 +1,6 @@
 import datetime
 import pathlib
-from typing import List
+from typing import List, Optional
 
 import nidaqmx
 import nidaqmx.constants
@@ -36,16 +36,17 @@ def get_subfolder(
 
 
 def read_voltages(
-    frequency: float,
-    Fs: float,
+    sampling_frequency: float,
     number_of_samples: int,
-    ch_input: str,
+    input_channel: str,
     min_voltage: float,
     max_voltage: float,
+    input_frequency: Optional[float] = None,
 ) -> np.ndarray:
 
-    if frequency > Fs / 2:
-        raise ValueError("The Sampling rate is low: Fs / 2 > frequency.")
+    if input_frequency is not None:
+        if input_frequency > sampling_frequency / 2:
+            raise ValueError("The Sampling rate is low: Fs / 2 > frequency.")
 
     try:
         # 1. Create a NidaqMX Task
@@ -53,12 +54,12 @@ def read_voltages(
 
         # 2. Add the AI Voltage Channel
         task.ai_channels.add_ai_voltage_chan(
-            ch_input, min_val=min_voltage, max_val=max_voltage
+            input_channel, min_val=min_voltage, max_val=max_voltage
         )
 
         # 3. Configure the task
         #   Sets the Clock sampling rate
-        task.timing.cfg_samp_clk_timing(Fs)
+        task.timing.cfg_samp_clk_timing(sampling_frequency)
 
         # 4. Pre allocate the array
         voltages = np.ndarray(number_of_samples, dtype=float)

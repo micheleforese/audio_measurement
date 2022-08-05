@@ -25,7 +25,6 @@ class RMS_MODE(enum.Enum):
 class RMS:
     @staticmethod
     def rms(
-        frequency: float,
         Fs: float,
         number_of_samples: int,
         ch_input: str,
@@ -35,20 +34,39 @@ class RMS:
         time_report: bool = False,
         save_file: Optional[pathlib.Path] = None,
         trim: bool = True,
+        frequency: Optional[float] = None,
         interpolation_rate: float = 10,
     ) -> Tuple[List[float], Optional[float]]:
+        """It calculates the RMS Value from the nidaq input
+
+        Args:
+            Fs (float): Sampling Frequency
+            number_of_samples (int): Number of Samples per measure
+            ch_input (str): Input channel for the NiDaq Chassis
+            max_voltage (float): Max Voltage Input for the NiDaq Module
+            min_voltage (float): Min Voltage Input for the NiDaq Module
+            rms_mode (RMS_MODE, optional): Mode for calculating the RMS Value. Defaults to RMS_MODE.FFT.
+            time_report (bool, optional): Gives time report on the measure. Defaults to False.
+            save_file (Optional[pathlib.Path], optional): Saves the Measurements file. Defaults to None.
+            trim (bool, optional): Trims the value to obtain full cycle sine waves. Defaults to True.
+            frequency (Optional[float], optional): Input Frequency for max Fs check. Defaults to None.
+            interpolation_rate (float, optional): Interpolation rate to reconstruct the sine wave. Defaults to 10.
+
+        Returns:
+            Tuple[List[float], Optional[float]]: Returns the list of voltages and the rms value.
+        """
 
         timer = Timer()
 
         # Pre allocate the array
         try:
             voltages = read_voltages(
-                frequency,
-                Fs,
-                number_of_samples,
-                ch_input=ch_input,
+                sampling_frequency=Fs,
+                number_of_samples=number_of_samples,
+                input_channel=ch_input,
                 max_voltage=max_voltage,
                 min_voltage=min_voltage,
+                input_frequency=frequency,
             )
 
             if save_file:
