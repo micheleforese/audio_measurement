@@ -25,8 +25,6 @@ class SamplingConfigXML:
         )
     )
 
-    # TODO: Implement delay_measurements field
-
     def __init__(self, tree: ET.ElementTree) -> None:
         self._tree = tree
 
@@ -40,6 +38,7 @@ class SamplingConfigXML:
         frequency_min: Optional[float] = None
         frequency_max: Optional[float] = None
         interpolation_rate: Optional[float] = None
+        delay_measurements: Optional[float] = None
 
         if dictionary is not None:
             Fs_multiplier = dictionary.get("Fs_multiplier", None)
@@ -49,6 +48,7 @@ class SamplingConfigXML:
             frequency_min = dictionary.get("frequency_min", None)
             frequency_max = dictionary.get("frequency_max", None)
             interpolation_rate = dictionary.get("interpolation_rate", None)
+            delay_measurements = dictionary.get("delay_measurements", None)
 
             if Fs_multiplier:
                 Fs_multiplier = float(Fs_multiplier)
@@ -71,6 +71,9 @@ class SamplingConfigXML:
             if interpolation_rate:
                 interpolation_rate = float(interpolation_rate)
 
+            if delay_measurements:
+                delay_measurements = float(delay_measurements)
+
         return cls.from_values(
             Fs_multiplier=Fs_multiplier,
             points_per_decade=points_per_decade,
@@ -79,6 +82,7 @@ class SamplingConfigXML:
             frequency_min=frequency_min,
             frequency_max=frequency_max,
             interpolation_rate=interpolation_rate,
+            delay_measurements=delay_measurements,
         )
 
     @classmethod
@@ -91,6 +95,7 @@ class SamplingConfigXML:
         frequency_min: Optional[float] = None,
         frequency_max: Optional[float] = None,
         interpolation_rate: Optional[float] = None,
+        delay_measurements: Optional[float] = None,
     ):
         tree = cls._tree
 
@@ -114,6 +119,9 @@ class SamplingConfigXML:
 
         if interpolation_rate:
             tree.find("./interpolation_rate").text = str(interpolation_rate)
+
+        if delay_measurements:
+            tree.find("./delay_measurements").text = str(delay_measurements)
 
         return cls(tree)
 
@@ -188,6 +196,15 @@ class SamplingConfigXML:
 
         return interpolation_rate
 
+    @property
+    def delay_measurements(self):
+        delay_measurements = self._tree.find("./delay_measurements").text
+
+        if delay_measurements is not None:
+            delay_measurements = str(delay_measurements)
+
+        return delay_measurements
+
     def override(
         self,
         Fs_multiplier: Optional[float] = None,
@@ -197,6 +214,7 @@ class SamplingConfigXML:
         frequency_min: Optional[float] = None,
         frequency_max: Optional[float] = None,
         interpolation_rate: Optional[float] = None,
+        delay_measurements: Optional[float] = None,
     ):
 
         if Fs_multiplier is not None:
@@ -220,6 +238,9 @@ class SamplingConfigXML:
         if interpolation_rate is not None:
             self._set_interpolation_rate(interpolation_rate)
 
+        if delay_measurements is not None:
+            self._set_interpolation_rate(delay_measurements)
+
     def _set_Fs_multiplier(self, Fs_multiplier: Optional[float]):
         self._tree.find("./Fs_multiplier").text = str(Fs_multiplier)
 
@@ -240,3 +261,6 @@ class SamplingConfigXML:
 
     def _set_interpolation_rate(self, interpolation_rate: Optional[float]):
         self._tree.find("./interpolation_rate").text = str(interpolation_rate)
+
+    def _set_delay_measurements(self, delay_measurements: Optional[float]):
+        self._tree.find("./delay_measurements").text = str(delay_measurements)

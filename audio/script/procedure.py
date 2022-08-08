@@ -52,11 +52,13 @@ def procedure(
 
     console.print(procedure.steps)
 
+    idx_tot = len(procedure.steps)
+
     for idx, step in enumerate(procedure.steps):
 
         if isinstance(step, ProcedureText):
             step: ProcedureText = step
-            console.print(Panel(f"{idx}: ProcedureText()"))
+            console.print(Panel(f"{idx}/{idx_tot}: ProcedureText()"))
 
             confirm: bool = False
 
@@ -65,7 +67,7 @@ def procedure(
 
         elif isinstance(step, ProcedureSetLevel):
             step: ProcedureSetLevel = step
-            console.print(Panel(f"{idx}: ProcedureSetLevel()"))
+            console.print(Panel(f"{idx}/{idx_tot}: ProcedureSetLevel()"))
 
             sampling_config = step.config
 
@@ -84,7 +86,7 @@ def procedure(
 
         elif isinstance(step, ProcedureSerialNumber):
             step: ProcedureSerialNumber = step
-            console.print(Panel(f"{idx}: ProcedureSerialNumber()"))
+            console.print(Panel(f"{idx}/{idx_tot}: ProcedureSerialNumber()"))
 
             console.print(step.text)
 
@@ -105,7 +107,7 @@ def procedure(
         elif isinstance(step, ProcedureInsertionGain):
             step: ProcedureInsertionGain = step
 
-            console.print(Panel(f"{idx}: ProcedureInsertionGain()"))
+            console.print(Panel(f"{idx}/{idx_tot}: ProcedureInsertionGain()"))
 
             calibration_path: pathlib.Path = pathlib.Path(
                 HOME_PATH / "calibration.config.set_level"
@@ -128,7 +130,7 @@ def procedure(
         elif isinstance(step, ProcedurePrint):
             step: ProcedurePrint = step
 
-            console.print(Panel(f"{idx}: ProcedurePrint()"))
+            console.print(Panel(f"{idx}/{idx_tot}: ProcedurePrint()"))
 
             for var in step.variables:
                 console.print(
@@ -139,7 +141,7 @@ def procedure(
 
         elif isinstance(step, ProcedureSweep):
             step: ProcedureSweep = step
-            console.print(Panel(f"{idx}: ProcedureSweep()"))
+            console.print(Panel(f"{idx}/{idx_tot}: ProcedureSweep()"))
 
             sweep_config = step.config
 
@@ -153,8 +155,9 @@ def procedure(
             sweep_config.plot.override(y_offset=y_offset_dB)
             sweep_config.print()
 
-            measurement_file: pathlib.Path = root / (step.name + ".csv")
-            plot_file: pathlib.Path = root / (step.name_plot + ".png")
+            home_path: pathlib.Path = root / step.name
+            measurement_file: pathlib.Path = home_path / (step.name + ".csv")
+            plot_file: pathlib.Path = home_path / (step.name_plot + ".png")
 
             console.print(f"Measurement File: '{measurement_file}'")
             console.print(f"PLot File: '{plot_file}'")
@@ -163,7 +166,8 @@ def procedure(
 
             sampling_curve(
                 config=sweep_config,
-                measurements_file_path=measurement_file,
+                sweep_home_path=home_path,
+                sweep_file_path=measurement_file,
                 debug=True,
             )
 
@@ -175,4 +179,4 @@ def procedure(
             )
 
         elif isinstance(step, ProcedureStep):
-            console.print(Panel(f"{idx}: ProcedureStep()"))
+            console.print(Panel(f"{idx}/{idx_tot}: ProcedureStep()"))

@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any, Dict, Optional
 
 import pandas as pd
 import yaml
@@ -12,15 +13,15 @@ class SingleSweepData:
     path: Path
 
     # Meta Information
-    frequency: float
-    Fs: float
+    frequency: Optional[float]
+    Fs: Optional[float]
 
     # CSV Data
     data: DataFrame
 
     def __init__(self, path: Path) -> None:
 
-        if not path.exists():
+        if not path.exists() or not path.is_file():
             raise Exception
 
         self.path = path
@@ -40,16 +41,25 @@ class SingleSweepData:
 
     def _load_yaml_comments(self):
         data_yaml = "\n".join(
-            [line[2:] for line in self.path.read_text().split("\n") if "#" in line]
+            [
+                line[2:]
+                for line in self.path.read_text().split("\n")
+                if line.find("#") == 0
+            ]
         )
 
         try:
-            yaml_dict = yaml.safe_load(data_yaml)
-            self.frequency = yaml_dict["frequency"]
-            self.Fs = yaml_dict["Fs"]
+            yaml_dict: Dict = dict(yaml.safe_load(data_yaml))
+
+            self.frequency = yaml_dict.get("frequency", None)
+            self.Fs = yaml_dict.get("Fs", None)
+
         except Exception as e:
             console.print(f"Error: {e}")
             exit()
+
+    def _meta_info(self, name: str, value: Any):
+        return f"# {name}: {value}\n"
 
     @property
     def voltages(self) -> Series:
@@ -61,22 +71,29 @@ class SweepData:
     path: Path
 
     # Meta Information
-    # TODO: Add Meta Information
-    amplitude: float
+    amplitude: Optional[float]
+    color: Optional[str]
 
     # CSV Data
     data: DataFrame
 
-    def __init__(self, path: Path) -> None:
-        if not path.exists():
+    def __init__(
+        self,
+        data: DataFrame,
+        amplitude: Optional[float],
+        color: Optional[str],
+    ) -> None:
+        self.data = data
+        self.amplitude = amplitude
+        self.color = color
+
+    @classmethod
+    def from_csv_file(cls, path: Path):
+        if not path.exists() or not path.is_file():
             raise Exception
 
-        self.path = path
-
-        self._load_yaml_comments()
-
-        self.data = pd.read_csv(
-            self.path.absolute().resolve(),
+        data = pd.read_csv(
+            path,
             header=0,
             comment="#",
             names=[
@@ -90,44 +107,56 @@ class SweepData:
             ],
         )
 
-    def _load_yaml_comments(self):
         data_yaml = "\n".join(
-            [line[2:] for line in self.path.read_text().split("\n") if "#" in line]
+            [line[2:] for line in path.read_text().split("\n") if line.find("#") == 0]
         )
 
-        try:
-            yaml_dict = yaml.safe_load(data_yaml)
+        yaml_dict: Dict = dict(yaml.safe_load(data_yaml))
 
-            self.amplitude = yaml_dict["amplitude"]
+        amplitude = yaml_dict.get("amplitude", None)
+        color = yaml_dict.get("color", None)
 
-        except Exception as e:
-            console.print(f"Error: {e}")
-            exit()
+        return cls(data, amplitude, color)
+
+    def save(self, path: Path):
+        with open(path, "w", encoding="utf-8") as f:
+            if self.amplitude is not None:
+                f.write(self._meta_info("amplitude", round(self.amplitude, 5)))
+            if self.color is not None:
+                f.write(self._meta_info("amplitude", self.color))
+            self.data.to_csv(
+                f,
+                header=True,
+                index=None,
+            )
+
+    def _meta_info(self, name: str, value: Any):
+        return f"# {name}: {value}\n"
 
     @property
     def frequency(self) -> Series:
-        return self.data["frequency"]
+        return self.data.get(["frequency"])
 
     @property
     def rms(self) -> Series:
-        return self.data["rms"]
+        return self.data.get(["rms"])
 
     @property
     def dBV(self) -> Series:
-        return self.data["dBV"]
+        return self.data.get(["dBV"])
 
     @property
     def Fs(self) -> Series:
-        return self.data["Fs"]
+        return self.data.get(["Fs"])
 
     @property
     def oversampling_ratio(self) -> Series:
-        return self.data["oversampling_ratio"]
+        return self.data.get(["oversampling_ratio"])
 
     @property
     def n_periods(self) -> Series:
-        return self.data["n_periods"]
+        return self.data.get(["n_periods"])
 
     @property
     def n_samples(self) -> Series:
-        return self.data["n_samples"]
+        return self.data.get(["n_samples"])

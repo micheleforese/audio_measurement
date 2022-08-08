@@ -13,17 +13,23 @@ class Instrument:
 
     def __init__(
         self,
-        dev_maj: Optional[int] = None,
-        dev_min: Optional[int] = None,
-        device: Optional[usb.core.Device] = None,
+        dev_maj: int,
+        dev_min: int,
     ) -> None:
-        if dev_maj and dev_min:
-            self.instrument = usbtmc.Instrument(dev_maj, dev_min)
-        elif device:
-            dev_maj, dev_min = Instrument.device_maj_min(str(device))
-            self.instrument = usbtmc.Instrument(dev_maj, dev_min)
-        else:
-            raise Exception("No Device specified.")
+
+        self.instrument = usbtmc.Instrument(dev_maj, dev_min)
+
+    @classmethod
+    def from_device(
+        cls,
+        device: Optional[usb.core.Device] = None,
+    ):
+        dev_maj, dev_min = Instrument.device_maj_min(str(device))
+
+        if dev_maj is None or dev_min is None:
+            return None
+
+        return cls(dev_maj, dev_min)
 
     @staticmethod
     def device_maj_min(instrument: str) -> Tuple[int, int]:
@@ -91,15 +97,50 @@ class UsbTmc:
         """
         self.instr.instrument.write(f":FREQuency:APERture {aperture}")
 
+    def exec(
+        self,
+        commands: List[str],
+        debug: bool = False,
+    ):
+        for command in commands:
+            if command.find("?") > 0:
+                response = self.ask(command)
+
+                if response == "":
+                    response = "NULL"
+
+                console.print(f"{command}:\t{response}")
+            else:
+                self.write(command)
+
+                if debug:
+                    console.print(command)
+
+    # def exec_commands(instr: UsbTmc, commands: List[str], debug: bool = False):
+    #     for command in commands:
+    #         if command.find("?") > 0:
+    #             response = instr.ask(command)
+
+    #             if response == "":
+    #                 response = "NULL"
+
+    #             console.print(f"{command}:\t{response}")
+    #         else:
+    #             instr.write(command)
+
+    #             if debug:
+    #                 console.print(command)
+
     @staticmethod
     def search_devices() -> List[Instrument]:
 
         list_devices: List[usb.core.Device] = usbtmc.list_devices()
-
         instruments: List[Instrument] = []
 
         for device in list_devices:
-            instruments.append(Instrument(device=device))
+            instr = Instrument.from_device(device)
+            if instr is not None:
+                instruments.append(instr)
 
         return instruments
 

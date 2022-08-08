@@ -166,3 +166,16 @@ def integrate(y_values: List[float], delta) -> float:
                 # console.print("Volume: {}".format(round(volume, 9)))
 
     return volume
+
+
+def dBV(V_in: float, V_out: float) -> float:
+    """Returns the dBV value.
+
+    Args:
+        V_in (float): Voltage Input
+        V_out (float): Voltage Output
+
+    Returns:
+        float: dBV value.
+    """
+    return 20 * math.log10(V_out / V_in)

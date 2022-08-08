@@ -215,7 +215,7 @@ def sweep(
 
         sampling_curve(
             config=cfg,
-            measurements_file_path=measurements_file,
+            sweep_file_path=measurements_file,
             debug=debug,
         )
 

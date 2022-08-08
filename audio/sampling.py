@@ -26,7 +26,7 @@ from usbtmc import Instrument
 import audio.ui.terminal as ui_t
 from audio.config.sweep import SweepConfigXML
 from audio.console import console
-from audio.math import percentage_error, transfer_function
+from audio.math import dBV, percentage_error, transfer_function
 from audio.math.algorithm import LogarithmicScale
 from audio.math.interpolation import INTERPOLATION_KIND, logx_interpolation_model
 from audio.math.pid import PID_Controller, Timed_Value
@@ -40,14 +40,36 @@ from audio.utility.timer import Timer, Timer_Message
 
 def sampling_curve(
     config: SweepConfigXML,
-    measurements_file_path: Path,
+    sweep_home_path: Path,
+    sweep_file_path: Path,
     debug: bool = False,
 ):
-    HOME: Path = measurements_file_path.parent
+    """Sweep Function.
 
-    sweep_path = HOME / "sweep"
+    Directory:
+    `sweep_home_path`
+    |-`/sweep`
+        |- `1000`
 
-    sweep_path.mkdir(parents=True, exist_ok=True)
+        |- `2000`
+
+        |- ...
+
+        |- `10000`
+    |-`sweep_file_path`: `/sweep.csv`
+
+    Args:
+        config (SweepConfigXML): Configurations.
+        sweep_home_path (Path): Home for the sweep measurements
+        sweep_file_path (Path): File path to the sweep `.csv` file
+        debug (bool, optional): _description_. Defaults to False.
+    """
+
+    HOME: Path = sweep_home_path
+    HOME.mkdir(parents=True, exist_ok=True)
+
+    measurements_path: Path = HOME / "sweep"
+    measurements_path.mkdir(parents=True, exist_ok=True)
 
     progress_list_task = Progress(
         SpinnerColumn(),
@@ -122,8 +144,11 @@ def sampling_curve(
 
     # Asks for the 2 instruments
     try:
-        # TODO: Implement proper Error Handling for UsbTmc Class methods
         list_devices: List[Instrument] = UsbTmc.search_devices()
+
+        if len(list_devices) < 1:
+            raise Exception("UsbTmc devices not found.")
+
         if debug:
             UsbTmc.print_devices_list(list_devices)
 
@@ -138,25 +163,30 @@ def sampling_curve(
         generator.open()
 
     # Sets the Configuration for the Voltmeter
-    generator_configs: list = [
-        SCPI.reset(),
-        SCPI.clear(),
-        SCPI.set_output(1, Switch.OFF),
-        SCPI.set_function_voltage_ac(),
-        SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
-        SCPI.set_source_voltage_amplitude(
-            1, round(config.rigol.amplitude_peak_to_peak, 5)
-        ),
-        SCPI.set_source_frequency(1, round(config.sampling.frequency_min, 5)),
-    ]
-
-    SCPI.exec_commands(generator, generator_configs)
-
-    generator_ac_curves: List[str] = [
-        SCPI.set_output(1, Switch.ON),
-    ]
-
-    SCPI.exec_commands(generator, generator_ac_curves)
+    generator.exec(
+        [
+            SCPI.reset(),
+            SCPI.clear(),
+            SCPI.set_output(1, Switch.OFF),
+            SCPI.set_function_voltage_ac(),
+            SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
+            SCPI.set_source_voltage_amplitude(
+                1,
+                round(
+                    config.rigol.amplitude_peak_to_peak
+                    if config.rigol.amplitude_peak_to_peak < 5
+                    else 0,
+                    5,
+                ),
+            ),
+            SCPI.set_source_frequency(1, round(config.sampling.frequency_min, 5)),
+        ]
+    )
+    generator.exec(
+        [
+            SCPI.set_output(1, Switch.ON),
+        ]
+    )
 
     log_scale: LogarithmicScale = LogarithmicScale(
         config.sampling.frequency_min,
@@ -224,9 +254,9 @@ def sampling_curve(
         time = Timer()
         time.start()
 
-        sweep_frequency_path = sweep_path / "{}".format(round(frequency, 5)).replace(
-            ".", "_", 1
-        )
+        sweep_frequency_path = measurements_path / "{}".format(
+            round(frequency, 5)
+        ).replace(".", "_", 1)
         sweep_frequency_path.mkdir(parents=True, exist_ok=True)
 
         save_file_path = sweep_frequency_path / "sample.csv"
@@ -257,8 +287,9 @@ def sampling_curve(
                 rms="{}".format(round(rms_value, 5)),
             )
 
-            gain_bBV: float = 20 * np.log10(
-                rms_value * 2 * np.math.sqrt(2) / config.rigol.amplitude_peak_to_peak
+            gain_bBV: float = dBV(
+                V_in=config.rigol.amplitude_peak_to_peak / (2 * sqrt(2)),
+                V_out=rms_value,
             )
 
             transfer_func_dB = transfer_function(
@@ -314,15 +345,9 @@ def sampling_curve(
         ],
     )
 
-    with open(measurements_file_path.absolute().resolve(), "w", encoding="utf-8") as f:
-        f.write(
-            "# amplitude: {}\n".format(round(config.rigol.amplitude_peak_to_peak, 5))
-        )
-        sampling_data.to_csv(
-            f,
-            header=True,
-            index=None,
-        )
+    sweep_data = SweepData(sampling_data, amplitude=config.rigol.amplitude_peak_to_peak)
+
+    sweep_data.save(measurements_path)
 
     if debug:
         console.print(table)
@@ -346,7 +371,7 @@ def sampling_curve(
 
     console.print(
         Panel(
-            f'[bold][[blue]FILE[/blue] - [cyan]CSV[/cyan]][/bold] - "[bold green]{measurements_file_path.absolute()}[/bold green]"'
+            f'[bold][[blue]FILE[/blue] - [cyan]CSV[/cyan]][/bold] - "[bold green]{sweep_file_path.absolute()}[/bold green]"'
         )
     )
 
