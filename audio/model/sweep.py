@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional
 import pandas as pd
 import yaml
 from pandas import DataFrame, Series
+from audio.config.plot import PlotConfigXML
 
 from audio.console import console
 
@@ -21,6 +22,9 @@ class SingleSweepData:
 
     def __init__(self, path: Path) -> None:
 
+        self.frequency = None
+        self.Fs = None
+
         if not path.exists() or not path.is_file():
             raise Exception
 
@@ -30,36 +34,48 @@ class SingleSweepData:
 
         try:
             self.data = pd.read_csv(
-                self.path.absolute().resolve(),
+                self.path,
                 header=0,
                 comment="#",
                 names=["voltages"],
             )
         except Exception as e:
             console.print(f"Error: {e}")
-            raise e
+            exit()
+
+    def _yaml_extract_from_comments(self, data: str) -> Dict:
+        data_yaml = "\n".join(
+            [line[2:] for line in data.split("\n") if line.find("#") == 0]
+        )
+        return dict(yaml.safe_load(data_yaml))
 
     def _load_yaml_comments(self):
-        data_yaml = "\n".join(
-            [
-                line[2:]
-                for line in self.path.read_text().split("\n")
-                if line.find("#") == 0
-            ]
-        )
 
-        try:
-            yaml_dict: Dict = dict(yaml.safe_load(data_yaml))
+        yaml_dict = self._yaml_extract_from_comments(self.path.read_text())
 
-            self.frequency = yaml_dict.get("frequency", None)
-            self.Fs = yaml_dict.get("Fs", None)
-
-        except Exception as e:
-            console.print(f"Error: {e}")
-            exit()
+        self.frequency = self.get_frequency_from_dictionary(yaml_dict)
+        self.Fs = self.get_Fs_from_dictionary(yaml_dict)
 
     def _meta_info(self, name: str, value: Any):
         return f"# {name}: {value}\n"
+
+    @staticmethod
+    def get_frequency_from_dictionary(dictionary: Dict) -> Optional[float]:
+        frequency: Optional[float] = dictionary.get("frequency", None)
+
+        if frequency is not None:
+            frequency = float(frequency)
+
+        return frequency
+
+    @staticmethod
+    def get_Fs_from_dictionary(dictionary: Dict) -> Optional[float]:
+        Fs: Optional[float] = dictionary.get("Fs", None)
+
+        if Fs is not None:
+            Fs = float(Fs)
+
+        return Fs
 
     @property
     def voltages(self) -> Series:
@@ -72,7 +88,7 @@ class SweepData:
 
     # Meta Information
     amplitude: Optional[float]
-    color: Optional[str]
+    config: PlotConfigXML
 
     # CSV Data
     data: DataFrame
@@ -80,12 +96,12 @@ class SweepData:
     def __init__(
         self,
         data: DataFrame,
-        amplitude: Optional[float],
-        color: Optional[str],
+        amplitude: Optional[float] = None,
+        config: PlotConfigXML = PlotConfigXML(),
     ) -> None:
         self.data = data
         self.amplitude = amplitude
-        self.color = color
+        self.config = config
 
     @classmethod
     def from_csv_file(cls, path: Path):
@@ -107,23 +123,29 @@ class SweepData:
             ],
         )
 
+        yaml_dict = SweepData._yaml_extract_from_comments(path.read_text())
+
+        amplitude = SweepData.get_amplitude_from_dictionary(yaml_dict)
+        plotConfigXML = PlotConfigXML.from_dict(yaml_dict)
+
+        return cls(data, amplitude, plotConfigXML)
+
+    @staticmethod
+    def _yaml_extract_from_comments(data: str) -> Dict:
         data_yaml = "\n".join(
-            [line[2:] for line in path.read_text().split("\n") if line.find("#") == 0]
+            [line[2:] for line in data.split("\n") if line.find("#") == 0]
         )
-
-        yaml_dict: Dict = dict(yaml.safe_load(data_yaml))
-
-        amplitude = yaml_dict.get("amplitude", None)
-        color = yaml_dict.get("color", None)
-
-        return cls(data, amplitude, color)
+        return dict(yaml.safe_load(data_yaml))
 
     def save(self, path: Path):
+        # TODO: Fix Save
         with open(path, "w", encoding="utf-8") as f:
             if self.amplitude is not None:
                 f.write(self._meta_info("amplitude", round(self.amplitude, 5)))
             if self.color is not None:
-                f.write(self._meta_info("amplitude", self.color))
+                f.write(self._meta_info("color", self.color))
+            if self.y_offset_dBV is not None:
+                f.write(self._meta_info("y_offset_dBV", self.y_offset_dBV))
             self.data.to_csv(
                 f,
                 header=True,
@@ -132,6 +154,15 @@ class SweepData:
 
     def _meta_info(self, name: str, value: Any):
         return f"# {name}: {value}\n"
+
+    @staticmethod
+    def get_amplitude_from_dictionary(dictionary: Dict) -> Optional[float]:
+        amplitude: Optional[float] = dictionary.get("amplitude", None)
+
+        if amplitude is not None:
+            amplitude = float(amplitude)
+
+        return amplitude
 
     @property
     def frequency(self) -> Series:

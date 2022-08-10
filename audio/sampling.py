@@ -25,6 +25,7 @@ from usbtmc import Instrument
 
 import audio.ui.terminal as ui_t
 from audio.config.sweep import SweepConfigXML
+from audio.config.plot import PlotConfigXML
 from audio.console import console
 from audio.math import dBV, percentage_error, transfer_function
 from audio.math.algorithm import LogarithmicScale
@@ -379,13 +380,11 @@ def sampling_curve(
 
 
 def plot_from_csv(
+    plot_config: PlotConfigXML,
     measurements_file_path: Path,
     plot_file_path: Path,
-    sweep_config: SweepConfigXML,
     debug: bool = False,
 ):
-
-    plot_config = sweep_config.plot
 
     live_group = Group(Panel(ui_t.progress_list_task))
 
@@ -457,6 +456,7 @@ def plot_from_csv(
         *xy_sampled,
         *xy_interpolated,
         linewidth=4,
+        color=plot_config.color if plot_config.color is not None else "yellow",
     )
     # Added Line to y = -3
     axes.plot(

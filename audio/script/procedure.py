@@ -172,9 +172,9 @@ def procedure(
             )
 
             plot_from_csv(
+                plot_config=sweep_config.plot,
                 measurements_file_path=measurement_file,
                 plot_file_path=plot_file,
-                sweep_config=sweep_config,
                 debug=True,
             )
 

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from enum import Enum, auto
+from enum import auto
 import enum
 
 import pathlib
@@ -166,4 +166,4 @@ class SweepConfigXML:
 
     @property
     def plot(self):
-        return PlotConfigXML(ET.ElementTree(self.tree.find("./plot")))
+        return PlotConfigXML.from_tree(ET.ElementTree(self.tree.find("./plot")))

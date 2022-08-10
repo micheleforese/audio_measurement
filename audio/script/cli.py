@@ -201,11 +201,13 @@ def sweep(
     if debug:
         cfg.print()
 
-    measurements_dir: pathlib.Path = pathlib.Path(HOME_PATH / f"{datetime_now}")
-    measurements_dir.mkdir(parents=True, exist_ok=True)
+    home_measurements_dir_path: pathlib.Path = pathlib.Path(
+        HOME_PATH / f"{datetime_now}"
+    )
+    home_measurements_dir_path.mkdir(parents=True, exist_ok=True)
 
-    measurements_file: pathlib.Path = measurements_dir / "sweep.csv"
-    image_file: pathlib.Path = measurements_dir / "sweep.png"
+    measurements_file_path: pathlib.Path = home_measurements_dir_path / "sweep.csv"
+    image_file_path: pathlib.Path = home_measurements_dir_path / "sweep.png"
 
     if not simulate:
         timer = Timer("Sweep time")
@@ -215,7 +217,8 @@ def sweep(
 
         sampling_curve(
             config=cfg,
-            sweep_file_path=measurements_file,
+            sweep_home_path=home_measurements_dir_path,
+            sweep_file_path=measurements_file_path,
             debug=debug,
         )
 
@@ -225,15 +228,18 @@ def sweep(
     if not simulate:
 
         plot_from_csv(
-            measurements_file_path=measurements_file,
-            plot_file_path=image_file,
-            sweep_config=cfg,
+            plot_config=cfg.plot,
+            measurements_file_path=measurements_file_path,
+            plot_file_path=image_file_path,
             debug=debug,
         )
 
         if pdf:
             create_latex_file(
-                image_file, home=HOME_PATH, latex_home=measurements_dir, debug=debug
+                image_file_path,
+                home=HOME_PATH,
+                latex_home=home_measurements_dir_path,
+                debug=debug,
             )
 
 
@@ -242,6 +248,12 @@ def sweep(
     "--csv",
     type=pathlib.Path,
     help="Measurements file path in csv format.",
+    default=None,
+)
+@click.option(
+    "--output",
+    type=pathlib.Path,
+    help="Plot file location.",
     default=None,
 )
 @click.option(
@@ -314,6 +326,7 @@ def sweep(
 )
 def plot(
     csv: Optional[pathlib.Path],
+    output: Optional[pathlib.Path],
     home: pathlib.Path,
     config_path: Optional[pathlib.Path],
     format_plot: List[str],
@@ -325,9 +338,9 @@ def plot(
     pdf: bool,
     debug: bool,
 ):
-    HOME_PATH = home.absolute()
-    csv_file: pathlib.Path = pathlib.Path()
-    plot_file: Optional[pathlib.Path] = None
+    HOME_PATH = home
+    csv_file_path: Optional[pathlib.Path] = None
+    plot_file_path: Optional[pathlib.Path] = None
 
     sweep_config = SweepConfigXML.from_file(config_path)
 
@@ -347,23 +360,19 @@ def plot(
     console.print(plot_config)
 
     is_most_recent_file: bool = False
-    plot_file: Optional[pathlib.Path] = None
 
     latex_home: pathlib.Path = pathlib.Path()
 
-    if csv:
-        if csv.exists() and csv.is_file():
-            latex_home = csv.parent
-            csv_file = csv.absolute()
-            plot_file = csv_file.with_suffix("")
-        else:
-            console.print(
-                Panel("File: '{}' doesn't exists.".format(csv), style="error")
-            )
-            is_most_recent_file = Confirm.ask(
-                "Do you want to search for the most recent '[italic].csv[/]' file?",
-                default=False,
-            )
+    if csv is not None and csv.exists() and csv.is_file():
+        csv_file_path = csv
+
+        if output is None:
+            output = csv_file_path.with_suffix("")
+
+        plot_file_path = output
+
+        latex_home = csv.parent
+
     else:
         is_most_recent_file = True
 
@@ -372,27 +381,29 @@ def plot(
         measurement_dirs: List[pathlib.Path] = get_subfolder(HOME_PATH)
 
         if len(measurement_dirs) > 0:
-            csv_file = measurement_dirs[-1] / "sweep.csv"
+            csv_file_path = measurement_dirs[-1] / "sweep.csv"
 
-            if csv_file.exists() and csv_file.is_file():
-                plot_file = csv_file.with_suffix("")
-                latex_home = csv_file.parent
+            if csv_file_path.exists() and csv_file_path.is_file():
+                plot_file_path = csv_file_path.with_suffix("")
+                latex_home = csv_file_path.parent
         else:
             console.print("There is no csv file available.", style="error")
 
-    if plot_file:
+    if plot_file_path:
         for plot_file_format in format_plot:
-            plot_file = plot_file.with_suffix("." + plot_file_format)
-            console.print(f'Plotting file: "{plot_file.absolute()}"')
+            plot_file_path = plot_file_path.with_suffix("." + plot_file_format)
+            console.print(f'Plotting file: "{plot_file_path.absolute()}"')
             plot_from_csv(
-                measurements_file_path=csv_file,
-                plot_file_path=plot_file,
-                sweep_config=sweep_config,
+                measurements_file_path=csv_file_path,
+                plot_file_path=plot_file_path,
+                plot_config=sweep_config,
                 debug=debug,
             )
             if plot_file_format == "png":
                 if pdf:
-                    create_latex_file(plot_file, home=HOME_PATH, latex_home=latex_home)
+                    create_latex_file(
+                        plot_file_path, home=HOME_PATH, latex_home=latex_home
+                    )
     else:
         console.print("Cannot create a plot file.", style="error")
 
@@ -491,7 +502,7 @@ def sweep_debug(
         csv_parent = csv.parent
         plot_image = csv_parent / "plot.png"
 
-        sweep_data = SingleSweepData(csv)
+        single_sweep_data = SingleSweepData(csv)
 
         plot: Tuple[Figure, Dict[str, Axes]] = plt.subplot_mosaic(
             [
@@ -514,7 +525,7 @@ def sweep_debug(
         for ax_key in axd:
             axd[ax_key].grid(True)
 
-        fig.suptitle(f"Frequency: {sweep_data.frequency} Hz.", fontsize=30)
+        fig.suptitle(f"Frequency: {single_sweep_data.frequency} Hz.", fontsize=30)
         fig.subplots_adjust(
             wspace=0.5,  # the amount of width reserved for blank space between subplots
             hspace=0.5,  # the amount of height reserved for white space between subplots
@@ -523,15 +534,15 @@ def sweep_debug(
         # PLOT: Samples on Time Domain
         ax_time_domain_samples = axd["samp"]
 
-        rms_samp = RMS.fft(sweep_data.voltages.values)
+        rms_samp = RMS.fft(single_sweep_data.voltages.values)
 
         ax_time_domain_samples.plot(
             np.linspace(
                 0,
-                len(sweep_data.voltages) / sweep_data.Fs,
-                len(sweep_data.voltages),
+                len(single_sweep_data.voltages) / single_sweep_data.Fs,
+                len(single_sweep_data.voltages),
             ),
-            sweep_data.voltages,
+            single_sweep_data.voltages,
             marker=".",
             markersize=3,
             linestyle="-",
@@ -539,7 +550,7 @@ def sweep_debug(
             label=f"Voltage Sample - rms={rms_samp:.5}",
         )
         ax_time_domain_samples.set_title(
-            f"Samples on Time Domain - Frequency: {round(sweep_data.frequency, 5)}"
+            f"Samples on Time Domain - Frequency: {round(single_sweep_data.frequency, 5)}"
         )
         ax_time_domain_samples.set_ylabel("Voltage [$V$]")
         ax_time_domain_samples.set_xlabel("Time [$s$]")
@@ -550,13 +561,15 @@ def sweep_debug(
         if iteration_rms:
             plot_rms_samp = axd["rms_samp"]
             rms_samp_iter_list: List[float] = [0]
-            for n in range(5, len(sweep_data.voltages.values), 5):
-                rms_samp_iter_list.append(RMS.fft(sweep_data.voltages.values[0:n]))
+            for n in range(5, len(single_sweep_data.voltages.values), 5):
+                rms_samp_iter_list.append(
+                    RMS.fft(single_sweep_data.voltages.values[0:n])
+                )
 
             plot_rms_samp.plot(
                 np.arange(
                     0,
-                    len(sweep_data.voltages),
+                    len(single_sweep_data.voltages),
                     5,
                 ),
                 rms_samp_iter_list,
@@ -565,7 +578,7 @@ def sweep_debug(
             plot_rms_samp.legend(loc="best")
 
         plot_intr_samp = axd["intr_samp"]
-        voltages_to_interpolate = sweep_data.voltages.values
+        voltages_to_interpolate = single_sweep_data.voltages.values
 
         INTERPOLATION_RATE = 10
 
@@ -586,7 +599,7 @@ def sweep_debug(
         plot_intr_samp.plot(
             np.linspace(
                 0,
-                len(y_interpolated) / (sweep_data.Fs * INTERPOLATION_RATE),
+                len(y_interpolated) / (single_sweep_data.Fs * INTERPOLATION_RATE),
                 len(y_interpolated),
             ),
             # x_interpolated,
@@ -619,8 +632,8 @@ def sweep_debug(
         rms_intr_offset = RMS.fft(offset_interpolated)
         plot_intr_samp_offset.plot(
             np.linspace(
-                idx_start / sweep_data.Fs,
-                len(offset_interpolated) / (sweep_data.Fs * INTERPOLATION_RATE),
+                idx_start / single_sweep_data.Fs,
+                len(offset_interpolated) / (single_sweep_data.Fs * INTERPOLATION_RATE),
                 len(offset_interpolated),
             ),
             offset_interpolated,
@@ -664,7 +677,7 @@ def sweep_debug(
         plt.savefig(plot_image)
         plt.close("all")
 
-        console.print(f"Plotted Frequency: [blue]{sweep_data.frequency:7.5}[/].")
+        console.print(f"Plotted Frequency: [blue]{single_sweep_data.frequency:7.5}[/].")
 
 
 cli.add_command(procedure)
