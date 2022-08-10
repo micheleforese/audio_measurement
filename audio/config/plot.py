@@ -27,6 +27,7 @@ class PlotConfigXML:
                 </y_limit>
                 <interpolation_rate></interpolation_rate>
                 <dpi></dpi>
+                <color></color>
             </plot>
             """
         )
@@ -43,6 +44,7 @@ class PlotConfigXML:
         y_limit: Optional[Range[float]] = None
         interpolation_rate: Optional[float] = None
         dpi: Optional[float] = None
+        color: Optional[str] = None
 
         if dictionary is not None:
             y_offset = dictionary.get("y_offset", None)
@@ -50,6 +52,7 @@ class PlotConfigXML:
             y_limit = dictionary.get("y_limit", None)
             interpolation_rate = dictionary.get("interpolation_rate", None)
             dpi = dictionary.get("dpi", None)
+            color = dictionary.get("color", None)
 
             if y_offset is not None:
                 y_offset = float(y_offset)
@@ -66,12 +69,16 @@ class PlotConfigXML:
             if dpi is not None:
                 dpi = float(dpi)
 
+            if color is not None:
+                color = str(color)
+
         return cls.from_values(
             y_offset=y_offset,
             x_limit=x_limit,
             y_limit=y_limit,
             interpolation_rate=interpolation_rate,
             dpi=dpi,
+            color=color,
         )
 
     @classmethod
@@ -82,6 +89,7 @@ class PlotConfigXML:
         y_limit: Optional[Range[float]] = None,
         interpolation_rate: Optional[float] = None,
         dpi: Optional[float] = None,
+        color: Optional[str] = None,
     ):
         tree = cls._tree
 
@@ -101,6 +109,9 @@ class PlotConfigXML:
 
         if dpi is not None:
             tree.find("./dpi").text = str(dpi)
+
+        if color is not None:
+            tree.find("./color").text = str(color)
 
         return cls(tree)
 
@@ -165,6 +176,15 @@ class PlotConfigXML:
 
         return dpi
 
+    @property
+    def color(self):
+        color = self._tree.find("./color").text
+
+        if color is not None:
+            color = str(color)
+
+        return color
+
     def override(
         self,
         y_offset: Optional[float] = None,
@@ -172,6 +192,7 @@ class PlotConfigXML:
         y_limit: Optional[Range[float]] = None,
         interpolation_rate: Optional[float] = None,
         dpi: Optional[float] = None,
+        color: Optional[float] = None,
     ):
         if y_offset is not None:
             self._set_y_offset(y_offset)
@@ -187,6 +208,9 @@ class PlotConfigXML:
 
         if dpi is not None:
             self._set_dpi(dpi)
+
+        if color is not None:
+            self._set_color(color)
 
     def _set_y_offset(self, y_offset: Optional[float]):
         self._tree.find("./y_offset").text = str(y_offset)
@@ -204,3 +228,6 @@ class PlotConfigXML:
 
     def _set_dpi(self, dpi: Optional[float]):
         self._tree.find("./dpi").text = str(dpi)
+
+    def _set_color(self, color: Optional[float]):
+        self._tree.find("./color").text = str(color)
