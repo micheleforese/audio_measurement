@@ -396,7 +396,7 @@ def plot(
             plot_from_csv(
                 measurements_file_path=csv_file_path,
                 plot_file_path=plot_file_path,
-                plot_config=sweep_config,
+                plot_config=sweep_config.plot,
                 debug=debug,
             )
             if plot_file_format == "png":

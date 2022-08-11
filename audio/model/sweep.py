@@ -130,30 +130,36 @@ class SweepData:
 
         return cls(data, amplitude, plotConfigXML)
 
+    def save(self, path: Path) -> bool:
+        if path.exists() and path.is_file():
+            with open(path, "w", encoding="utf-8") as file:
+
+                file.write(self._meta_info("amplitude", round(self.amplitude, 5)))
+                yaml_str = self._yaml_string_to_yaml_comment(self.config.to_yaml())
+                file.write(yaml_str)
+
+                self.data.to_csv(
+                    file,
+                    header=True,
+                    index=None,
+                )
+
+                return True
+
+        return False
+
     @staticmethod
     def _yaml_extract_from_comments(data: str) -> Dict:
         data_yaml = "\n".join(
-            [line[2:] for line in data.split("\n") if line.find("#") == 0]
+            [line[2:] for line in data.splitlines() if line.find("#") == 0]
         )
         return dict(yaml.safe_load(data_yaml))
 
-    def save(self, path: Path):
-        # TODO: Fix Save
-        with open(path, "w", encoding="utf-8") as f:
-            if self.amplitude is not None:
-                f.write(self._meta_info("amplitude", round(self.amplitude, 5)))
-            if self.color is not None:
-                f.write(self._meta_info("color", self.color))
-            if self.y_offset_dBV is not None:
-                f.write(self._meta_info("y_offset_dBV", self.y_offset_dBV))
-            self.data.to_csv(
-                f,
-                header=True,
-                index=None,
-            )
-
     def _meta_info(self, name: str, value: Any):
         return f"# {name}: {value}\n"
+
+    def _yaml_string_to_yaml_comment(self, yaml_string: str):
+        return "\n".join([f"# {line}" for line in yaml_string.splitlines()]) + "\n"
 
     @staticmethod
     def get_amplitude_from_dictionary(dictionary: Dict) -> Optional[float]:

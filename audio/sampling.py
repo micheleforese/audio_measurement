@@ -24,8 +24,8 @@ from rich.table import Column, Table
 from usbtmc import Instrument
 
 import audio.ui.terminal as ui_t
-from audio.config.sweep import SweepConfigXML
 from audio.config.plot import PlotConfigXML
+from audio.config.sweep import SweepConfigXML
 from audio.console import console
 from audio.math import dBV, percentage_error, transfer_function
 from audio.math.algorithm import LogarithmicScale
@@ -380,9 +380,9 @@ def sampling_curve(
 
 
 def plot_from_csv(
-    plot_config: PlotConfigXML,
     measurements_file_path: Path,
     plot_file_path: Path,
+    plot_config: Optional[PlotConfigXML] = None,
     debug: bool = False,
 ):
 
@@ -405,6 +405,8 @@ def plot_from_csv(
 
     sweep_data = SweepData(measurements_file_path)
 
+    cfg = sweep_data.config
+
     x_frequency = list(sweep_data.frequency.values)
     y_dBV = list(sweep_data.dBV.values)
 
@@ -419,13 +421,15 @@ def plot_from_csv(
 
     ui_t.progress_list_task.update(task_plotting, task="Apply Offset")
 
-    if plot_config.y_offset:
-        y_dBV = [dBV - plot_config.y_offset for dBV in y_dBV]
+    sweep_data.config.override(plot_config)
+
+    if cfg.y_offset:
+        y_dBV = [dBV - cfg.y_offset for dBV in y_dBV]
 
     ui_t.progress_list_task.update(task_plotting, task="Interpolate")
 
     plot: Tuple[Figure, Axes] = plt.subplots(
-        figsize=(16 * 2, 9 * 2), dpi=plot_config.dpi if plot_config.dpi else 300
+        figsize=(16 * 2, 9 * 2), dpi=cfg.dpi if cfg.dpi else 300
     )
 
     fig: Figure
@@ -438,11 +442,7 @@ def plot_from_csv(
         y_dBV,
         int(
             len(x_frequency)
-            * (
-                plot_config.interpolation_rate
-                if plot_config.interpolation_rate is not None
-                else 5
-            )
+            * (cfg.interpolation_rate if cfg.interpolation_rate is not None else 5)
         ),
         kind=INTERPOLATION_KIND.CUBIC,
     )
@@ -456,7 +456,7 @@ def plot_from_csv(
         *xy_sampled,
         *xy_interpolated,
         linewidth=4,
-        color=plot_config.color if plot_config.color is not None else "yellow",
+        color=cfg.color if cfg.color is not None else "yellow",
     )
     # Added Line to y = -3
     axes.plot(
@@ -476,7 +476,7 @@ def plot_from_csv(
     )
     axes.set_ylabel(
         "Amplitude ($dB$) ($0 \, dB = {} \, Vpp$)".format(
-            round(plot_config.y_offset, 5) if plot_config.y_offset else 0
+            round(cfg.y_offset, 5) if cfg.y_offset else 0
         ),
         fontsize=40,
     )
@@ -505,8 +505,8 @@ def plot_from_csv(
 
     axes.grid(True, linestyle="-", which="both", color="0.7")
 
-    if plot_config.y_limit:
-        axes.set_ylim(plot_config.y_limit.min, plot_config.y_limit.max)
+    if cfg.y_limit:
+        axes.set_ylim(cfg.y_limit.min, cfg.y_limit.max)
     else:
         min_y_dBV = min(y_interpolated)
         max_y_dBV = max(y_interpolated)

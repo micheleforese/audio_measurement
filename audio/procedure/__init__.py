@@ -171,6 +171,36 @@ class ProcedurePrint(ProcedureStep):
 
 
 @rich.repr.auto
+class ProcedureMultiPlot(ProcedureStep):
+
+    name: str
+    plot_file_name: str
+    csv_files: List[str]
+
+    def __init__(self, name: str, plot_file_name: str, csv_files: List[str]) -> None:
+        self.name = name
+        self.plot_file_name = plot_file_name
+        self.csv_files = csv_files
+
+    @classmethod
+    def from_dict(cls, data: Dictionary):
+
+        name = data.get_property("name", str)
+        plot_file_name = data.get_property("plot_file_name", str)
+        csv_files = data.get_property("csv_files", List[str])
+
+        if csv_files is None:
+            return None
+
+        csv_files = [csv + ".csv" for csv in csv_files]
+
+        if name is not None and plot_file_name is not None and len(csv_files) > 1:
+            return cls(name, plot_file_name, csv_files)
+        else:
+            return None
+
+
+@rich.repr.auto
 class Procedure:
 
     name: str
@@ -238,6 +268,8 @@ class Procedure:
                     procedure = ProcedureInsertionGain.from_dict(step_dictionary)
                 elif procedure_type == "print":
                     procedure = ProcedurePrint.from_dict(step_dictionary)
+                elif procedure_type == "multiplot":
+                    procedure = ProcedureMultiPlot.from_dict(step_dictionary)
                 else:
                     procedure = ProcedureStep()
 

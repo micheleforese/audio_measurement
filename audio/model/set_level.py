@@ -15,7 +15,7 @@ class SetLevel:
 
         lines: List[str] = [
             line
-            for line in file.read_text(encoding="utf-8").split("\n")
+            for line in file.read_text(encoding="utf-8").splitlines()
             if line.find("#") == -1  # Eliminate any comment or empty string
         ]
 

@@ -1,7 +1,7 @@
 import pathlib
 from datetime import datetime
 from math import log10
-from typing import Dict
+from typing import Dict, List
 
 import click
 from rich.panel import Panel
@@ -13,6 +13,7 @@ from audio.model.set_level import SetLevel
 from audio.procedure import (
     Procedure,
     ProcedureInsertionGain,
+    ProcedureMultiPlot,
     ProcedurePrint,
     ProcedureSerialNumber,
     ProcedureSetLevel,
@@ -21,6 +22,7 @@ from audio.procedure import (
     ProcedureText,
 )
 from audio.sampling import config_set_level, plot_from_csv, sampling_curve
+from audio.plot import multiplot
 
 
 @click.command(
@@ -155,9 +157,9 @@ def procedure(
             sweep_config.plot.override(y_offset=y_offset_dB)
             sweep_config.print()
 
-            home_path: pathlib.Path = root / step.name
-            measurement_file: pathlib.Path = home_path / (step.name + ".csv")
-            plot_file: pathlib.Path = home_path / (step.name_plot + ".png")
+            home_dir_path: pathlib.Path = root / step.name
+            measurement_file: pathlib.Path = home_dir_path / (step.name + ".csv")
+            plot_file: pathlib.Path = home_dir_path / (step.name_plot + ".png")
 
             console.print(f"Measurement File: '{measurement_file}'")
             console.print(f"PLot File: '{plot_file}'")
@@ -166,7 +168,7 @@ def procedure(
 
             sampling_curve(
                 config=sweep_config,
-                sweep_home_path=home_path,
+                sweep_home_path=home_dir_path,
                 sweep_file_path=measurement_file,
                 debug=True,
             )
@@ -177,6 +179,18 @@ def procedure(
                 plot_file_path=plot_file,
                 debug=True,
             )
+        elif isinstance(step, ProcedureMultiPlot):
+            step: ProcedureMultiPlot = step
+            console.print(Panel(f"{idx}/{idx_tot}: ProcedureMultiPlot()"))
+
+            home_dir_path: pathlib.Path = root
+            plot_file: pathlib.Path = home_dir_path / (step.plot_file_name + ".png")
+
+            csv_files: List[pathlib.Path] = [
+                pathlib.Path(home_dir_path / csv) for csv in step.csv_files
+            ]
+
+            multiplot(csv_files, plot_file)
 
         elif isinstance(step, ProcedureStep):
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureStep()"))
