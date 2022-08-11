@@ -2,13 +2,14 @@ from __future__ import annotations
 from enum import Enum
 
 import xml.etree.ElementTree as ET
-from typing import Dict, List, Optional, overload
+from typing import Dict, List, Optional
 
 import rich
 import yaml
 
 from audio.config.type import Range
 from audio.console import console
+from functools import singledispatchmethod
 
 
 class PlotConfigOptions(Enum):
@@ -447,16 +448,24 @@ class PlotConfigXML:
     def color(self):
         return self.get_color_from_xml(self._tree)
 
-    @overload
     def override(
         self,
         y_offset: Optional[float] = None,
         x_limit: Optional[Range[float]] = None,
         y_limit: Optional[Range[float]] = None,
         interpolation_rate: Optional[float] = None,
-        dpi: Optional[float] = None,
+        dpi: Optional[int] = None,
         color: Optional[float] = None,
+        new_config: Optional[PlotConfigXML] = None,
     ):
+        if new_config is not None:
+            self._set_y_offset(new_config.y_offset)
+            self._set_x_limit(new_config.x_limit)
+            self._set_y_limit(new_config.y_limit)
+            self._set_interpolation_rate(new_config.interpolation_rate)
+            self._set_dpi(new_config.dpi)
+            self._set_color(new_config.color)
+
         if y_offset is not None:
             self._set_y_offset(y_offset)
 
@@ -474,18 +483,6 @@ class PlotConfigXML:
 
         if color is not None:
             self._set_color(color)
-
-    @overload
-    def override(self, new_config: Optional[PlotConfigXML]):
-        if new_config is not None:
-            self.override(
-                y_offset=new_config.y_offset,
-                x_limit=new_config.x_limit,
-                y_limit=new_config.y_limit,
-                interpolation_rate=new_config.interpolation_rate,
-                dpi=new_config.dpi,
-                color=new_config.color,
-            )
 
     def _set_y_offset(self, y_offset: Optional[float]):
         if y_offset is not None:

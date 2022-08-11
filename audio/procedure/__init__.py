@@ -192,8 +192,6 @@ class ProcedureMultiPlot(ProcedureStep):
         if csv_files is None:
             return None
 
-        csv_files = [csv + ".csv" for csv in csv_files]
-
         if name is not None and plot_file_name is not None and len(csv_files) > 1:
             return cls(name, plot_file_name, csv_files)
         else:

@@ -421,7 +421,7 @@ def plot_from_csv(
 
     ui_t.progress_list_task.update(task_plotting, task="Apply Offset")
 
-    sweep_data.config.override(plot_config)
+    sweep_data.config.override(new_config=plot_config)
 
     if cfg.y_offset:
         y_dBV = [dBV - cfg.y_offset for dBV in y_dBV]

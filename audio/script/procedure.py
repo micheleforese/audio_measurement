@@ -187,7 +187,8 @@ def procedure(
             plot_file: pathlib.Path = home_dir_path / (step.plot_file_name + ".png")
 
             csv_files: List[pathlib.Path] = [
-                pathlib.Path(home_dir_path / csv) for csv in step.csv_files
+                pathlib.Path(home_dir_path / csv / csv + ".csv")
+                for csv in step.csv_files
             ]
 
             multiplot(csv_files, plot_file)
