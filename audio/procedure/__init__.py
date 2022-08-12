@@ -45,14 +45,16 @@ class ProcedureSetLevel(ProcedureStep):
     def from_dict(cls, data: Dictionary):
 
         name = data.get_property("name", str)
-        config = data.get_property("config")
+        config = data.get_property("config", Dict)
 
         if config is None:
             raise Exception("config is NULL")
 
-        config = Dictionary(dict(config))
+        config = Dictionary(config)
 
         config = SweepConfigXML.from_dict(config)
+
+        config.print()
 
         if name is not None and config is not None:
             return cls(name, config)
@@ -204,8 +206,8 @@ class Procedure:
     name: str
     steps: List[ProcedureStep]
 
-    def __init__(self, procedure_name: str, steps: List[ProcedureStep]) -> None:
-        self.name = procedure_name
+    def __init__(self, name: str, steps: List[ProcedureStep]) -> None:
+        self.name = name
         self.steps = steps
 
     @classmethod

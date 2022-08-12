@@ -1,3 +1,4 @@
+from enum import Enum
 import xml.etree.ElementTree as ET
 from typing import Dict, Optional
 
@@ -6,27 +7,76 @@ import rich.repr
 from audio.console import console
 
 
+class SamplingConfigOptions(Enum):
+    ROOT = "sampling"
+
+    FS_MULTIPLIER = "Fs_multiplier"
+    POINTS_PER_DECADE = "points_per_decade"
+    NUMBER_OF_SAMPLES = "number_of_samples"
+    NUMBER_OF_SAMPLES_MAX = "number_of_samples_max"
+    FREQUENCY_MIN = "frequency_min"
+    FREQUENCY_MAX = "frequency_max"
+    INTERPOLATION_RATE = "interpolation_rate"
+    DELAY_MEASUREMENTS = "delay_measurements"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
+class SamplingConfigOptionsXPATH(Enum):
+    FS_MULTIPLIER = f"./{SamplingConfigOptions.FS_MULTIPLIER.value}"
+    POINTS_PER_DECADE = f"./{SamplingConfigOptions.POINTS_PER_DECADE.value}"
+    NUMBER_OF_SAMPLES = f"./{SamplingConfigOptions.NUMBER_OF_SAMPLES.value}"
+    NUMBER_OF_SAMPLES_MAX = f"./{SamplingConfigOptions.NUMBER_OF_SAMPLES_MAX.value}"
+    FREQUENCY_MIN = f"./{SamplingConfigOptions.FREQUENCY_MIN.value}"
+    FREQUENCY_MAX = f"./{SamplingConfigOptions.FREQUENCY_MAX.value}"
+    INTERPOLATION_RATE = f"./{SamplingConfigOptions.INTERPOLATION_RATE.value}"
+    DELAY_MEASUREMENTS = f"./{SamplingConfigOptions.DELAY_MEASUREMENTS.value}"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
 @rich.repr.auto
 class SamplingConfigXML:
-    _tree: ET.ElementTree = ET.ElementTree(
-        ET.fromstring(
-            """
-            <plot>
-                <Fs_multiplier></Fs_multiplier>
-                <points_per_decade></points_per_decade>
-                <number_of_samples></number_of_samples>
-                <number_of_samples_max></number_of_samples_max>
-                <frequency_min></frequency_min>
-                <frequency_max></frequency_max>
-                <interpolation_rate></interpolation_rate>
-                <delay_measurements></delay_measurements>
-            </plot>
-            """
-        )
+    TREE_SKELETON: str = """
+    <{root}>
+        <{Fs_multiplier}></{Fs_multiplier}>
+        <{points_per_decade}></{points_per_decade}>
+        <{number_of_samples}></{number_of_samples}>
+        <{number_of_samples_max}></{number_of_samples_max}>
+        <{frequency_min}></{frequency_min}>
+        <{frequency_max}></{frequency_max}>
+        <{interpolation_rate}></{interpolation_rate}>
+        <{delay_measurements}></{delay_measurements}>
+    </{root}>
+    """.format(
+        root=SamplingConfigOptions.ROOT.value,
+        Fs_multiplier=SamplingConfigOptions.FS_MULTIPLIER.value,
+        points_per_decade=SamplingConfigOptions.POINTS_PER_DECADE.value,
+        number_of_samples=SamplingConfigOptions.NUMBER_OF_SAMPLES.value,
+        number_of_samples_max=SamplingConfigOptions.NUMBER_OF_SAMPLES_MAX.value,
+        frequency_min=SamplingConfigOptions.FREQUENCY_MIN.value,
+        frequency_max=SamplingConfigOptions.FREQUENCY_MAX.value,
+        interpolation_rate=SamplingConfigOptions.INTERPOLATION_RATE.value,
+        delay_measurements=SamplingConfigOptions.DELAY_MEASUREMENTS.value,
     )
 
-    def __init__(self, tree: ET.ElementTree) -> None:
+    _tree: ET.ElementTree
+
+    def __init__(self) -> None:
+        self._tree = ET.ElementTree(ET.fromstring(self.TREE_SKELETON))
+
+    def set_tree(self, tree: ET.ElementTree):
         self._tree = tree
+
+    @classmethod
+    def from_tree(cls, tree: ET.ElementTree) -> None:
+        # TODO: Check tree for validity
+        samplingConfigXML = SamplingConfigXML()
+        samplingConfigXML.set_tree(tree)
+
+        return samplingConfigXML
 
     @classmethod
     def from_dict(cls, dictionary: Optional[Dict]):
@@ -97,7 +147,7 @@ class SamplingConfigXML:
         interpolation_rate: Optional[float] = None,
         delay_measurements: Optional[float] = None,
     ):
-        tree = cls._tree
+        tree = ET.ElementTree(ET.fromstring(cls.TREE_SKELETON))
 
         if Fs_multiplier:
             tree.find("./Fs_multiplier").text = str(Fs_multiplier)
@@ -123,7 +173,7 @@ class SamplingConfigXML:
         if delay_measurements:
             tree.find("./delay_measurements").text = str(delay_measurements)
 
-        return cls(tree)
+        return cls.from_tree(tree)
 
     def get_node(self):
         return self._tree.getroot()

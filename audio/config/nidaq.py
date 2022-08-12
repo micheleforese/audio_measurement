@@ -1,3 +1,4 @@
+from enum import Enum
 import xml.etree.ElementTree as ET
 from typing import Dict, Optional
 
@@ -6,23 +7,59 @@ import rich.repr
 from audio.console import console
 
 
+class NiDaqConfigOptions(Enum):
+    ROOT = "nidaq"
+    FS_MAX = "Fs_max"
+    VOLTAGE_MIN = "voltage_min"
+    VOLTAGE_MAX = "voltage_max"
+    INPUT_CHANNEL = "input_channel"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
+class NidaqConfigOptionsXPATH(Enum):
+    FS_MAX = f"./{NiDaqConfigOptions.FS_MAX}"
+    VOLTAGE_MIN = f"./{NiDaqConfigOptions.VOLTAGE_MIN}"
+    VOLTAGE_MAX = f"./{NiDaqConfigOptions.VOLTAGE_MAX}"
+    INPUT_CHANNEL = f"./{NiDaqConfigOptions.INPUT_CHANNEL}"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
 @rich.repr.auto
 class NiDaqConfigXML:
-    _tree: ET.ElementTree = ET.ElementTree(
-        ET.fromstring(
-            """
-            <plot>
-                <Fs_max></Fs_max>
-                <voltage_max></voltage_max>
-                <voltage_min></voltage_min>
-                <input_channel></input_channel>
-            </plot>
-            """
-        )
+    TREE_SKELETON: str = """
+    <{root}>
+        <{Fs_max}></{Fs_max}>
+        <{voltage_min}></{voltage_min}>
+        <{voltage_max}></{voltage_max}>
+        <{input_channel}></{input_channel}>
+    </{root}>
+    """.format(
+        root=NiDaqConfigOptions.ROOT.value,
+        Fs_max=NiDaqConfigOptions.FS_MAX.value,
+        voltage_min=NiDaqConfigOptions.VOLTAGE_MIN.value,
+        voltage_max=NiDaqConfigOptions.VOLTAGE_MAX.value,
+        input_channel=NiDaqConfigOptions.INPUT_CHANNEL.value,
     )
 
-    def __init__(self, tree: ET.ElementTree) -> None:
+    _tree: ET.ElementTree
+
+    def __init__(self) -> None:
+        self._tree = ET.ElementTree(ET.fromstring(self.TREE_SKELETON))
+
+    def set_tree(self, tree: ET.ElementTree):
         self._tree = tree
+
+    @classmethod
+    def from_tree(cls, tree: ET.ElementTree) -> None:
+        # TODO: Check tree for validity
+        nidaqConfigXML = NiDaqConfigXML()
+        nidaqConfigXML.set_tree(tree)
+
+        return nidaqConfigXML
 
     @classmethod
     def from_dict(cls, dictionary: Optional[Dict]):
@@ -32,10 +69,10 @@ class NiDaqConfigXML:
         input_channel: Optional[str] = None
 
         if dictionary is not None:
-            Fs_max = dictionary.get("Fs_max", None)
-            voltage_max = dictionary.get("voltage_max", None)
-            voltage_min = dictionary.get("voltage_min", None)
-            input_channel = dictionary.get("input_channel", None)
+            Fs_max = dictionary.get(NiDaqConfigOptions.FS_MAX.value, None)
+            voltage_min = dictionary.get(NiDaqConfigOptions.VOLTAGE_MIN.value, None)
+            voltage_max = dictionary.get(NiDaqConfigOptions.VOLTAGE_MAX.value, None)
+            input_channel = dictionary.get(NiDaqConfigOptions.INPUT_CHANNEL.value, None)
 
             if Fs_max:
                 Fs_max = float(Fs_max)
@@ -64,21 +101,23 @@ class NiDaqConfigXML:
         voltage_max: Optional[float] = None,
         input_channel: Optional[str] = None,
     ):
-        tree = cls._tree
+        tree = ET.ElementTree(ET.fromstring(cls.TREE_SKELETON))
 
         if Fs_max:
-            tree.find("./Fs_max").text = str(Fs_max)
+            tree.find(NidaqConfigOptionsXPATH.FS_MAX.value).text = str(Fs_max)
 
         if voltage_min:
-            tree.find("./voltage_min").text = str(voltage_min)
+            tree.find(NidaqConfigOptionsXPATH.VOLTAGE_MIN.value).text = str(voltage_min)
 
         if voltage_max:
-            tree.find("./voltage_max").text = str(voltage_max)
+            tree.find(NidaqConfigOptionsXPATH.VOLTAGE_MAX.value).text = str(voltage_max)
 
         if input_channel:
-            tree.find("./input_channel").text = str(input_channel)
+            tree.find(NidaqConfigOptionsXPATH.INPUT_CHANNEL.value).text = str(
+                input_channel
+            )
 
-        return cls(tree)
+        return cls.from_tree(tree)
 
     def get_node(self):
         return self._tree.getroot()
@@ -90,7 +129,7 @@ class NiDaqConfigXML:
 
     @property
     def Fs_max(self):
-        Fs_max = self._tree.find("./Fs_max").text
+        Fs_max = self._tree.find(NidaqConfigOptionsXPATH.FS_MAX.value).text
 
         if Fs_max is not None:
             Fs_max = float(Fs_max)
@@ -99,7 +138,7 @@ class NiDaqConfigXML:
 
     @property
     def voltage_min(self):
-        voltage_min = self._tree.find("./voltage_min").text
+        voltage_min = self._tree.find(NidaqConfigOptionsXPATH.VOLTAGE_MIN.value).text
 
         if voltage_min is not None:
             voltage_min = float(voltage_min)
@@ -108,7 +147,7 @@ class NiDaqConfigXML:
 
     @property
     def voltage_max(self):
-        voltage_max = self._tree.find("./voltage_max").text
+        voltage_max = self._tree.find(NidaqConfigOptionsXPATH.VOLTAGE_MAX.value).text
 
         if voltage_max is not None:
             voltage_max = float(voltage_max)
@@ -117,7 +156,9 @@ class NiDaqConfigXML:
 
     @property
     def input_channel(self):
-        input_channel = self._tree.find("./input_channel").text
+        input_channel = self._tree.find(
+            NidaqConfigOptionsXPATH.INPUT_CHANNEL.value
+        ).text
 
         if input_channel is not None:
             input_channel = str(input_channel)
@@ -145,13 +186,19 @@ class NiDaqConfigXML:
             self._set_input_channel(input_channel)
 
     def _set_Fs_max(self, Fs_max: Optional[float]):
-        self._tree.find("./Fs_max").text = str(Fs_max)
+        self._tree.find(NidaqConfigOptionsXPATH.FS_MAX.value).text = str(Fs_max)
 
     def _set_voltage_min(self, voltage_min: Optional[float]):
-        self._tree.find("./voltage_min").text = str(voltage_min)
+        self._tree.find(NidaqConfigOptionsXPATH.VOLTAGE_MIN.value).text = str(
+            voltage_min
+        )
 
     def _set_voltage_max(self, voltage_max: Optional[float]):
-        self._tree.find("./voltage_max").text = str(voltage_max)
+        self._tree.find(NidaqConfigOptionsXPATH.VOLTAGE_MAX.value).text = str(
+            voltage_max
+        )
 
     def _set_input_channel(self, input_channel: Optional[str]):
-        self._tree.find("./input_channel").text = str(input_channel)
+        self._tree.find(NidaqConfigOptionsXPATH.INPUT_CHANNEL.value).text = str(
+            input_channel
+        )

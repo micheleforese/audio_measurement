@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Tuple, overload
+from typing import List
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
@@ -9,12 +9,14 @@ import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from audio.math.interpolation import INTERPOLATION_KIND, logx_interpolation_model
+from multipledispatch import dispatch
 from rich.progress import track
+
+from audio.math.interpolation import INTERPOLATION_KIND, logx_interpolation_model
 from audio.model.sweep import SweepData
 
 
-@overload
+@dispatch(list[Path], Path)
 def multiplot(
     csv_files_path: List[Path],
     output_file_path: Path,
@@ -37,7 +39,7 @@ def multiplot(
     )
 
 
-@overload
+@dispatch(list[SweepData], Path)
 def multiplot(
     sweep_data_list: List[SweepData],
     output_file_path: Path,

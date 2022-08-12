@@ -1,5 +1,5 @@
 from __future__ import annotations
-from enum import auto
+from enum import Enum, auto
 import enum
 
 import pathlib
@@ -9,10 +9,10 @@ from typing import Optional
 import rich
 
 from audio.config import json5_string_to_dict, json5_to_dict
-from audio.config.nidaq import NiDaqConfigXML
-from audio.config.plot import PlotConfigXML
-from audio.config.rigol import RigolConfigXML
-from audio.config.sampling import SamplingConfigXML
+from audio.config.nidaq import NiDaqConfigOptions, NiDaqConfigXML
+from audio.config.plot import PlotConfigOptions, PlotConfigXML
+from audio.config.rigol import RigolConfigOptions, RigolConfigXML
+from audio.config.sampling import SamplingConfigOptions, SamplingConfigXML
 from audio.console import console
 from audio.type import Dictionary
 from rich.syntax import Syntax
@@ -23,26 +23,58 @@ class FileType(enum.Enum):
     XML = auto()
 
 
+class SweepConfigOptions(Enum):
+    ROOT = "sweep-config"
+    RIGOL = f"{PlotConfigOptions.ROOT}"
+    NIDAQ = f"{NiDaqConfigOptions.ROOT}"
+    SAMPLING = f"{SamplingConfigOptions.ROOT}"
+    PLOT = f"{PlotConfigOptions.ROOT}"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
+class SweepConfigOptionsXPATH(Enum):
+    RIGOL = f"./{SweepConfigOptions.RIGOL}"
+    NIDAQ = f"./{SweepConfigOptions.NIDAQ}"
+    SAMPLING = f"./{SweepConfigOptions.SAMPLING}"
+    PLOT = f"./{SweepConfigOptions.PLOT}"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
 @rich.repr.auto
 class SweepConfigXML:
-
-    _tree = ET.ElementTree(
-        ET.fromstring(
-            """
-            <sweep-config>
-                <rigol></rigol>
-                <nidaq></nidaq>
-                <sampling></sampling>
-                <plot></plot>
-            </sweep-config>
-            """
-        )
+    TREE_SKELETON: str = """
+    <{root}>
+        {rigol_xml}
+        {nidaq_xml}
+        {sampling_xml}
+        {plot_xml}
+    </{root}>
+    """.format(
+        root=SweepConfigOptions.ROOT.value,
+        rigol_xml=RigolConfigXML.TREE_SKELETON,
+        nidaq_xml=NiDaqConfigXML.TREE_SKELETON,
+        sampling_xml=SamplingConfigXML.TREE_SKELETON,
+        plot_xml=PlotConfigXML.TREE_SKELETON,
     )
 
-    config: ET.ElementTree
+    _tree: ET.ElementTree
 
-    def __init__(self, tree: ET.ElementTree) -> None:
+    def __init__(self) -> None:
+        self._tree = ET.ElementTree(ET.fromstring(self.TREE_SKELETON))
+
+    def set_tree(self, tree: ET.ElementTree):
         self._tree = tree
+
+    @classmethod
+    def from_tree(cls, tree: ET.ElementTree):
+        plotConfigXML = SweepConfigXML()
+        plotConfigXML.set_tree(tree)
+
+        return plotConfigXML
 
     @classmethod
     def from_file(cls, file: pathlib.Path):
@@ -83,21 +115,21 @@ class SweepConfigXML:
 
     @classmethod
     def from_dict(cls, dictionary: Dictionary):
-        rigol_dict = dictionary.get("rigol", None)
-        nidaq_dict = dictionary.get("nidaq", None)
-        sampling_dict = dictionary.get("sampling", None)
-        plot_dict = dictionary.get("plot", None)
+        rigol_dict = dictionary.get(RigolConfigOptions.ROOT.value, None)
+        nidaq_dict = dictionary.get(NiDaqConfigOptions.ROOT.value, None)
+        sampling_dict = dictionary.get(SamplingConfigOptions.ROOT.value, None)
+        plot_dict = dictionary.get(PlotConfigOptions.ROOT.value, None)
 
-        if rigol_dict:
+        if rigol_dict is not None:
             rigol_dict = dict(rigol_dict)
 
-        if nidaq_dict:
+        if nidaq_dict is not None:
             nidaq_dict = dict(nidaq_dict)
 
-        if sampling_dict:
+        if sampling_dict is not None:
             sampling_dict = dict(sampling_dict)
 
-        if plot_dict:
+        if plot_dict is not None:
             plot_dict = dict(plot_dict)
 
         rigol_config_xml = RigolConfigXML.from_dict(rigol_dict)
@@ -120,19 +152,22 @@ class SweepConfigXML:
         sampling: Optional[SamplingConfigXML] = None,
         plot: Optional[PlotConfigXML] = None,
     ):
-        tree = cls._tree
+        tree = ET.ElementTree(ET.fromstring(cls.TREE_SKELETON))
+
         root = tree.getroot()
 
         if rigol:
-            root.find("./rigol").extend(rigol.get_node())
+            root.find(SweepConfigOptionsXPATH.RIGOL.value).extend(rigol.get_node())
         if nidaq:
-            root.find("./nidaq").extend(nidaq.get_node())
+            root.find(SweepConfigOptionsXPATH.NIDAQ.value).extend(nidaq.get_node())
         if sampling:
-            root.find("./sampling").extend(sampling.get_node())
+            root.find(SweepConfigOptionsXPATH.SAMPLING.value).extend(
+                sampling.get_node()
+            )
         if plot:
-            root.find("./plot").extend(plot.get_node())
+            root.find(SweepConfigOptionsXPATH.PLOT.value).extend(plot.get_node())
 
-        return cls(tree)
+        return cls.from_tree(tree)
 
     def __repr__(self) -> str:
         root = self.tree.getroot()
@@ -142,7 +177,6 @@ class SweepConfigXML:
     def print(self):
         root = self.tree.getroot()
         ET.indent(root)
-        # console.print(ET.tostring(root, encoding="unicode"))
         console.print("\n")
         console.print(
             Syntax(ET.tostring(root, encoding="unicode"), "xml", theme="one-dark")
@@ -154,16 +188,24 @@ class SweepConfigXML:
 
     @property
     def rigol(self):
-        return RigolConfigXML(ET.ElementTree(self.tree.find("./rigol")))
+        return RigolConfigXML.from_tree(
+            ET.ElementTree(self.tree.find(SweepConfigOptionsXPATH.RIGOL.value))
+        )
 
     @property
     def nidaq(self):
-        return NiDaqConfigXML(ET.ElementTree(self.tree.find("./nidaq")))
+        return NiDaqConfigXML.from_tree(
+            ET.ElementTree(self.tree.find(SweepConfigOptionsXPATH.NIDAQ.value))
+        )
 
     @property
     def sampling(self):
-        return SamplingConfigXML(ET.ElementTree(self.tree.find("./sampling")))
+        return SamplingConfigXML.from_tree(
+            ET.ElementTree(self.tree.find(SweepConfigOptionsXPATH.SAMPLING.value))
+        )
 
     @property
     def plot(self):
-        return PlotConfigXML.from_tree(ET.ElementTree(self.tree.find("./plot")))
+        return PlotConfigXML.from_tree(
+            ET.ElementTree(self.tree.find(SweepConfigOptionsXPATH.PLOT.value))
+        )

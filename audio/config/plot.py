@@ -9,10 +9,10 @@ import yaml
 
 from audio.config.type import Range
 from audio.console import console
-from functools import singledispatchmethod
 
 
 class PlotConfigOptions(Enum):
+    ROOT = "plot"
     Y_OFFSET = "y_offset"
 
     X_LIMIT = "x_limit"
@@ -52,8 +52,8 @@ class PlotConfigOptionsXPATH(Enum):
 
 @rich.repr.auto
 class PlotConfigXML:
-    _tree_skeleton: str = """
-        <plot>
+    TREE_SKELETON: str = """
+        <{root}>
             <{y_offset}></{y_offset}>
             <{x_limit}>
                 <{x_limit_min}></{x_limit_min}>
@@ -66,8 +66,9 @@ class PlotConfigXML:
             <{interpolation_rate}></{interpolation_rate}>
             <{dpi}></{dpi}>
             <{color}></{color}>
-        </plot>
+        </{root}>
         """.format(
+        root=PlotConfigOptions.ROOT.value,
         y_offset=PlotConfigOptions.Y_OFFSET.value,
         x_limit=PlotConfigOptions.X_LIMIT.value,
         x_limit_min=PlotConfigOptions.X_LIMIT_MIN.value,
@@ -83,7 +84,7 @@ class PlotConfigXML:
     _tree: ET.ElementTree
 
     def __init__(self) -> None:
-        self._tree = ET.ElementTree(ET.fromstring(self._tree_skeleton))
+        self._tree = ET.ElementTree(ET.fromstring(self.TREE_SKELETON))
 
     def set_tree(self, tree: ET.ElementTree):
         # TODO: Check tree before assign it to the class variable
@@ -157,7 +158,7 @@ class PlotConfigXML:
         dpi: Optional[int] = None,
         color: Optional[str] = None,
     ):
-        tree = ET.ElementTree(ET.fromstring(cls._tree_skeleton))
+        tree = ET.ElementTree(ET.fromstring(cls.TREE_SKELETON))
 
         if y_offset is not None:
             tree.find(PlotConfigOptionsXPATH.Y_OFFSET.value).text = str(y_offset)

@@ -66,6 +66,8 @@ def sampling_curve(
         debug (bool, optional): _description_. Defaults to False.
     """
 
+    DEFAULT = {"delay": 0.2}
+
     HOME: Path = sweep_home_path
     HOME.mkdir(parents=True, exist_ok=True)
 
@@ -223,8 +225,11 @@ def sampling_curve(
         # Sets the Frequency
         generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
 
-        # TODO: Implement delay from config if it exists.
-        sleep(0.2)
+        sleep(
+            config.sampling.delay_measurements
+            if config.sampling.delay_measurements is not None
+            else DEFAULT.get("delay")
+        )
 
         # Trim number_of_samples to MAX value
         Fs = trim_value(
@@ -357,8 +362,7 @@ def sampling_curve(
 
     progress_list_task.update(task_sampling, task="Shutting down the Channel 1")
 
-    SCPI.exec_commands(
-        generator,
+    generator.exec(
         [
             SCPI.set_output(1, Switch.OFF),
             SCPI.clear(),

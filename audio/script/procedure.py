@@ -1,15 +1,15 @@
 import pathlib
-from datetime import datetime
 from math import log10
-from typing import Dict, List
+from typing import Dict, List, cast
 
 import click
+from rich import inspect
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 
-# from audio.config import Dict
 from audio.console import console
 from audio.model.set_level import SetLevel
+from audio.plot import multiplot
 from audio.procedure import (
     Procedure,
     ProcedureInsertionGain,
@@ -22,7 +22,6 @@ from audio.procedure import (
     ProcedureText,
 )
 from audio.sampling import config_set_level, plot_from_csv, sampling_curve
-from audio.plot import multiplot
 
 
 @click.command(
@@ -43,20 +42,20 @@ def procedure(
 
     HOME_PATH = home
 
-    datetime_now = datetime.now().strftime(r"%Y-%m-%d--%H-%M-%f")
+    # datetime_now = datetime.now().strftime(r"%Y-%m-%d--%H-%M-%f")
 
-    procedure = Procedure.from_json5_file(procedure_path=procedure_name)
+    proc = Procedure.from_json5_file(procedure_path=procedure_name)
 
-    console.print(f"Start Procedure: [blue]{procedure.name}")
+    console.print(f"Start Procedure: [blue]{proc.name}")
 
     root: pathlib.Path = HOME_PATH
     data: Dict = dict()
 
-    console.print(procedure.steps)
+    console.print(proc.steps)
 
-    idx_tot = len(procedure.steps)
+    idx_tot = len(proc.steps)
 
-    for idx, step in enumerate(procedure.steps):
+    for idx, step in enumerate(proc.steps):
 
         if isinstance(step, ProcedureText):
             step: ProcedureText = step
@@ -68,10 +67,13 @@ def procedure(
                 confirm = Confirm.ask(step.text)
 
         elif isinstance(step, ProcedureSetLevel):
-            step: ProcedureSetLevel = step
+            step = cast(step, ProcedureSetLevel)
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureSetLevel()"))
 
+            console.print(inspect(step, all=True))
+
             sampling_config = step.config
+            sampling_config.print()
 
             set_level_file: pathlib.Path = pathlib.Path(root / step.name)
             plot_file: pathlib.Path = set_level_file.with_suffix(".png")
@@ -146,6 +148,7 @@ def procedure(
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureSweep()"))
 
             sweep_config = step.config
+            sweep_config.print()
 
             if sweep_config is None:
                 console.print("sweep_config is None.", style="error")

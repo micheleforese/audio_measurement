@@ -1,3 +1,4 @@
+from enum import Enum
 import xml.etree.ElementTree as ET
 from typing import Dict, Optional
 
@@ -6,27 +7,56 @@ import rich
 from audio.console import console
 
 
+class RigolConfigOptions(Enum):
+    ROOT = "rigol"
+    AMPLITAMPLITUDE_PEAK_TO_PEAK = "amplitude_peak_to_peak"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
+class RigolConfigOptionsXPATH(Enum):
+    AMPLITUDE_PEAK_TO_PEAK = f"./{RigolConfigOptions.AMPLITAMPLITUDE_PEAK_TO_PEAK}"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
 @rich.repr.auto
 class RigolConfigXML:
-    _tree: ET.ElementTree = ET.ElementTree(
-        ET.fromstring(
-            """
-            <plot>
-                <amplitude_peak_to_peak></amplitude_peak_to_peak>
-            </plot>
-            """
-        )
+    TREE_SKELETON: str = """
+    <{root}>
+        <{amplitude_peak_to_peak}></{amplitude_peak_to_peak}>
+    </{root}>
+    """.format(
+        root=RigolConfigOptions.ROOT.value,
+        amplitude_peak_to_peak=RigolConfigOptions.AMPLITAMPLITUDE_PEAK_TO_PEAK.value,
     )
 
-    def __init__(self, tree: ET.ElementTree) -> None:
+    _tree: ET.ElementTree
+
+    def __init__(self) -> None:
+        self._tree = ET.ElementTree(ET.fromstring(self.TREE_SKELETON))
+
+    def set_tree(self, tree: ET.ElementTree):
         self._tree = tree
+
+    @classmethod
+    def from_tree(cls, tree: ET.ElementTree) -> None:
+        # TODO: Check tree for validity
+        rigolConfigXML = RigolConfigXML()
+        rigolConfigXML.set_tree(tree)
+
+        return rigolConfigXML
 
     @classmethod
     def from_dict(cls, dictionary: Optional[Dict]):
         amplitude_peak_to_peak: Optional[float] = None
 
         if dictionary is not None:
-            amplitude_peak_to_peak = dictionary.get("amplitude_peak_to_peak", None)
+            amplitude_peak_to_peak = dictionary.get(
+                RigolConfigOptions.AMPLITAMPLITUDE_PEAK_TO_PEAK.value, None
+            )
 
             if amplitude_peak_to_peak:
                 amplitude_peak_to_peak = float(amplitude_peak_to_peak)
@@ -40,12 +70,14 @@ class RigolConfigXML:
         cls,
         amplitude_peak_to_peak: Optional[float] = None,
     ):
-        tree = cls._tree
+        tree = ET.ElementTree(ET.fromstring(cls.TREE_SKELETON))
 
         if amplitude_peak_to_peak:
-            tree.find("./amplitude_peak_to_peak").text = str(amplitude_peak_to_peak)
+            tree.find(RigolConfigOptionsXPATH.AMPLITUDE_PEAK_TO_PEAK.value).text = str(
+                amplitude_peak_to_peak
+            )
 
-        return cls(tree)
+        return cls.from_tree(tree)
 
     def get_node(self):
         return self._tree.getroot()
@@ -57,7 +89,9 @@ class RigolConfigXML:
 
     @property
     def amplitude_peak_to_peak(self):
-        amplitude_peak_to_peak = self._tree.find("./amplitude_peak_to_peak").text
+        amplitude_peak_to_peak = self._tree.find(
+            RigolConfigOptionsXPATH.AMPLITUDE_PEAK_TO_PEAK.value
+        ).text
 
         if amplitude_peak_to_peak is not None:
             amplitude_peak_to_peak = float(amplitude_peak_to_peak)
@@ -73,8 +107,8 @@ class RigolConfigXML:
 
     def _set_amplitude_peak_to_peak(self, amplitude_peak_to_peak: Optional[float]):
         try:
-            self._tree.find("./amplitude_peak_to_peak").text = str(
-                amplitude_peak_to_peak
-            )
+            self._tree.find(
+                RigolConfigOptionsXPATH.AMPLITUDE_PEAK_TO_PEAK.value
+            ).text = str(amplitude_peak_to_peak)
         except Exception:
             self.print()
