@@ -217,6 +217,15 @@ class PlotConfigXML:
 
         return yaml_string_data
 
+    def __rich_repr__(self):
+        yield "plot"
+        yield "y_offset", self.y_offset, "NONE"
+        yield "x_limit", self.x_limit, "NONE"
+        yield "y_limit", self.y_limit, "NONE"
+        yield "interpolation_rate", self.interpolation_rate, "NONE"
+        yield "dpi", self.dpi, "NONE"
+        yield "color", self.color, "NONE"
+
     def get_node(self):
         return self._tree.getroot()
 
@@ -230,41 +239,37 @@ class PlotConfigXML:
     #########################
     def y_offset_to_yaml(self) -> Optional[str]:
         if self.y_offset is not None:
-            return f"{PlotConfigOptions.Y_OFFSET}: {self.y_offset}"
+            return f"{PlotConfigOptions.Y_OFFSET.value}: {self.y_offset}"
         else:
             return None
 
     def x_limit_to_yaml(self) -> Optional[str]:
         if self.x_limit is not None:
-            return (
-                f"{PlotConfigOptions.X_LIMIT}: [{self.x_limit.min}, {self.x_limit.max}]"
-            )
+            return f"{PlotConfigOptions.X_LIMIT.value}: [{self.x_limit.min}, {self.x_limit.max}]"
         else:
             return None
 
     def y_limit_to_yaml(self) -> Optional[str]:
         if self.y_limit is not None:
-            return (
-                f"{PlotConfigOptions.Y_LIMIT}: [{self.y_limit.min}, {self.y_limit.max}]"
-            )
+            return f"{PlotConfigOptions.Y_LIMIT.value}: [{self.y_limit.min}, {self.y_limit.max}]"
         else:
             return None
 
     def interpolation_rate_to_yaml(self) -> Optional[str]:
         if self.interpolation_rate is not None:
-            return f"{PlotConfigOptions.INTERPOLATION_RATE}: {self.interpolation_rate}"
+            return f"{PlotConfigOptions.INTERPOLATION_RATE.value}: {self.interpolation_rate}"
         else:
             return None
 
     def dpi_to_yaml(self) -> Optional[str]:
         if self.dpi is not None:
-            return f"{PlotConfigOptions.DPI}: {self.dpi}"
+            return f"{PlotConfigOptions.DPI.value}: {self.dpi}"
         else:
             return None
 
     def color_to_yaml(self) -> Optional[str]:
         if self.color is not None:
-            return f"{PlotConfigOptions.COLOR}: '{self.color}'"
+            return f"{PlotConfigOptions.COLOR.value}: '{self.color}'"
         else:
             return None
 

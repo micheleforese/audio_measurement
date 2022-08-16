@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
@@ -9,17 +9,19 @@ import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from multipledispatch import dispatch
 from rich.progress import track
+
+from .config.sweep import SweepConfigXML
+from .config.plot import PlotConfigOptions, PlotConfigXML
 
 from audio.math.interpolation import INTERPOLATION_KIND, logx_interpolation_model
 from audio.model.sweep import SweepData
 
 
-@dispatch(list[Path], Path)
 def multiplot(
     csv_files_path: List[Path],
     output_file_path: Path,
+    sweep_config: Optional[SweepConfigXML] = None,
 ):
 
     # Check for Files validity
@@ -33,17 +35,6 @@ def multiplot(
         sweep_data = SweepData.from_csv_file(csv)
         sweep_data_list.append(sweep_data)
 
-    multiplot(
-        sweep_data_list=sweep_data_list,
-        output_file_path=output_file_path,
-    )
-
-
-@dispatch(list[SweepData], Path)
-def multiplot(
-    sweep_data_list: List[SweepData],
-    output_file_path: Path,
-):
     DEFAULT = {
         "interpolation_rate": 5,
         "dpi": 400,
@@ -131,6 +122,13 @@ def multiplot(
             linewidth=4,
             color=cfg.color if cfg.color is not None else "yellow",
         )
+
+        if sweep_config is not None:
+            if sweep_config.plot is not None:
+                if sweep_config.plot.y_limit is not None:
+                    axes.set_ylim(
+                        sweep_config.plot.y_limit.min, sweep_config.plot.y_limit.max
+                    )
 
     plt.tight_layout()
 

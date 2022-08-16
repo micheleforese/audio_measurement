@@ -1,11 +1,12 @@
 import pathlib
 from math import log10
-from typing import Dict, List, cast
+from typing import Dict, List
 
 import click
 from rich import inspect
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
+from audio.config.sweep import SweepConfigXML
 
 from audio.console import console
 from audio.model.set_level import SetLevel
@@ -57,6 +58,8 @@ def procedure(
 
     for idx, step in enumerate(proc.steps):
 
+        console.print(type(step))
+
         if isinstance(step, ProcedureText):
             step: ProcedureText = step
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureText()"))
@@ -67,7 +70,7 @@ def procedure(
                 confirm = Confirm.ask(step.text)
 
         elif isinstance(step, ProcedureSetLevel):
-            step = cast(step, ProcedureSetLevel)
+            step: ProcedureSetLevel = step
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureSetLevel()"))
 
             console.print(inspect(step, all=True))
@@ -147,7 +150,7 @@ def procedure(
             step: ProcedureSweep = step
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureSweep()"))
 
-            sweep_config = step.config
+            sweep_config: SweepConfigXML = step.config
             sweep_config.print()
 
             if sweep_config is None:
@@ -165,9 +168,9 @@ def procedure(
             plot_file: pathlib.Path = home_dir_path / (step.name_plot + ".png")
 
             console.print(f"Measurement File: '{measurement_file}'")
-            console.print(f"PLot File: '{plot_file}'")
+            console.print(f"Plot File: '{plot_file}'")
 
-            Confirm.ask()
+            # Confirm.ask()
 
             sampling_curve(
                 config=sweep_config,
@@ -177,11 +180,12 @@ def procedure(
             )
 
             plot_from_csv(
-                plot_config=sweep_config.plot,
                 measurements_file_path=measurement_file,
+                plot_config=sweep_config.plot,
                 plot_file_path=plot_file,
                 debug=True,
             )
+
         elif isinstance(step, ProcedureMultiPlot):
             step: ProcedureMultiPlot = step
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureMultiPlot()"))
@@ -190,11 +194,11 @@ def procedure(
             plot_file: pathlib.Path = home_dir_path / (step.plot_file_name + ".png")
 
             csv_files: List[pathlib.Path] = [
-                pathlib.Path(home_dir_path / csv / csv + ".csv")
+                pathlib.Path(home_dir_path / f"{csv}/{csv}.csv")
                 for csv in step.csv_files
             ]
 
-            multiplot(csv_files, plot_file)
+            multiplot(csv_files, plot_file, step.plot_config)
 
         elif isinstance(step, ProcedureStep):
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureStep()"))

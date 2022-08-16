@@ -119,6 +119,13 @@ class NiDaqConfigXML:
 
         return cls.from_tree(tree)
 
+    def __rich_repr__(self):
+        yield "nidaq"
+        yield "Fs_max", self.Fs_max, "NONE"
+        yield "voltage_min", self.voltage_min, "NONE"
+        yield "voltage_min", self.voltage_min, "NONE"
+        yield "input_channel", self.input_channel, "NONE"
+
     def get_node(self):
         return self._tree.getroot()
 

@@ -1,10 +1,6 @@
 from pathlib import Path
 
-import numpy as np
-from rich import inspect
-
 from audio.config.sweep import SweepConfigXML
-from audio.console import console
 
 
 def test_config():

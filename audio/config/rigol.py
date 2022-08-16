@@ -79,6 +79,10 @@ class RigolConfigXML:
 
         return cls.from_tree(tree)
 
+    def __rich_repr__(self):
+        yield "rigol"
+        yield "amplitude_peak_to_peak", self.amplitude_peak_to_peak, "NONE"
+
     def get_node(self):
         return self._tree.getroot()
 

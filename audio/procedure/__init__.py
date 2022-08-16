@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 import xml.etree.ElementTree as ET
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import rich
 
@@ -54,6 +54,7 @@ class ProcedureSetLevel(ProcedureStep):
 
         config = SweepConfigXML.from_dict(config)
 
+        console.print("ProcedureSetLevel() print:")
         config.print()
 
         if name is not None and config is not None:
@@ -178,11 +179,20 @@ class ProcedureMultiPlot(ProcedureStep):
     name: str
     plot_file_name: str
     csv_files: List[str]
+    plot_config: Optional[SweepConfigXML]
 
-    def __init__(self, name: str, plot_file_name: str, csv_files: List[str]) -> None:
+    def __init__(
+        self,
+        name: str,
+        plot_file_name: str,
+        csv_files: List[str],
+        plot_config: Optional[SweepConfigXML] = None,
+    ) -> None:
+
         self.name = name
         self.plot_file_name = plot_file_name
         self.csv_files = csv_files
+        self.plot_config = plot_config
 
     @classmethod
     def from_dict(cls, data: Dictionary):
@@ -190,12 +200,13 @@ class ProcedureMultiPlot(ProcedureStep):
         name = data.get_property("name", str)
         plot_file_name = data.get_property("plot_file_name", str)
         csv_files = data.get_property("csv_files", List[str])
+        config = SweepConfigXML.from_dict(data.get_property("config", Dict))
 
         if csv_files is None:
             return None
 
         if name is not None and plot_file_name is not None and len(csv_files) > 1:
-            return cls(name, plot_file_name, csv_files)
+            return cls(name, plot_file_name, csv_files, config)
         else:
             return None
 
@@ -204,9 +215,35 @@ class ProcedureMultiPlot(ProcedureStep):
 class Procedure:
 
     name: str
-    steps: List[ProcedureStep]
+    steps: List[
+        Union[
+            ProcedureInsertionGain,
+            ProcedureMultiPlot,
+            ProcedurePrint,
+            ProcedureSerialNumber,
+            ProcedureSetLevel,
+            ProcedureStep,
+            ProcedureSweep,
+            ProcedureText,
+        ]
+    ]
 
-    def __init__(self, name: str, steps: List[ProcedureStep]) -> None:
+    def __init__(
+        self,
+        name: str,
+        steps: List[
+            Union[
+                ProcedureInsertionGain,
+                ProcedureMultiPlot,
+                ProcedurePrint,
+                ProcedureSerialNumber,
+                ProcedureSetLevel,
+                ProcedureStep,
+                ProcedureSweep,
+                ProcedureText,
+            ]
+        ],
+    ) -> None:
         self.name = name
         self.steps = steps
 
@@ -230,14 +267,21 @@ class Procedure:
 
             name.text = procedure_name
 
-            steps: List[ProcedureStep] = []
-
-            console.print("------------------------------------")
+            steps: List[
+                Union[
+                    ProcedureInsertionGain,
+                    ProcedureMultiPlot,
+                    ProcedurePrint,
+                    ProcedureSerialNumber,
+                    ProcedureSetLevel,
+                    ProcedureStep,
+                    ProcedureSweep,
+                    ProcedureText,
+                ]
+            ] = []
 
             if procedure_steps is None:
                 raise Exception("procedure_steps is NULL")
-
-            console.print(procedure_steps)
 
             for idx, step in enumerate(procedure_steps):
 
@@ -254,7 +298,18 @@ class Procedure:
 
                 step_dictionary = Dictionary(step_dictionary)
 
-                procedure: Optional[ProcedureStep] = None
+                procedure: Optional[
+                    Union[
+                        ProcedureInsertionGain,
+                        ProcedureMultiPlot,
+                        ProcedurePrint,
+                        ProcedureSerialNumber,
+                        ProcedureSetLevel,
+                        ProcedureStep,
+                        ProcedureSweep,
+                        ProcedureText,
+                    ]
+                ] = None
 
                 if procedure_type == "text":
                     procedure = ProcedureText.from_dict(step_dictionary)

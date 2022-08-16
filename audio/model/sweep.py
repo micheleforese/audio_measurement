@@ -88,7 +88,7 @@ class SweepData:
 
     # Meta Information
     amplitude: Optional[float]
-    config: PlotConfigXML
+    config: Optional[PlotConfigXML]
 
     # CSV Data
     data: DataFrame
@@ -97,7 +97,7 @@ class SweepData:
         self,
         data: DataFrame,
         amplitude: Optional[float] = None,
-        config: PlotConfigXML = PlotConfigXML(),
+        config: PlotConfigXML = None,
     ) -> None:
         self.data = data
         self.amplitude = amplitude
@@ -130,23 +130,19 @@ class SweepData:
 
         return cls(data, amplitude, plotConfigXML)
 
-    def save(self, path: Path) -> bool:
-        if path.exists() and path.is_file():
-            with open(path, "w", encoding="utf-8") as file:
+    def save(self, path: Path):
+        with open(path, "w", encoding="utf-8") as file:
 
-                file.write(self._meta_info("amplitude", round(self.amplitude, 5)))
-                yaml_str = self._yaml_string_to_yaml_comment(self.config.to_yaml())
-                file.write(yaml_str)
+            file.write(self._meta_info("amplitude", round(self.amplitude, 5)))
+            yaml_str = self._yaml_string_to_yaml_comment(self.config.to_yaml())
+            console.print(yaml_str)
+            file.write(yaml_str)
 
-                self.data.to_csv(
-                    file,
-                    header=True,
-                    index=None,
-                )
-
-                return True
-
-        return False
+            self.data.to_csv(
+                file,
+                header=True,
+                index=None,
+            )
 
     @staticmethod
     def _yaml_extract_from_comments(data: str) -> Dict:
@@ -172,28 +168,28 @@ class SweepData:
 
     @property
     def frequency(self) -> Series:
-        return self.data.get(["frequency"])
+        return self.data.get("frequency")
 
     @property
     def rms(self) -> Series:
-        return self.data.get(["rms"])
+        return self.data.get("rms")
 
     @property
     def dBV(self) -> Series:
-        return self.data.get(["dBV"])
+        return self.data.get("dBV")
 
     @property
     def Fs(self) -> Series:
-        return self.data.get(["Fs"])
+        return self.data.get("Fs")
 
     @property
     def oversampling_ratio(self) -> Series:
-        return self.data.get(["oversampling_ratio"])
+        return self.data.get("oversampling_ratio")
 
     @property
     def n_periods(self) -> Series:
-        return self.data.get(["n_periods"])
+        return self.data.get("n_periods")
 
     @property
     def n_samples(self) -> Series:
-        return self.data.get(["n_samples"])
+        return self.data.get("n_samples")

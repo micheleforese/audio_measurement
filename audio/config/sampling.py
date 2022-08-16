@@ -175,6 +175,17 @@ class SamplingConfigXML:
 
         return cls.from_tree(tree)
 
+    def __rich_repr__(self):
+        yield "sampling"
+        yield "Fs_multiplier", self.Fs_multiplier, "NONE"
+        yield "points_per_decade", self.points_per_decade, "NONE"
+        yield "number_of_samples", self.number_of_samples, "NONE"
+        yield "number_of_samples_max", self.number_of_samples_max, "NONE"
+        yield "frequency_min", self.frequency_min, "NONE"
+        yield "frequency_max", self.frequency_max, "NONE"
+        yield "interpolation_rate", self.interpolation_rate, "NONE"
+        yield "delay_measurements", self.delay_measurements, "NONE"
+
     def get_node(self):
         return self._tree.getroot()
 

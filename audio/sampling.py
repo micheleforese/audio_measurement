@@ -351,12 +351,15 @@ def sampling_curve(
         ],
     )
 
-    sweep_data = SweepData(sampling_data, amplitude=config.rigol.amplitude_peak_to_peak)
+    sweep_data = SweepData(
+        sampling_data.copy(),
+        amplitude=config.rigol.amplitude_peak_to_peak,
+        config=config.plot,
+    )
 
-    sweep_data.save(measurements_path)
+    console.print(f"[FILE - SWEEP CSV] '{sweep_file_path}'")
 
-    if debug:
-        console.print(table)
+    sweep_data.save(sweep_file_path)
 
     progress_sweep.remove_task(task_sweep)
 
@@ -407,7 +410,7 @@ def plot_from_csv(
 
     ui_t.progress_list_task.update(task_plotting, task="Read Measurements")
 
-    sweep_data = SweepData(measurements_file_path)
+    sweep_data = SweepData.from_csv_file(measurements_file_path)
 
     cfg = sweep_data.config
 

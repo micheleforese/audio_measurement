@@ -4,7 +4,7 @@ import enum
 
 import pathlib
 import xml.etree.ElementTree as ET
-from typing import Optional
+from typing import Dict, Optional
 
 import rich
 
@@ -25,7 +25,7 @@ class FileType(enum.Enum):
 
 class SweepConfigOptions(Enum):
     ROOT = "sweep-config"
-    RIGOL = f"{PlotConfigOptions.ROOT}"
+    RIGOL = f"{RigolConfigOptions.ROOT}"
     NIDAQ = f"{NiDaqConfigOptions.ROOT}"
     SAMPLING = f"{SamplingConfigOptions.ROOT}"
     PLOT = f"{PlotConfigOptions.ROOT}"
@@ -48,19 +48,32 @@ class SweepConfigOptionsXPATH(Enum):
 class SweepConfigXML:
     TREE_SKELETON: str = """
     <{root}>
-        {rigol_xml}
-        {nidaq_xml}
-        {sampling_xml}
-        {plot_xml}
+        <{rigol}></{rigol}>
+        <{nidaq}></{nidaq}>
+        <{sampling}></{sampling}>
+        <{plot}></{plot}>
     </{root}>
     """.format(
         root=SweepConfigOptions.ROOT.value,
-        rigol_xml=RigolConfigXML.TREE_SKELETON,
-        nidaq_xml=NiDaqConfigXML.TREE_SKELETON,
-        sampling_xml=SamplingConfigXML.TREE_SKELETON,
-        plot_xml=PlotConfigXML.TREE_SKELETON,
+        rigol=SweepConfigOptions.RIGOL.value,
+        nidaq=SweepConfigOptions.NIDAQ.value,
+        sampling=SweepConfigOptions.SAMPLING.value,
+        plot=SweepConfigOptions.PLOT.value,
     )
-
+    # TREE_SKELETON: str = """
+    # <{root}>
+    #     {rigol_xml}
+    #     {nidaq_xml}
+    #     {sampling_xml}
+    #     {plot_xml}
+    # </{root}>
+    # """.format(
+    #     root=SweepConfigOptions.ROOT.value,
+    #     rigol_xml=RigolConfigXML.TREE_SKELETON,
+    #     nidaq_xml=NiDaqConfigXML.TREE_SKELETON,
+    #     sampling_xml=SamplingConfigXML.TREE_SKELETON,
+    #     plot_xml=PlotConfigXML.TREE_SKELETON,
+    # )
     _tree: ET.ElementTree
 
     def __init__(self) -> None:
@@ -114,11 +127,17 @@ class SweepConfigXML:
         return cls.from_dict(sweep_config)
 
     @classmethod
-    def from_dict(cls, dictionary: Dictionary):
-        rigol_dict = dictionary.get(RigolConfigOptions.ROOT.value, None)
-        nidaq_dict = dictionary.get(NiDaqConfigOptions.ROOT.value, None)
-        sampling_dict = dictionary.get(SamplingConfigOptions.ROOT.value, None)
-        plot_dict = dictionary.get(PlotConfigOptions.ROOT.value, None)
+    def from_dict(cls, dictionary: Optional[Dict]):
+        rigol_dict: Optional[Dict] = None
+        nidaq_dict: Optional[Dict] = None
+        sampling_dict: Optional[Dict] = None
+        plot_dict: Optional[Dict] = None
+
+        if dictionary is not None:
+            rigol_dict = dictionary.get(RigolConfigOptions.ROOT.value, None)
+            nidaq_dict = dictionary.get(NiDaqConfigOptions.ROOT.value, None)
+            sampling_dict = dictionary.get(SamplingConfigOptions.ROOT.value, None)
+            plot_dict = dictionary.get(PlotConfigOptions.ROOT.value, None)
 
         if rigol_dict is not None:
             rigol_dict = dict(rigol_dict)
@@ -170,6 +189,18 @@ class SweepConfigXML:
         return cls.from_tree(tree)
 
     def __repr__(self) -> str:
+        root = self.tree.getroot()
+        ET.indent(root)
+        return ET.tostring(root, encoding="unicode")
+
+    def __rich_repr__(self):
+        yield "config"
+        yield "rigol", self.rigol
+        yield "nidaq", self.nidaq
+        yield "sampling", self.sampling
+        yield "plot", self.plot
+
+    def __str__(self) -> str:
         root = self.tree.getroot()
         ET.indent(root)
         return ET.tostring(root, encoding="unicode")
