@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import pathlib
 import xml.etree.ElementTree as ET
+from pathlib import Path
 from typing import Dict, List, Optional, Union
 
 import rich
 
-from audio.config.sweep import FileType, SweepConfigXML
+from audio.config.sweep import SweepConfigXML
 from audio.console import console
 from audio.type import Dictionary
 
@@ -30,6 +31,13 @@ class ProcedureText(ProcedureStep):
             return cls(text)
         else:
             return None
+
+    @classmethod
+    def from_xml(cls, xml: ET.Element):
+        text = xml.text
+
+        if text is not None and text == "":
+            return cls(text)
 
 
 @rich.repr.auto
@@ -61,6 +69,10 @@ class ProcedureSetLevel(ProcedureStep):
             return cls(name, config)
         else:
             return None
+
+    @classmethod
+    def from_xml(cls, xml: ET.Element):
+        xml.find("./file_name")
 
 
 @rich.repr.auto
@@ -348,3 +360,76 @@ class Procedure:
         data: Optional[Dictionary] = Dictionary.from_json5_string(data)
 
         return Procedure.from_dict(data)
+
+    @classmethod
+    def from_xml_file(cls, file_path: Path):
+        if not file_path.exists() or not file_path.is_file():
+            return None
+
+        cls.from_xml_string(file_path.read_text(encoding="utf-8"))
+
+    @classmethod
+    def from_xml_string(cls, data: str):
+        tree = ET.ElementTree(ET.fromstring(data))
+        procedure = tree.getroot()
+
+        console.print(procedure)
+        if procedure is None:
+            return None
+
+        name = procedure.get("name")
+        console.print(name)
+        steps: List[ET.Element] = procedure.findall("steps/*")
+
+        proc: List[
+            Union[
+                ProcedureInsertionGain,
+                ProcedureMultiPlot,
+                ProcedurePrint,
+                ProcedureSerialNumber,
+                ProcedureSetLevel,
+                ProcedureStep,
+                ProcedureSweep,
+                ProcedureText,
+            ]
+        ] = []
+
+        for idx, step in enumerate(steps):
+            console.print(f"{idx}: {step}")
+            proc_type = step.tag
+
+            proc = Procedure.proc_type_to_procedure(proc_type, step)
+
+    @staticmethod
+    def proc_type_to_procedure(proc_type: str, xml: ET.Element):
+        procedure: Optional[
+            Union[
+                ProcedureText,
+                ProcedureSetLevel,
+                ProcedureSweep,
+                ProcedureSerialNumber,
+                ProcedureInsertionGain,
+                ProcedurePrint,
+                ProcedureMultiPlot,
+                ProcedureStep,
+            ]
+        ] = None
+
+        if proc_type == "text":
+            procedure = ProcedureText.from_xml(xml)
+        elif proc_type == "set-level":
+            procedure = ProcedureSetLevel.from_dict(step_dictionary)
+        elif proc_type == "sweep":
+            procedure = ProcedureSweep.from_dict(step_dictionary)
+        elif proc_type == "serial-number":
+            procedure = ProcedureSerialNumber.from_dict(step_dictionary)
+        elif proc_type == "insertion-gain":
+            procedure = ProcedureInsertionGain.from_dict(step_dictionary)
+        elif proc_type == "print":
+            procedure = ProcedurePrint.from_dict(step_dictionary)
+        elif proc_type == "multiplot":
+            procedure = ProcedureMultiPlot.from_dict(step_dictionary)
+        else:
+            procedure = ProcedureStep()
+
+        return procedure

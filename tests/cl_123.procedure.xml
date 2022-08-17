@@ -1,0 +1,144 @@
+<procedure name="cl-123">
+  <steps>
+    <serial-number>
+      <text>Inserire serial Number</text>
+    </serial-number>
+    <!-- GAIN 0 -->
+    <text>
+      Positionare GAIN a 0.
+    </text>
+    <set-level>
+      <file_name>set-level-0.config.set_level</file_name>
+      <config>
+        <nidaq>
+          <Fs_max>100000</Fs_max>
+          <voltage_min>-4</voltage_min>
+          <voltage_max>4</voltage_max>
+          <input_channel>cDAQ9189-1CDBE0AMod5/ai0</input_channel>
+        </nidaq>
+        <sampling>
+          <Fs_multiplier>50</Fs_multiplier>
+          <points_per_decade>10</points_per_decade>
+          <number_of_samples>500</number_of_samples>
+          <frequency_min>20</frequency_min>
+          <frequency_max>30000</frequency_max>
+        </sampling>
+      </config>
+    </set-level>
+    <insertion-gain>
+      <name_file>gain-0</name_file>
+      <set_level_file>set-level-0.config.set_level</set_level_file>
+    </insertion-gain>
+    <!-- GAIN 4 -->
+    <text>
+      Positionare GAIN a 4.
+    </text>
+    <set-level>
+      <set-level_name_file>set-level-4.config.set_level</set-level_name_file>
+      <config>
+        <nidaq>
+          <Fs_max>100000</Fs_max>
+          <voltage_min>-4</voltage_min>
+          <voltage_max>4</voltage_max>
+          <input_channel>cDAQ9189-1CDBE0AMod5/ai0</input_channel>
+        </nidaq>
+        <sampling>
+          <Fs_multiplier>50</Fs_multiplier>
+          <points_per_decade>10</points_per_decade>
+          <number_of_samples>500</number_of_samples>
+          <frequency_min>20</frequency_min>
+          <frequency_max>30000</frequency_max>
+        </sampling>
+      </config>
+    </set-level>
+    <insertion-gain>
+      <name_file>gain-4</name_file>
+      <set_level_file>set-level-4.config.set_level</set_level_file>
+    </insertion-gain>
+    <!-- GAIN 8 -->
+    <text>
+      Positionare GAIN a 8.
+    </text>
+    <set-level>
+      <set-level_name_file>set-level-8.config.set_level</set-level_name_file>
+      <config>
+        <nidaq>
+          <Fs_max>100000</Fs_max>
+          <voltage_min>-4</voltage_min>
+          <voltage_max>4</voltage_max>
+          <input_channel>cDAQ9189-1CDBE0AMod5/ai0</input_channel>
+        </nidaq>
+        <sampling>
+          <Fs_multiplier>50</Fs_multiplier>
+          <points_per_decade>10</points_per_decade>
+          <number_of_samples>500</number_of_samples>
+          <frequency_min>20</frequency_min>
+          <frequency_max>30000</frequency_max>
+        </sampling>
+      </config>
+    </set-level>
+    <print>
+      <var>gain-0</var>
+      <var>gain-4</var>
+      <var>gain-8</var>
+    </print>
+    <!-- GAIN 4 -->
+    <text>
+      Positionare GAIN a 4.
+    </text>
+    <set-level>
+      <set-level_name_file>set-level-4.config.set_level</set-level_name_file>
+      <config>
+        <nidaq>
+          <Fs_max>100000</Fs_max>
+          <voltage_min>-4</voltage_min>
+          <voltage_max>4</voltage_max>
+          <input_channel>cDAQ9189-1CDBE0AMod5/ai0</input_channel>
+        </nidaq>
+        <sampling>
+          <Fs_multiplier>50</Fs_multiplier>
+          <points_per_decade>10</points_per_decade>
+          <number_of_samples>500</number_of_samples>
+          <frequency_min>20</frequency_min>
+          <frequency_max>30000</frequency_max>
+        </sampling>
+      </config>
+    </set-level>
+    <text>
+      Posizionare dB-LO a -10.
+    </text>
+    <text>
+      Posizionare Hz-LO a 100.
+    </text>
+    <text>
+      Posizionare selettore LO al centro.
+    </text>
+    <text>
+      EQ OFF Spento.
+    </text>
+    <sweep name="sweep LO -10 100">
+      <name_folder>sweep LO -10 100</name_folder>
+      <set_level_file>set-level-4.config.set_level</set_level_file>
+      <plot_file>sweep GAIN 4 - LO -10 100</plot_file>
+      <config>
+        <nidaq>
+          <Fs_max>100000</Fs_max>
+          <voltage_min>-4</voltage_min>
+          <voltage_max>4</voltage_max>
+          <input_channel>cDAQ9189-1CDBE0AMod5/ai0</input_channel>
+        </nidaq>
+        <sampling>
+          <Fs_multiplier>50</Fs_multiplier>
+          <points_per_decade>10</points_per_decade>
+          <number_of_samples>500</number_of_samples>
+          <frequency_min>20</frequency_min>
+          <frequency_max>30000</frequency_max>
+        </sampling>
+        <plot>
+          <interpolation_rate>10</interpolation_rate>
+          <dpi>300</dpi>
+        </plot>
+      </config>
+    </sweep>
+  </steps>
+</procedure>
