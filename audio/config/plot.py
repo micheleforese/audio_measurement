@@ -149,6 +149,29 @@ class PlotConfigXML:
         )
 
     @classmethod
+    def from_xml(cls, xml: Optional[ET.ElementTree]):
+        if xml is not None:
+            x_limit_min = xml.find(PlotConfigOptionsXPATH.X_LIMIT_MIN.value)
+            x_limit_max = xml.find(PlotConfigOptionsXPATH.X_LIMIT_MAX.value)
+            y_limit_min = xml.find(PlotConfigOptionsXPATH.Y_LIMIT_MIN.value)
+            y_limit_max = xml.find(PlotConfigOptionsXPATH.Y_LIMIT_MAX.value)
+
+            plot_config_xml = PlotConfigXML.from_values(
+                x_limit=Range.from_list([x_limit_min, x_limit_max]),
+                y_limit=Range.from_list([y_limit_min, y_limit_max]),
+                y_offset=xml.find(PlotConfigOptionsXPATH.Y_OFFSET.value),
+                interpolation_rate=xml.find(
+                    PlotConfigOptionsXPATH.INTERPOLATION_RATE.value
+                ),
+                dpi=xml.find(PlotConfigOptionsXPATH.DPI.value),
+                color=xml.find(PlotConfigOptionsXPATH.COLOR.value),
+            )
+
+            return plot_config_xml
+        else:
+            return None
+
+    @classmethod
     def from_values(
         cls,
         y_offset: Optional[float] = None,

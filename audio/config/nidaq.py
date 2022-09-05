@@ -94,6 +94,19 @@ class NiDaqConfigXML:
         )
 
     @classmethod
+    def from_xml(cls, xml: Optional[ET.ElementTree]):
+        if xml is not None:
+            nidaq_config_xml = NiDaqConfigXML.from_values(
+                Fs_max=xml.find(NidaqConfigOptionsXPATH.FS_MAX.value),
+                voltage_min=xml.find(NidaqConfigOptionsXPATH.VOLTAGE_MIN.value),
+                voltage_max=xml.find(NidaqConfigOptionsXPATH.VOLTAGE_MAX.value),
+                input_channel=xml.find(NidaqConfigOptionsXPATH.INPUT_CHANNEL.value),
+            )
+            return nidaq_config_xml
+        else:
+            return None
+
+    @classmethod
     def from_values(
         cls,
         Fs_max: Optional[float] = None,

@@ -73,6 +73,9 @@ class ProcedureSetLevel(ProcedureStep):
     @classmethod
     def from_xml(cls, xml: ET.Element):
         xml.find("./file_name")
+        config = xml.find("./config")
+
+        SweepConfigXML.from_xml(ET.ElementTree(config))
 
 
 @rich.repr.auto

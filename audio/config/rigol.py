@@ -66,6 +66,18 @@ class RigolConfigXML:
         )
 
     @classmethod
+    def from_xml(cls, xml: Optional[ET.ElementTree]):
+        if xml is not None:
+            rigol_config_xml = RigolConfigXML.from_values(
+                amplitude_peak_to_peak=xml.find(
+                    RigolConfigOptionsXPATH.AMPLITUDE_PEAK_TO_PEAK.value
+                )
+            )
+            return rigol_config_xml
+        else:
+            return None
+
+    @classmethod
     def from_values(
         cls,
         amplitude_peak_to_peak: Optional[float] = None,

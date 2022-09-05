@@ -164,6 +164,29 @@ class SweepConfigXML:
         )
 
     @classmethod
+    def from_xml(cls, xml: Optional[ET.ElementTree]):
+        if xml is not None:
+            rigol = SweepConfigXML.get_rigol_from_xml(xml)
+            nidaq = SweepConfigXML.get_nidaq_from_xml(xml)
+            sampling = SweepConfigXML.get_sampling_from_xml(xml)
+            plot = SweepConfigXML.get_plot_from_xml(xml)
+
+            rigol_config_xml = RigolConfigXML.from_xml(rigol)
+            nidaq_config_xml = NiDaqConfigXML.from_xml(nidaq)
+            sampling_config_xml = SamplingConfigXML.from_xml(sampling)
+            plot_config_xml = PlotConfigXML.from_xml(plot)
+
+            return SweepConfigXML.from_values(
+                rigol=rigol_config_xml,
+                nidaq=nidaq_config_xml,
+                sampling=sampling_config_xml,
+                plot=plot_config_xml,
+            )
+
+        else:
+            return None
+
+    @classmethod
     def from_values(
         cls,
         rigol: Optional[RigolConfigXML] = None,
@@ -173,18 +196,14 @@ class SweepConfigXML:
     ):
         tree = ET.ElementTree(ET.fromstring(cls.TREE_SKELETON))
 
-        root = tree.getroot()
-
         if rigol:
-            root.find(SweepConfigOptionsXPATH.RIGOL.value).extend(rigol.get_node())
+            SweepConfigXML.get_rigol_from_xml(tree).extend(rigol.get_node())
         if nidaq:
-            root.find(SweepConfigOptionsXPATH.NIDAQ.value).extend(nidaq.get_node())
+            SweepConfigXML.get_nidaq_from_xml(tree).extend(nidaq.get_node())
         if sampling:
-            root.find(SweepConfigOptionsXPATH.SAMPLING.value).extend(
-                sampling.get_node()
-            )
+            SweepConfigXML.get_sampling_from_xml(tree).extend(sampling.get_node())
         if plot:
-            root.find(SweepConfigOptionsXPATH.PLOT.value).extend(plot.get_node())
+            SweepConfigXML.get_plot_from_xml(tree).extend(plot.get_node())
 
         return cls.from_tree(tree)
 
@@ -212,6 +231,26 @@ class SweepConfigXML:
         console.print(
             Syntax(ET.tostring(root, encoding="unicode"), "xml", theme="one-dark")
         )
+
+    @staticmethod
+    def get_rigol_from_xml(xml: ET.ElementTree):
+        rigol = xml.find(SweepConfigOptionsXPATH.RIGOL.value)
+        return rigol
+
+    @staticmethod
+    def get_nidaq_from_xml(xml: ET.ElementTree):
+        nidaq = xml.find(SweepConfigOptionsXPATH.NIDAQ.value)
+        return nidaq
+
+    @staticmethod
+    def get_sampling_from_xml(xml: ET.ElementTree):
+        sampling = xml.find(SweepConfigOptionsXPATH.SAMPLING.value)
+        return sampling
+
+    @staticmethod
+    def get_plot_from_xml(xml: ET.ElementTree):
+        plot = xml.find(SweepConfigOptionsXPATH.PLOT.value)
+        return plot
 
     @property
     def tree(self) -> ET.ElementTree:

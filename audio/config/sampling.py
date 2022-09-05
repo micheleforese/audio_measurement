@@ -136,6 +136,33 @@ class SamplingConfigXML:
         )
 
     @classmethod
+    def from_xml(cls, xml: Optional[ET.ElementTree]):
+        if xml is not None:
+            sampling_config_xml = SamplingConfigXML.from_values(
+                Fs_multiplier=xml.find(SamplingConfigOptionsXPATH.FS_MULTIPLIER.value),
+                points_per_decade=xml.find(
+                    SamplingConfigOptionsXPATH.POINTS_PER_DECADE.value
+                ),
+                number_of_samples=xml.find(
+                    SamplingConfigOptionsXPATH.NUMBER_OF_SAMPLES.value
+                ),
+                number_of_samples_max=xml.find(
+                    SamplingConfigOptionsXPATH.NUMBER_OF_SAMPLES_MAX.value
+                ),
+                frequency_min=xml.find(SamplingConfigOptionsXPATH.FREQUENCY_MIN.value),
+                frequency_max=xml.find(SamplingConfigOptionsXPATH.FREQUENCY_MAX.value),
+                interpolation_rate=xml.find(
+                    SamplingConfigOptionsXPATH.INTERPOLATION_RATE.value
+                ),
+                delay_measurements=xml.find(
+                    SamplingConfigOptionsXPATH.DELAY_MEASUREMENTS.value
+                ),
+            )
+            return sampling_config_xml
+        else:
+            return None
+
+    @classmethod
     def from_values(
         cls,
         Fs_multiplier: Optional[float] = None,
