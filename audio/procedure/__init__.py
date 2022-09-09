@@ -1,6 +1,9 @@
 from __future__ import annotations
+from ast import Str
+from fileinput import filename
 
 import pathlib
+from pydoc import classname
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, List, Optional, Union
@@ -42,88 +45,93 @@ class ProcedureText(ProcedureStep):
 
 @rich.repr.auto
 class ProcedureSetLevel(ProcedureStep):
-    name: str
+    file_key: str
+    file_name: str
     config: SweepConfigXML
 
-    def __init__(self, name: str, config: SweepConfigXML) -> None:
-        self.name = name
+    def __init__(
+        self,
+        file_key: str,
+        file_name: str,
+        config: SweepConfigXML,
+    ) -> None:
+        self.file_key = file_key
+        self.file_name = file_name
         self.config = config
 
     @classmethod
-    def from_dict(cls, data: Dictionary):
-
-        name = data.get_property("name", str)
-        config = data.get_property("config", Dict)
-
-        if config is None:
-            raise Exception("config is NULL")
-
-        config = Dictionary(config)
-
-        config = SweepConfigXML.from_dict(config)
-
-        console.print("ProcedureSetLevel() print:")
-        config.print()
-
-        if name is not None and config is not None:
-            return cls(name, config)
-        else:
-            return None
-
-    @classmethod
     def from_xml(cls, xml: ET.Element):
-        xml.find("./file_name")
+        file_key = xml.find("./file/key")
+        file_name = xml.find("./file/name")
+
         config = xml.find("./config")
 
-        SweepConfigXML.from_xml(ET.ElementTree(config))
+        if file_key is not None and file_name is not None and config is not None:
+            return cls(
+                file_key=file_key.text,
+                file_name=file_name.text,
+                config=SweepConfigXML.from_xml(ET.ElementTree(config)),
+            )
+        else:
+            return None
 
 
 @rich.repr.auto
 class ProcedureSweep(ProcedureStep):
+
     name: str
-    set_level: str
-    y_offset_dB: str
-    name_plot: str
+    name_folder: str
+    file_set_level_key: str
+    file_set_level_name: str
+    file_plot_name: str
+
     config: SweepConfigXML
 
     def __init__(
         self,
         name: str,
-        set_level: str,
-        y_offset_dB: str,
-        name_plot: str,
+        name_folder: str,
+        file_set_level_key: str,
+        file_set_level_name: str,
+        file_plot_name: str,
         config: SweepConfigXML,
     ) -> None:
         self.name = name
-        self.set_level = set_level
-        self.y_offset_dB = y_offset_dB
-        self.name_plot = name_plot
+        self.name_folder = name_folder
+        self.file_set_level_key = file_set_level_key
+        self.file_set_level_name = file_set_level_name
+        self.file_plot_name = file_plot_name
         self.config = config
 
     @classmethod
-    def from_dict(cls, data: Dictionary):
+    def from_xml(cls, xml: Optional[ET.ElementTree]):
+        if xml is None:
+            return None
 
-        name = data.get_property("name", str)
-        set_level = data.get_property("set_level", str)
-        y_offset_dB = data.get_property("y_offset_dB", str)
-        name_plot = data.get_property("name_plot", str)
-        config = data.get_property("config", Dict)
+        name = xml.find("./").get("name", None)
+        name_folder = xml.find("./name_folder")
+        file_set_level_key = xml.find("./file_set_level/key")
+        file_set_level_name = xml.find("./file_set_level/name")
+        file_plot_name = xml.find("./file_plot")
 
-        if config is None:
-            raise Exception("config is NULL")
-
-        config = Dictionary(dict(config))
-
-        config = SweepConfigXML.from_dict(config)
+        config = xml.find("./config")
 
         if (
             name is not None
+            and name_folder is not None
+            and file_set_level_key is not None
+            and file_set_level_name is not None
+            and file_plot_name is not None
             and config is not None
-            and set_level is not None
-            and y_offset_dB is not None
-            and name_plot is not None
         ):
-            return cls(name, set_level, y_offset_dB, name_plot, config)
+            return cls(
+                name=name,
+                name_folder=name_folder.text,
+                file_set_level_key=file_set_level_key.text,
+                file_set_level_name=file_set_level_name.text,
+                file_plot_name=file_plot_name.text,
+                config=SweepConfigXML.from_xml(ET.ElementTree(config)),
+            )
         else:
             return None
 
@@ -137,12 +145,16 @@ class ProcedureSerialNumber(ProcedureStep):
         self.text = text
 
     @classmethod
-    def from_dict(cls, data: Dictionary):
+    def from_xml(cls, xml: ET.ElementTree):
+        if xml is None:
+            return None
 
-        text = data.get_property("text", str)
+        text = xml.find("./text")
 
         if text is not None:
-            return cls(text)
+            return cls(
+                text=text.text,
+            )
         else:
             return None
 
@@ -153,18 +165,45 @@ class ProcedureInsertionGain(ProcedureStep):
     name: str
     set_level: str
 
-    def __init__(self, name: str, set_level: str) -> None:
-        self.name = name
-        self.set_level = set_level
+    file_calibration_key: str
+    file_calibration_name: str
+    file_set_level_key: str
+    file_set_level_name: str
+
+    def __init__(
+        self,
+        file_calibration_key: str,
+        file_calibration_name: str,
+        file_set_level_key: str,
+        file_set_level_name: str,
+    ) -> None:
+        self.file_calibration_key = file_calibration_key
+        self.file_calibration_name = file_calibration_name
+        self.file_set_level_key = file_set_level_key
+        self.file_set_level_name = file_set_level_name
 
     @classmethod
-    def from_dict(cls, data: Dictionary):
+    def from_xml(cls, xml: Optional[ET.ElementTree]):
+        if xml is None:
+            return None
 
-        name = data.get_property("name", str)
-        set_level = data.get_property("set_level", str)
+        file_calibration_key = xml.find("./file_calibration/key")
+        file_calibration_name = xml.find("./file_calibration/name")
+        file_set_level_key = xml.find("./file_set_level/key")
+        file_set_level_name = xml.find("./file_set_level/name")
 
-        if name is not None and set_level is not None:
-            return cls(name, set_level)
+        if (
+            file_calibration_key is not None
+            and file_calibration_name is not None
+            and file_set_level_key is not None
+            and file_set_level_name is not None
+        ):
+            return cls(
+                file_calibration_key=file_calibration_key.text,
+                file_calibration_name=file_calibration_name.text,
+                file_set_level_key=file_set_level_key.text,
+                file_set_level_name=file_set_level_name.text,
+            )
         else:
             return None
 
@@ -178,50 +217,59 @@ class ProcedurePrint(ProcedureStep):
         self.variables = variables
 
     @classmethod
-    def from_dict(cls, data: Dictionary):
-
-        variables = data.get_property("variables", List[str])
-
-        if variables is not None:
-            return cls(variables)
-        else:
+    def from_xml(cls, xml: Optional[ET.ElementTree]):
+        if xml is None:
             return None
+
+        variables: List[str] = [
+            var.text for var in xml.findall("./var") if var.text is not None
+        ]
+
+        return cls(variables=variables)
 
 
 @rich.repr.auto
 class ProcedureMultiPlot(ProcedureStep):
 
     name: str
-    plot_file_name: str
-    csv_files: List[str]
-    plot_config: Optional[SweepConfigXML]
+    file_plot: str
+    files_csv: List[str]
+    config: Optional[SweepConfigXML]
 
     def __init__(
         self,
         name: str,
-        plot_file_name: str,
-        csv_files: List[str],
-        plot_config: Optional[SweepConfigXML] = None,
+        file_plot: str,
+        files_csv: List[str],
+        config: Optional[SweepConfigXML] = None,
     ) -> None:
 
         self.name = name
-        self.plot_file_name = plot_file_name
-        self.csv_files = csv_files
-        self.plot_config = plot_config
+        self.file_plot = file_plot
+        self.files_csv = files_csv
+        self.config = config
 
     @classmethod
-    def from_dict(cls, data: Dictionary):
-
-        name = data.get_property("name", str)
-        plot_file_name = data.get_property("plot_file_name", str)
-        csv_files = data.get_property("csv_files", List[str])
-        config = SweepConfigXML.from_dict(data.get_property("config", Dict))
-
-        if csv_files is None:
+    def from_xml(cls, xml: Optional[ET.ElementTree]):
+        if xml is None:
             return None
 
-        if name is not None and plot_file_name is not None and len(csv_files) > 1:
-            return cls(name, plot_file_name, csv_files, config)
+        name = xml.find("./").get("name", None)
+
+        file_plot = xml.find("./file_plot")
+        files_csv = [
+            csv.text for csv in xml.findall("./files_csv/var") if csv.text is not None
+        ]
+
+        config = xml.find("./config")
+
+        if name is not None and file_plot is not None:
+            return cls(
+                name=name,
+                file_plot=file_plot,
+                files_csv=files_csv,
+                config=SweepConfigXML.from_xml(ET.ElementTree(config)),
+            )
         else:
             return None
 
@@ -381,10 +429,9 @@ class Procedure:
             return None
 
         name = procedure.get("name")
-        console.print(name)
-        steps: List[ET.Element] = procedure.findall("steps/*")
+        step_nodes: List[ET.Element] = procedure.findall("./steps/*")
 
-        proc: List[
+        steps: List[
             Union[
                 ProcedureInsertionGain,
                 ProcedureMultiPlot,
@@ -397,11 +444,18 @@ class Procedure:
             ]
         ] = []
 
-        for idx, step in enumerate(steps):
+        for idx, step in enumerate(step_nodes):
             console.print(f"{idx}: {step}")
             proc_type = step.tag
 
-            proc = Procedure.proc_type_to_procedure(proc_type, step)
+            procedure = Procedure.proc_type_to_procedure(proc_type, step)
+            if procedure is not None:
+                steps.append(procedure)
+
+        return cls(
+            name,
+            steps,
+        )
 
     @staticmethod
     def proc_type_to_procedure(proc_type: str, xml: ET.Element):
@@ -421,17 +475,17 @@ class Procedure:
         if proc_type == "text":
             procedure = ProcedureText.from_xml(xml)
         elif proc_type == "set-level":
-            procedure = ProcedureSetLevel.from_dict(step_dictionary)
+            procedure = ProcedureSetLevel.from_xml(xml)
         elif proc_type == "sweep":
-            procedure = ProcedureSweep.from_dict(step_dictionary)
+            procedure = ProcedureSweep.from_xml(xml)
         elif proc_type == "serial-number":
-            procedure = ProcedureSerialNumber.from_dict(step_dictionary)
+            procedure = ProcedureSerialNumber.from_xml(xml)
         elif proc_type == "insertion-gain":
-            procedure = ProcedureInsertionGain.from_dict(step_dictionary)
+            procedure = ProcedureInsertionGain.from_xml(xml)
         elif proc_type == "print":
-            procedure = ProcedurePrint.from_dict(step_dictionary)
+            procedure = ProcedurePrint.from_xml(xml)
         elif proc_type == "multiplot":
-            procedure = ProcedureMultiPlot.from_dict(step_dictionary)
+            procedure = ProcedureMultiPlot.from_xml(xml)
         else:
             procedure = ProcedureStep()
 
