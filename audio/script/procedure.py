@@ -1,6 +1,6 @@
 import pathlib
 from math import log10
-from typing import Dict, List
+from typing import Dict, List, cast, get_origin
 
 import click
 from rich import inspect
@@ -45,7 +45,7 @@ def procedure(
 
     # datetime_now = datetime.now().strftime(r"%Y-%m-%d--%H-%M-%f")
 
-    proc = Procedure.from_json5_file(procedure_path=procedure_name)
+    proc = Procedure.from_xml_file(file_path=procedure_name)
 
     console.print(f"Start Procedure: [blue]{proc.name}")
 
@@ -61,7 +61,6 @@ def procedure(
         console.print(type(step))
 
         if isinstance(step, ProcedureText):
-            step: ProcedureText = step
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureText()"))
 
             confirm: bool = False
@@ -70,29 +69,27 @@ def procedure(
                 confirm = Confirm.ask(step.text)
 
         elif isinstance(step, ProcedureSetLevel):
-            step: ProcedureSetLevel = step
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureSetLevel()"))
-
-            console.print(inspect(step, all=True))
 
             sampling_config = step.config
             sampling_config.print()
 
-            set_level_file: pathlib.Path = pathlib.Path(root / step.name)
-            plot_file: pathlib.Path = set_level_file.with_suffix(".png")
+            file_set_level: pathlib = pathlib.Path(root / step.file_set_level_name)
+            data[step.file_set_level_key] = file_set_level
+
+            file_set_level_plot: pathlib.Path = pathlib.Path(root / step.file_plot_name)
+            data[step.file_plot_key] = file_set_level_plot
 
             config_set_level(
                 config=sampling_config,
-                plot_file_path=plot_file,
-                set_level_file_path=set_level_file,
+                set_level_file_path=file_set_level,
+                plot_file_path=file_set_level_plot,
                 debug=True,
             )
-            data[step.name] = set_level_file
 
             console.print(data)
 
         elif isinstance(step, ProcedureSerialNumber):
-            step: ProcedureSerialNumber = step
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureSerialNumber()"))
 
             console.print(step.text)
@@ -108,12 +105,10 @@ def procedure(
 
             root = pathlib.Path(HOME_PATH / serial_number)
 
-            console.print(f"Create Dir at: '{root}'")
             root.mkdir(parents=True, exist_ok=True)
+            console.print(f"Created Dir at: '{root}'")
 
         elif isinstance(step, ProcedureInsertionGain):
-            step: ProcedureInsertionGain = step
-
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureInsertionGain()"))
 
             calibration_path: pathlib.Path = pathlib.Path(
@@ -121,10 +116,10 @@ def procedure(
             )
             gain_file_path: pathlib.Path = pathlib.Path(root / step.name)
 
-            set_level_file: pathlib.Path = pathlib.Path(root / step.set_level)
+            file_set_level: pathlib.Path = pathlib.Path(root / step.set_level)
 
             calibration: float = SetLevel(calibration_path).set_level
-            set_level: float = SetLevel(set_level_file).set_level
+            set_level: float = SetLevel(file_set_level).set_level
 
             gain: float = 20 * log10(calibration / set_level)
 
@@ -165,10 +160,12 @@ def procedure(
 
             home_dir_path: pathlib.Path = root / step.name
             measurement_file: pathlib.Path = home_dir_path / (step.name + ".csv")
-            plot_file: pathlib.Path = home_dir_path / (step.name_plot + ".png")
+            file_set_level_plot: pathlib.Path = home_dir_path / (
+                step.name_plot + ".png"
+            )
 
             console.print(f"Measurement File: '{measurement_file}'")
-            console.print(f"Plot File: '{plot_file}'")
+            console.print(f"Plot File: '{file_set_level_plot}'")
 
             # Confirm.ask()
 
@@ -182,7 +179,7 @@ def procedure(
             plot_from_csv(
                 measurements_file_path=measurement_file,
                 plot_config=sweep_config.plot,
-                plot_file_path=plot_file,
+                plot_file_path=file_set_level_plot,
                 debug=True,
             )
 
@@ -191,14 +188,16 @@ def procedure(
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureMultiPlot()"))
 
             home_dir_path: pathlib.Path = root
-            plot_file: pathlib.Path = home_dir_path / (step.plot_file_name + ".png")
+            file_set_level_plot: pathlib.Path = home_dir_path / (
+                step.plot_file_name + ".png"
+            )
 
             csv_files: List[pathlib.Path] = [
                 pathlib.Path(home_dir_path / f"{csv}/{csv}.csv")
                 for csv in step.csv_files
             ]
 
-            multiplot(csv_files, plot_file, step.plot_config)
+            multiplot(csv_files, file_set_level_plot, step.plot_config)
 
         elif isinstance(step, ProcedureStep):
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureStep()"))

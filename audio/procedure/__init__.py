@@ -45,31 +45,47 @@ class ProcedureText(ProcedureStep):
 
 @rich.repr.auto
 class ProcedureSetLevel(ProcedureStep):
-    file_key: str
-    file_name: str
+    file_set_level_key: str
+    file_set_level_name: str
+    file_plot_key: str
+    file_plot_name: str
     config: SweepConfigXML
 
     def __init__(
         self,
-        file_key: str,
-        file_name: str,
+        file_set_level_key: str,
+        file_set_level_name: str,
+        file_plot_key: str,
+        file_plot_name: str,
         config: SweepConfigXML,
     ) -> None:
-        self.file_key = file_key
-        self.file_name = file_name
+        self.file_set_level_key = file_set_level_key
+        self.file_set_level_name = file_set_level_name
+        self.file_plot_key = file_plot_key
+        self.file_plot_name = file_plot_name
         self.config = config
 
     @classmethod
     def from_xml(cls, xml: ET.Element):
-        file_key = xml.find("./file/key")
-        file_name = xml.find("./file/name")
+        file_set_level_key = xml.find("./file_set_level/key")
+        file_set_level_name = xml.find("./file_set_level/name")
+        file_plot_key = xml.find("./file_set_level_plot/key")
+        file_plot_name = xml.find("./file_set_level_plot/name")
 
         config = xml.find("./config")
 
-        if file_key is not None and file_name is not None and config is not None:
+        if (
+            file_set_level_key is not None
+            and file_set_level_name is not None
+            and file_plot_key is not None
+            and file_plot_name is not None
+            and config is not None
+        ):
             return cls(
-                file_key=file_key.text,
-                file_name=file_name.text,
+                file_set_level_key=file_set_level_key.text,
+                file_set_level_name=file_set_level_name.text,
+                file_plot_key=file_plot_key.text,
+                file_plot_name=file_plot_name.text,
                 config=SweepConfigXML.from_xml(ET.ElementTree(config)),
             )
         else:
@@ -278,146 +294,22 @@ class ProcedureMultiPlot(ProcedureStep):
 class Procedure:
 
     name: str
-    steps: List[
-        Union[
-            ProcedureInsertionGain,
-            ProcedureMultiPlot,
-            ProcedurePrint,
-            ProcedureSerialNumber,
-            ProcedureSetLevel,
-            ProcedureStep,
-            ProcedureSweep,
-            ProcedureText,
-        ]
-    ]
+    steps: List[ProcedureStep]
 
     def __init__(
         self,
         name: str,
-        steps: List[
-            Union[
-                ProcedureInsertionGain,
-                ProcedureMultiPlot,
-                ProcedurePrint,
-                ProcedureSerialNumber,
-                ProcedureSetLevel,
-                ProcedureStep,
-                ProcedureSweep,
-                ProcedureText,
-            ]
-        ],
+        steps: List[ProcedureStep],
     ) -> None:
         self.name = name
         self.steps = steps
-
-    @classmethod
-    def from_dict(cls, dictionary: Optional[Dictionary]):
-
-        if dictionary is not None:
-            procedure = ET.Element("procedure")
-
-            name = ET.SubElement(procedure, "name")
-            steps = ET.SubElement(procedure, "steps")
-
-            procedure_data = dictionary.get_property("procedure")
-            procedure_data = Dictionary(procedure_data)
-
-            if procedure_data is None:
-                raise Exception("procedure_data is NULL")
-
-            procedure_name = procedure_data.get_property("name", str)
-            procedure_steps = procedure_data.get_property("steps", List[Dictionary])
-
-            name.text = procedure_name
-
-            steps: List[
-                Union[
-                    ProcedureInsertionGain,
-                    ProcedureMultiPlot,
-                    ProcedurePrint,
-                    ProcedureSerialNumber,
-                    ProcedureSetLevel,
-                    ProcedureStep,
-                    ProcedureSweep,
-                    ProcedureText,
-                ]
-            ] = []
-
-            if procedure_steps is None:
-                raise Exception("procedure_steps is NULL")
-
-            for idx, step in enumerate(procedure_steps):
-
-                step = Dictionary(step)
-
-                procedure_type: Optional[str] = step.get_property("type", str)
-                step_dictionary: Optional[Dict] = step.get_property("step", Dict)
-
-                if procedure_type is None:
-                    raise Exception(f"procedure_type is NULL at idx: {idx}")
-
-                if step_dictionary is None:
-                    raise Exception(f"step_dictionary is NULL at idx: {idx}")
-
-                step_dictionary = Dictionary(step_dictionary)
-
-                procedure: Optional[
-                    Union[
-                        ProcedureInsertionGain,
-                        ProcedureMultiPlot,
-                        ProcedurePrint,
-                        ProcedureSerialNumber,
-                        ProcedureSetLevel,
-                        ProcedureStep,
-                        ProcedureSweep,
-                        ProcedureText,
-                    ]
-                ] = None
-
-                if procedure_type == "text":
-                    procedure = ProcedureText.from_dict(step_dictionary)
-                elif procedure_type == "set-level":
-                    procedure = ProcedureSetLevel.from_dict(step_dictionary)
-                elif procedure_type == "sweep":
-                    procedure = ProcedureSweep.from_dict(step_dictionary)
-                elif procedure_type == "serial-number":
-                    procedure = ProcedureSerialNumber.from_dict(step_dictionary)
-                elif procedure_type == "insertion-gain":
-                    procedure = ProcedureInsertionGain.from_dict(step_dictionary)
-                elif procedure_type == "print":
-                    procedure = ProcedurePrint.from_dict(step_dictionary)
-                elif procedure_type == "multiplot":
-                    procedure = ProcedureMultiPlot.from_dict(step_dictionary)
-                else:
-                    procedure = ProcedureStep()
-
-                if procedure is not None:
-                    steps.append(procedure)
-                else:
-                    raise Exception
-
-            return cls(procedure_name, steps)
-        else:
-            return None
-
-    @classmethod
-    def from_json5_file(cls, procedure_path: pathlib.Path):
-        data: Optional[Dictionary] = Dictionary.from_json5_file(procedure_path)
-
-        return Procedure.from_dict(data)
-
-    @classmethod
-    def from_json5_string(cls, data: str):
-        data: Optional[Dictionary] = Dictionary.from_json5_string(data)
-
-        return Procedure.from_dict(data)
 
     @classmethod
     def from_xml_file(cls, file_path: Path):
         if not file_path.exists() or not file_path.is_file():
             return None
 
-        cls.from_xml_string(file_path.read_text(encoding="utf-8"))
+        return cls.from_xml_string(file_path.read_text(encoding="utf-8"))
 
     @classmethod
     def from_xml_string(cls, data: str):
@@ -431,18 +323,7 @@ class Procedure:
         name = procedure.get("name")
         step_nodes: List[ET.Element] = procedure.findall("./steps/*")
 
-        steps: List[
-            Union[
-                ProcedureInsertionGain,
-                ProcedureMultiPlot,
-                ProcedurePrint,
-                ProcedureSerialNumber,
-                ProcedureSetLevel,
-                ProcedureStep,
-                ProcedureSweep,
-                ProcedureText,
-            ]
-        ] = []
+        steps: List[ProcedureStep] = []
 
         for idx, step in enumerate(step_nodes):
             console.print(f"{idx}: {step}")
@@ -459,18 +340,7 @@ class Procedure:
 
     @staticmethod
     def proc_type_to_procedure(proc_type: str, xml: ET.Element):
-        procedure: Optional[
-            Union[
-                ProcedureText,
-                ProcedureSetLevel,
-                ProcedureSweep,
-                ProcedureSerialNumber,
-                ProcedureInsertionGain,
-                ProcedurePrint,
-                ProcedureMultiPlot,
-                ProcedureStep,
-            ]
-        ] = None
+        procedure: Optional[ProcedureStep] = None
 
         if proc_type == "text":
             procedure = ProcedureText.from_xml(xml)
