@@ -1,6 +1,6 @@
 import pathlib
 from math import log10
-from typing import Dict, List, cast, get_origin
+from typing import Dict, List, Optional, cast, get_origin
 
 import click
 from rich import inspect
@@ -43,8 +43,6 @@ def procedure(
 
     HOME_PATH = home
 
-    # datetime_now = datetime.now().strftime(r"%Y-%m-%d--%H-%M-%f")
-
     proc = Procedure.from_xml_file(file_path=procedure_name)
 
     console.print(f"Start Procedure: [blue]{proc.name}")
@@ -77,13 +75,13 @@ def procedure(
             file_set_level: pathlib = pathlib.Path(root / step.file_set_level_name)
             data[step.file_set_level_key] = file_set_level
 
-            file_set_level_plot: pathlib.Path = pathlib.Path(root / step.file_plot_name)
-            data[step.file_plot_key] = file_set_level_plot
+            file_sweep_plot: pathlib.Path = pathlib.Path(root / step.file_plot_name)
+            data[step.file_plot_key] = file_sweep_plot
 
             config_set_level(
                 config=sampling_config,
                 set_level_file_path=file_set_level,
-                plot_file_path=file_set_level_plot,
+                plot_file_path=file_sweep_plot,
                 debug=True,
             )
 
@@ -111,38 +109,40 @@ def procedure(
         elif isinstance(step, ProcedureInsertionGain):
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureInsertionGain()"))
 
+            # TODO: Make calibration file belong to the specific machine
+            # from HOME_PATH / step.file_calibration_name
+            # to root / step.file_calibration_name
             calibration_path: pathlib.Path = pathlib.Path(
-                HOME_PATH / "calibration.config.set_level"
+                HOME_PATH / step.file_calibration_name
             )
-            gain_file_path: pathlib.Path = pathlib.Path(root / step.name)
 
-            file_set_level: pathlib.Path = pathlib.Path(root / step.set_level)
+            file_set_level: pathlib.Path = pathlib.Path(root / step.file_set_level_name)
 
             calibration: float = SetLevel(calibration_path).set_level
             set_level: float = SetLevel(file_set_level).set_level
 
             gain: float = 20 * log10(calibration / set_level)
 
+            gain_file_path: pathlib.Path = pathlib.Path(root / step.file_gain_name)
             gain_file_path.write_text(f"{gain:.5}", encoding="utf-8")
 
-            data[step.name] = gain_file_path
+            data[step.file_gain_key] = gain_file_path
 
             console.print(f"GAIN: {gain} dB.")
 
         elif isinstance(step, ProcedurePrint):
-            step: ProcedurePrint = step
-
             console.print(Panel(f"{idx}/{idx_tot}: ProcedurePrint()"))
 
             for var in step.variables:
-                console.print(
-                    "{}: {}".format(
-                        var, pathlib.Path(data[var]).read_text(encoding="utf-8")
+                variable: Optional[str] = data.get(var, None)
+                if variable is not None:
+                    console.print(
+                        "{}: {}".format(
+                            var, pathlib.Path(variable).read_text(encoding="utf-8")
+                        )
                     )
-                )
 
         elif isinstance(step, ProcedureSweep):
-            step: ProcedureSweep = step
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureSweep()"))
 
             sweep_config: SweepConfigXML = step.config
@@ -150,22 +150,30 @@ def procedure(
 
             if sweep_config is None:
                 console.print("sweep_config is None.", style="error")
+                exit()
 
-            set_level = SetLevel(data[step.set_level]).set_level
-            y_offset_dB = SetLevel(data[step.set_level]).y_offset_dB
+            file_set_level = data.get(step.file_set_level_key, None)
+
+            if file_set_level is None:
+                file_set_level = pathlib.Path(root / step.file_set_level_name)
+            else:
+                file_set_level = pathlib.Path(file_set_level)
+
+            # file_plot = pathlib.Path(root / step.file_plot_name)
+
+            set_level = SetLevel(file_set_level).set_level
+            y_offset_dB = SetLevel(file_set_level).y_offset_dB
 
             sweep_config.rigol.override(amplitude_peak_to_peak=set_level)
             sweep_config.plot.override(y_offset=y_offset_dB)
             sweep_config.print()
 
-            home_dir_path: pathlib.Path = root / step.name
-            measurement_file: pathlib.Path = home_dir_path / (step.name + ".csv")
-            file_set_level_plot: pathlib.Path = home_dir_path / (
-                step.name_plot + ".png"
-            )
+            home_dir_path: pathlib.Path = root / step.name_folder
+            measurement_file: pathlib.Path = home_dir_path / (step.name_folder + ".csv")
+            file_sweep_plot: pathlib.Path = home_dir_path / (step.name_folder + ".png")
 
-            console.print(f"Measurement File: '{measurement_file}'")
-            console.print(f"Plot File: '{file_set_level_plot}'")
+            console.print(f"[FILE] - Measurement: '{measurement_file}'")
+            console.print(f"[FILE] - Sweep plot: '{file_sweep_plot}'")
 
             # Confirm.ask()
 
@@ -179,25 +187,22 @@ def procedure(
             plot_from_csv(
                 measurements_file_path=measurement_file,
                 plot_config=sweep_config.plot,
-                plot_file_path=file_set_level_plot,
+                plot_file_path=file_sweep_plot,
                 debug=True,
             )
 
         elif isinstance(step, ProcedureMultiPlot):
-            step: ProcedureMultiPlot = step
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureMultiPlot()"))
 
             home_dir_path: pathlib.Path = root
-            file_set_level_plot: pathlib.Path = home_dir_path / (
-                step.plot_file_name + ".png"
-            )
+            file_sweep_plot: pathlib.Path = home_dir_path / (step.file_plot + ".png")
 
             csv_files: List[pathlib.Path] = [
-                pathlib.Path(home_dir_path / f"{csv}/{csv}.csv")
-                for csv in step.csv_files
+                pathlib.Path(home_dir_path / f"{dir}/{dir}.csv")
+                for dir in step.folder_sweep
             ]
 
-            multiplot(csv_files, file_set_level_plot, step.plot_config)
+            multiplot(csv_files, file_sweep_plot, step.config)
 
         elif isinstance(step, ProcedureStep):
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureStep()"))

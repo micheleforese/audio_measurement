@@ -42,7 +42,7 @@ class RigolConfigXML:
         self._tree = tree
 
     @classmethod
-    def from_tree(cls, tree: ET.ElementTree) -> None:
+    def from_tree(cls, tree: ET.ElementTree):
         # TODO: Check tree for validity
         rigolConfigXML = RigolConfigXML()
         rigolConfigXML.set_tree(tree)

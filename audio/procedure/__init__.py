@@ -95,28 +95,25 @@ class ProcedureSetLevel(ProcedureStep):
 @rich.repr.auto
 class ProcedureSweep(ProcedureStep):
 
-    name: str
     name_folder: str
     file_set_level_key: str
     file_set_level_name: str
-    file_plot_name: str
+    # file_plot_name: str
 
     config: SweepConfigXML
 
     def __init__(
         self,
-        name: str,
         name_folder: str,
         file_set_level_key: str,
         file_set_level_name: str,
-        file_plot_name: str,
+        # file_plot_name: str,
         config: SweepConfigXML,
     ) -> None:
-        self.name = name
         self.name_folder = name_folder
         self.file_set_level_key = file_set_level_key
         self.file_set_level_name = file_set_level_name
-        self.file_plot_name = file_plot_name
+        # self.file_plot_name = file_plot_name
         self.config = config
 
     @classmethod
@@ -124,28 +121,25 @@ class ProcedureSweep(ProcedureStep):
         if xml is None:
             return None
 
-        name = xml.find("./").get("name", None)
         name_folder = xml.find("./name_folder")
         file_set_level_key = xml.find("./file_set_level/key")
         file_set_level_name = xml.find("./file_set_level/name")
-        file_plot_name = xml.find("./file_plot")
+        # file_plot_name = xml.find("./file_plot")
 
         config = xml.find("./config")
 
         if (
-            name is not None
-            and name_folder is not None
+            name_folder is not None
             and file_set_level_key is not None
             and file_set_level_name is not None
-            and file_plot_name is not None
+            # and file_plot_name is not None
             and config is not None
         ):
             return cls(
-                name=name,
                 name_folder=name_folder.text,
                 file_set_level_key=file_set_level_key.text,
                 file_set_level_name=file_set_level_name.text,
-                file_plot_name=file_plot_name.text,
+                # file_plot_name=file_plot_name.text,
                 config=SweepConfigXML.from_xml(ET.ElementTree(config)),
             )
         else:
@@ -178,13 +172,14 @@ class ProcedureSerialNumber(ProcedureStep):
 @rich.repr.auto
 class ProcedureInsertionGain(ProcedureStep):
 
-    name: str
-    set_level: str
-
     file_calibration_key: str
     file_calibration_name: str
+
     file_set_level_key: str
     file_set_level_name: str
+
+    file_gain_key: str
+    file_gain_name: str
 
     def __init__(
         self,
@@ -192,11 +187,15 @@ class ProcedureInsertionGain(ProcedureStep):
         file_calibration_name: str,
         file_set_level_key: str,
         file_set_level_name: str,
+        file_gain_key: str,
+        file_gain_name: str,
     ) -> None:
         self.file_calibration_key = file_calibration_key
         self.file_calibration_name = file_calibration_name
         self.file_set_level_key = file_set_level_key
         self.file_set_level_name = file_set_level_name
+        self.file_gain_key = file_gain_key
+        self.file_gain_name = file_gain_name
 
     @classmethod
     def from_xml(cls, xml: Optional[ET.ElementTree]):
@@ -207,18 +206,23 @@ class ProcedureInsertionGain(ProcedureStep):
         file_calibration_name = xml.find("./file_calibration/name")
         file_set_level_key = xml.find("./file_set_level/key")
         file_set_level_name = xml.find("./file_set_level/name")
-
+        file_gain_key = xml.find("./file_gain/key")
+        file_gain_name = xml.find("./file_gain/name")
         if (
             file_calibration_key is not None
             and file_calibration_name is not None
             and file_set_level_key is not None
             and file_set_level_name is not None
+            and file_gain_key is not None
+            and file_gain_name is not None
         ):
             return cls(
                 file_calibration_key=file_calibration_key.text,
                 file_calibration_name=file_calibration_name.text,
                 file_set_level_key=file_set_level_key.text,
                 file_set_level_name=file_set_level_name.text,
+                file_gain_key=file_gain_key.text,
+                file_gain_name=file_gain_name.text,
             )
         else:
             return None
@@ -249,20 +253,20 @@ class ProcedureMultiPlot(ProcedureStep):
 
     name: str
     file_plot: str
-    files_csv: List[str]
+    folder_sweep: List[str]
     config: Optional[SweepConfigXML]
 
     def __init__(
         self,
         name: str,
         file_plot: str,
-        files_csv: List[str],
+        folder_sweep: List[str],
         config: Optional[SweepConfigXML] = None,
     ) -> None:
 
         self.name = name
         self.file_plot = file_plot
-        self.files_csv = files_csv
+        self.folder_sweep = folder_sweep
         self.config = config
 
     @classmethod
@@ -273,8 +277,10 @@ class ProcedureMultiPlot(ProcedureStep):
         name = xml.find("./").get("name", None)
 
         file_plot = xml.find("./file_plot")
-        files_csv = [
-            csv.text for csv in xml.findall("./files_csv/var") if csv.text is not None
+        folder_sweep = [
+            csv.text
+            for csv in xml.findall("./folder_sweep/var")
+            if csv.text is not None
         ]
 
         config = xml.find("./config")
@@ -283,7 +289,7 @@ class ProcedureMultiPlot(ProcedureStep):
             return cls(
                 name=name,
                 file_plot=file_plot,
-                files_csv=files_csv,
+                folder_sweep=folder_sweep,
                 config=SweepConfigXML.from_xml(ET.ElementTree(config)),
             )
         else:

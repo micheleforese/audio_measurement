@@ -22,7 +22,7 @@ def multiplot(
     csv_files_path: List[Path],
     output_file_path: Path,
     sweep_config: Optional[SweepConfigXML] = None,
-):
+) -> bool:
 
     # Check for Files validity
     for csv in csv_files_path:
