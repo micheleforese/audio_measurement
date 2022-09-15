@@ -71,7 +71,7 @@ class SamplingConfigXML:
         self._tree = tree
 
     @classmethod
-    def from_tree(cls, tree: ET.ElementTree) -> None:
+    def from_tree(cls, tree: ET.ElementTree):
         # TODO: Check tree for validity
         samplingConfigXML = SamplingConfigXML()
         samplingConfigXML.set_tree(tree)
@@ -139,28 +139,113 @@ class SamplingConfigXML:
     def from_xml(cls, xml: Optional[ET.ElementTree]):
         if xml is not None:
             sampling_config_xml = SamplingConfigXML.from_values(
-                Fs_multiplier=xml.find(SamplingConfigOptionsXPATH.FS_MULTIPLIER.value),
-                points_per_decade=xml.find(
-                    SamplingConfigOptionsXPATH.POINTS_PER_DECADE.value
+                Fs_multiplier=SamplingConfigXML.get_Fs_multiplier_from_xml(xml),
+                points_per_decade=SamplingConfigXML.get_points_per_decade_from_xml(xml),
+                number_of_samples=SamplingConfigXML.get_number_of_samples_from_xml(xml),
+                number_of_samples_max=SamplingConfigXML.get_number_of_samples_max_from_xml(
+                    xml
                 ),
-                number_of_samples=xml.find(
-                    SamplingConfigOptionsXPATH.NUMBER_OF_SAMPLES.value
+                frequency_min=SamplingConfigXML.get_frequency_min_from_xml(xml),
+                frequency_max=SamplingConfigXML.get_frequency_max_from_xml(xml),
+                interpolation_rate=SamplingConfigXML.get_interpolation_rate_from_xml(
+                    xml
                 ),
-                number_of_samples_max=xml.find(
-                    SamplingConfigOptionsXPATH.NUMBER_OF_SAMPLES_MAX.value
-                ),
-                frequency_min=xml.find(SamplingConfigOptionsXPATH.FREQUENCY_MIN.value),
-                frequency_max=xml.find(SamplingConfigOptionsXPATH.FREQUENCY_MAX.value),
-                interpolation_rate=xml.find(
-                    SamplingConfigOptionsXPATH.INTERPOLATION_RATE.value
-                ),
-                delay_measurements=xml.find(
-                    SamplingConfigOptionsXPATH.DELAY_MEASUREMENTS.value
+                delay_measurements=SamplingConfigXML.get_delay_measurements_from_xml(
+                    xml
                 ),
             )
+
             return sampling_config_xml
         else:
-            return None
+            return SamplingConfigXML()
+
+    @staticmethod
+    def _get_property_from_xml(xml: Optional[ET.ElementTree], XPath: str):
+        if xml is not None:
+            prop = xml.find(XPath)
+
+            if prop is not None:
+                return prop.text
+
+    @staticmethod
+    def get_Fs_multiplier_from_xml(xml: Optional[ET.ElementTree]):
+        Fs_multiplier = SamplingConfigXML._get_property_from_xml(
+            xml, SamplingConfigOptionsXPATH.FS_MULTIPLIER.value
+        )
+        if Fs_multiplier is not None:
+            return float(Fs_multiplier)
+
+        return None
+
+    @staticmethod
+    def get_points_per_decade_from_xml(xml: Optional[ET.ElementTree]):
+        points_per_decade = SamplingConfigXML._get_property_from_xml(
+            xml, SamplingConfigOptionsXPATH.POINTS_PER_DECADE.value
+        )
+        if points_per_decade is not None:
+            return float(points_per_decade)
+
+        return None
+
+    @staticmethod
+    def get_number_of_samples_from_xml(xml: Optional[ET.ElementTree]):
+        number_of_samples = SamplingConfigXML._get_property_from_xml(
+            xml, SamplingConfigOptionsXPATH.NUMBER_OF_SAMPLES.value
+        )
+        if number_of_samples is not None:
+            return int(number_of_samples)
+
+        return None
+
+    @staticmethod
+    def get_number_of_samples_max_from_xml(xml: Optional[ET.ElementTree]):
+        number_of_samples_max = SamplingConfigXML._get_property_from_xml(
+            xml, SamplingConfigOptionsXPATH.NUMBER_OF_SAMPLES_MAX.value
+        )
+        if number_of_samples_max is not None:
+            return int(number_of_samples_max)
+
+        return None
+
+    @staticmethod
+    def get_frequency_min_from_xml(xml: Optional[ET.ElementTree]):
+        frequency_min = SamplingConfigXML._get_property_from_xml(
+            xml, SamplingConfigOptionsXPATH.FREQUENCY_MIN.value
+        )
+        if frequency_min is not None:
+            return float(frequency_min)
+
+        return None
+
+    @staticmethod
+    def get_frequency_max_from_xml(xml: Optional[ET.ElementTree]):
+        frequency_max = SamplingConfigXML._get_property_from_xml(
+            xml, SamplingConfigOptionsXPATH.FREQUENCY_MAX.value
+        )
+        if frequency_max is not None:
+            return float(frequency_max)
+
+        return None
+
+    @staticmethod
+    def get_interpolation_rate_from_xml(xml: Optional[ET.ElementTree]):
+        interpolation_rate = SamplingConfigXML._get_property_from_xml(
+            xml, SamplingConfigOptionsXPATH.INTERPOLATION_RATE.value
+        )
+        if interpolation_rate is not None:
+            return float(interpolation_rate)
+
+        return None
+
+    @staticmethod
+    def get_delay_measurements_from_xml(xml: Optional[ET.ElementTree]):
+        delay_measurements = SamplingConfigXML._get_property_from_xml(
+            xml, SamplingConfigOptionsXPATH.DELAY_MEASUREMENTS.value
+        )
+        if delay_measurements is not None:
+            return float(delay_measurements)
+
+        return None
 
     @classmethod
     def from_values(
@@ -202,16 +287,16 @@ class SamplingConfigXML:
 
         return cls.from_tree(tree)
 
-    def __rich_repr__(self):
-        yield "sampling"
-        yield "Fs_multiplier", self.Fs_multiplier, "NONE"
-        yield "points_per_decade", self.points_per_decade, "NONE"
-        yield "number_of_samples", self.number_of_samples, "NONE"
-        yield "number_of_samples_max", self.number_of_samples_max, "NONE"
-        yield "frequency_min", self.frequency_min, "NONE"
-        yield "frequency_max", self.frequency_max, "NONE"
-        yield "interpolation_rate", self.interpolation_rate, "NONE"
-        yield "delay_measurements", self.delay_measurements, "NONE"
+    # def __rich_repr__(self):
+    #     yield "sampling"
+    #     yield "Fs_multiplier", self.Fs_multiplier, "NONE"
+    #     yield "points_per_decade", self.points_per_decade, "NONE"
+    #     yield "number_of_samples", self.number_of_samples, "NONE"
+    #     yield "number_of_samples_max", self.number_of_samples_max, "NONE"
+    #     yield "frequency_min", self.frequency_min, "NONE"
+    #     yield "frequency_max", self.frequency_max, "NONE"
+    #     yield "interpolation_rate", self.interpolation_rate, "NONE"
+    #     yield "delay_measurements", self.delay_measurements, "NONE"
 
     def get_node(self):
         return self._tree.getroot()

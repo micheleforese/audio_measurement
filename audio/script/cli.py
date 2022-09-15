@@ -16,7 +16,7 @@ from audio.config.sweep import SweepConfigXML
 from audio.config.type import Range
 from audio.console import console
 from audio.docker.latex import create_latex_file
-from audio.math import find_sin_zero_offset, rms_full_cycle
+from audio.math import trim_sin_zero_offset, rms_full_cycle
 from audio.math.interpolation import INTERPOLATION_KIND, interpolation_model
 from audio.math.rms import RMS
 from audio.model.set_level import SetLevel
@@ -626,7 +626,7 @@ def sweep_debug(
             plot_rms_intr_samp.legend(loc="best")
 
         # PLOT: Interpolated Sample, Zero Offset for complete Cycles
-        offset_interpolated, idx_start, idx_end = find_sin_zero_offset(y_interpolated)
+        offset_interpolated, idx_start, idx_end = trim_sin_zero_offset(y_interpolated)
 
         plot_intr_samp_offset = axd["intr_samp_offset"]
         rms_intr_offset = RMS.fft(offset_interpolated)

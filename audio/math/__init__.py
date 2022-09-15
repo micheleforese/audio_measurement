@@ -18,18 +18,14 @@ def decimal_decompose(x) -> Tuple[float, int]:
     return mantissa, exponent
 
 
-def find_sin_zero_offset(sample: List[float]) -> Tuple[List[float], int, int]:
-    # console.print(f"[Sample] - N: {len(sample)}")
+def trim_sin_zero_offset(
+    sample: List[float],
+) -> Optional[Tuple[List[float], int, int]]:
 
-    found: bool = False
-    start_found: bool = False
-    end_found: bool = False
+    zero_index_intersections: List[Tuple[float, float]] = []
 
     index_start: int = 0
     index_end: int = len(sample)
-
-    start_cycle_slope: Optional[float] = 0
-    end_cycle_slope: Optional[float] = 0
 
     # From start to end
     for n in range(1, len(sample)):
@@ -37,64 +33,54 @@ def find_sin_zero_offset(sample: List[float]) -> Tuple[List[float], int, int]:
         samp_prev_index = n - 1
         samp_curr = sample[samp_curr_index]
         samp_prev = sample[samp_prev_index]
-        slope = samp_curr - samp_prev
 
-        norm: float = (samp_prev * samp_curr) / np.abs(samp_prev * samp_curr)
+        slope_normalized: float = (samp_prev * samp_curr) / np.abs(
+            samp_prev * samp_curr
+        )
 
-        if norm < 0:
-            start_cycle_slope = slope
-            index_start = (
-                samp_curr_index
-                if np.abs(samp_curr) < np.abs(samp_prev)
-                else samp_prev_index
-            )
-            # console.print(f"[Sample] - Index Start: {index_start}")
+        if slope_normalized < 0:
+            zero_index_intersections.append((samp_prev_index, samp_curr_index))
 
-            start_found = True
-            break
+    if len(zero_index_intersections) >= 3:
+        (
+            zero_intersection_start_first,
+            zero_intersection_start_second,
+        ) = zero_index_intersections[0]
 
-    if not start_found:
-        return []
+        if (len(zero_index_intersections) % 2) == 0:
 
-    # From end to start
-    # len - 2 = index(-2) of array
-    for n in range(len(sample) - 2, -1, -1):
-        samp_curr_index = n
-        samp_prev_index = n + 1
-        samp_curr = sample[samp_curr_index]
-        samp_prev = sample[samp_prev_index]
-        slope = samp_curr - samp_prev
+            (
+                zero_intersection_end_first,
+                zero_intersection_end_second,
+            ) = zero_index_intersections[-2]
 
-        norm: float = (samp_prev * samp_curr) / np.abs(samp_prev * samp_curr)
-
-        if norm < 0:
-            end_cycle_slope = slope
-
-            if start_cycle_slope * end_cycle_slope < 0:
-                index_end = (
-                    samp_curr_index
-                    if np.abs(samp_curr) < np.abs(samp_prev)
-                    else samp_prev_index
-                )
-                # console.print(f"[Sample] - Index End: {index_end}")
-                end_found = True
-                found = True
-                break
-            else:
-                continue
-
-    if not end_found:
-        return []
-
-    if found:
-        # console.print(f"[Sample] - Index: {index_start:4} - {index_end:4}")
-
-        if index_end - index_start > 1:
-            return sample[index_start:index_end], index_start, index_end
         else:
-            return []
+            (
+                zero_intersection_end_first,
+                zero_intersection_end_second,
+            ) = zero_index_intersections[-1]
+
+        index_start = (
+            zero_intersection_start_first
+            if np.abs(
+                sample[zero_intersection_start_first]
+                < sample[zero_intersection_start_second]
+            )
+            else zero_intersection_start_second
+        )
+
+        index_end = (
+            zero_intersection_end_first
+            if np.abs(
+                sample[zero_intersection_end_first]
+                < sample[zero_intersection_end_second]
+            )
+            else zero_intersection_end_second
+        )
+
+        return sample[index_start:index_end], index_start, index_end
     else:
-        return []
+        return None
 
 
 def rms_full_cycle(sample: List[float]) -> List[float]:

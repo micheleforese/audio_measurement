@@ -28,7 +28,7 @@ from audio.utility.scpi import SCPI, Bandwidth, Switch
 @click.option(
     "--n_sample",
     "n_sample_cli",
-    type=float,
+    type=int,
     help="Amplitude.",
     required=True,
 )
@@ -38,7 +38,7 @@ from audio.utility.scpi import SCPI, Bandwidth, Switch
     help="Will print verbose messages.",
     default=False,
 )
-def read_rms(frequency, amplitude, n_sample_cli, debug: bool):
+def read_rms(frequency, amplitude, n_sample_cli: int, debug: bool):
     # Asks for the 2 instruments
     list_devices: List[Instrument] = UsbTmc.search_devices()
     if debug:
@@ -68,26 +68,29 @@ def read_rms(frequency, amplitude, n_sample_cli, debug: bool):
 
     SCPI.exec_commands(generator, generator_ac_curves)
 
-    generator.close()
-
     sleep(1)
 
-    Fs = trim_value(frequency * 100, max_value=100000)
+    Fs = trim_value(frequency * 10, max_value=1000000)
 
-    n_sample = n_sample_cli
+    n_sample: int = n_sample_cli
 
-    if Fs == 100000:
-        n_sample = 900
+    rms_value: Optional[float]
 
-    rms_value: Optional[float] = RMS.rms(
+    _, rms_value = RMS.rms(
         frequency=frequency,
         Fs=Fs,
-        ch_input="cDAQ9189-1CDBE0AMod1/ai1",
+        ch_input="cDAQ9189-1CDBE0AMod5/ai0",
         max_voltage=4,
         min_voltage=-4,
         number_of_samples=n_sample,
         time_report=False,
         save_file=None,
     )
+
+    generator_ac_curves: List[str] = [
+        SCPI.set_output(1, Switch.OFF),
+    ]
+    SCPI.exec_commands(generator, generator_ac_curves)
+    generator.close()
 
     console.print(Panel("[blue]RMS {}[/]".format(rms_value)))

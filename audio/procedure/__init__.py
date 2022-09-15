@@ -39,8 +39,8 @@ class ProcedureText(ProcedureStep):
     def from_xml(cls, xml: ET.Element):
         text = xml.text
 
-        if text is not None and text == "":
-            return cls(text)
+        if text is not None:
+            return cls(text.strip())
 
 
 @rich.repr.auto
@@ -73,20 +73,23 @@ class ProcedureSetLevel(ProcedureStep):
         file_plot_name = xml.find("./file_set_level_plot/name")
 
         config = xml.find("./config")
+        sweep_config_xml = SweepConfigXML.from_xml(ET.ElementTree(config))
+
+        sweep_config_xml.print()
 
         if (
             file_set_level_key is not None
             and file_set_level_name is not None
             and file_plot_key is not None
             and file_plot_name is not None
-            and config is not None
+            and sweep_config_xml is not None
         ):
             return cls(
                 file_set_level_key=file_set_level_key.text,
                 file_set_level_name=file_set_level_name.text,
                 file_plot_key=file_plot_key.text,
                 file_plot_name=file_plot_name.text,
-                config=SweepConfigXML.from_xml(ET.ElementTree(config)),
+                config=sweep_config_xml,
             )
         else:
             return None
@@ -98,6 +101,8 @@ class ProcedureSweep(ProcedureStep):
     name_folder: str
     file_set_level_key: str
     file_set_level_name: str
+    file_offset_key: str
+    file_offset_name: str
     # file_plot_name: str
 
     config: SweepConfigXML
@@ -107,12 +112,16 @@ class ProcedureSweep(ProcedureStep):
         name_folder: str,
         file_set_level_key: str,
         file_set_level_name: str,
+        file_offset_key: str,
+        file_offset_name: str,
         # file_plot_name: str,
         config: SweepConfigXML,
     ) -> None:
         self.name_folder = name_folder
         self.file_set_level_key = file_set_level_key
         self.file_set_level_name = file_set_level_name
+        self.file_offset_key = file_offset_key
+        self.file_offset_name = file_offset_name
         # self.file_plot_name = file_plot_name
         self.config = config
 
@@ -124,6 +133,8 @@ class ProcedureSweep(ProcedureStep):
         name_folder = xml.find("./name_folder")
         file_set_level_key = xml.find("./file_set_level/key")
         file_set_level_name = xml.find("./file_set_level/name")
+        file_offset_key = xml.find("./file_offset/key")
+        file_offset_name = xml.find("./file_offset/name")
         # file_plot_name = xml.find("./file_plot")
 
         config = xml.find("./config")
@@ -132,6 +143,8 @@ class ProcedureSweep(ProcedureStep):
             name_folder is not None
             and file_set_level_key is not None
             and file_set_level_name is not None
+            and file_offset_key is not None
+            and file_offset_name is not None
             # and file_plot_name is not None
             and config is not None
         ):
@@ -139,6 +152,8 @@ class ProcedureSweep(ProcedureStep):
                 name_folder=name_folder.text,
                 file_set_level_key=file_set_level_key.text,
                 file_set_level_name=file_set_level_name.text,
+                file_offset_key=file_offset_key.text,
+                file_offset_name=file_offset_name.text,
                 # file_plot_name=file_plot_name.text,
                 config=SweepConfigXML.from_xml(ET.ElementTree(config)),
             )
@@ -274,7 +289,8 @@ class ProcedureMultiPlot(ProcedureStep):
         if xml is None:
             return None
 
-        name = xml.find("./").get("name", None)
+        name = xml.find(".").get("name", None)
+        console.print(name)
 
         file_plot = xml.find("./file_plot")
         folder_sweep = [
@@ -285,12 +301,14 @@ class ProcedureMultiPlot(ProcedureStep):
 
         config = xml.find("./config")
 
+        sweep_config_xml = SweepConfigXML.from_xml(ET.ElementTree(config))
+
         if name is not None and file_plot is not None:
             return cls(
                 name=name,
-                file_plot=file_plot,
+                file_plot=file_plot.text,
                 folder_sweep=folder_sweep,
-                config=SweepConfigXML.from_xml(ET.ElementTree(config)),
+                config=sweep_config_xml,
             )
         else:
             return None
@@ -322,7 +340,15 @@ class Procedure:
         tree = ET.ElementTree(ET.fromstring(data))
         procedure = tree.getroot()
 
-        console.print(procedure)
+        # DEBUG PRINT
+        from rich.syntax import Syntax
+
+        ET.indent(procedure)
+        console.print("\n")
+        console.print(
+            Syntax(ET.tostring(procedure, encoding="unicode"), "xml", theme="one-dark")
+        )
+
         if procedure is None:
             return None
 
@@ -332,12 +358,17 @@ class Procedure:
         steps: List[ProcedureStep] = []
 
         for idx, step in enumerate(step_nodes):
-            console.print(f"{idx}: {step}")
             proc_type = step.tag
+            console.print(f"Procedure idx: {idx} with tag {proc_type}")
 
             procedure = Procedure.proc_type_to_procedure(proc_type, step)
             if procedure is not None:
                 steps.append(procedure)
+            else:
+                console.print(f"procedure idx {idx} is NULL")
+
+        for idx, step in enumerate(steps):
+            console.print(f"{idx}: {step}")
 
         return cls(
             name,

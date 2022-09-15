@@ -23,6 +23,7 @@ from audio.procedure import (
     ProcedureText,
 )
 from audio.sampling import config_set_level, plot_from_csv, sampling_curve
+from audio.model.insertion_gain import InsertionGain
 
 
 @click.command(
@@ -109,11 +110,8 @@ def procedure(
         elif isinstance(step, ProcedureInsertionGain):
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureInsertionGain()"))
 
-            # TODO: Make calibration file belong to the specific machine
-            # from HOME_PATH / step.file_calibration_name
-            # to root / step.file_calibration_name
             calibration_path: pathlib.Path = pathlib.Path(
-                HOME_PATH / step.file_calibration_name
+                root / step.file_calibration_name
             )
 
             file_set_level: pathlib.Path = pathlib.Path(root / step.file_set_level_name)
@@ -152,6 +150,7 @@ def procedure(
                 console.print("sweep_config is None.", style="error")
                 exit()
 
+            # Set Level
             file_set_level = data.get(step.file_set_level_key, None)
 
             if file_set_level is None:
@@ -159,10 +158,16 @@ def procedure(
             else:
                 file_set_level = pathlib.Path(file_set_level)
 
-            # file_plot = pathlib.Path(root / step.file_plot_name)
+            # Insertion Gain
+            file_insertion_gain = data.get(step.file_offset_key, None)
+
+            if file_insertion_gain is None:
+                file_insertion_gain = pathlib.Path(root / step.file_offset_name)
+            else:
+                file_insertion_gain = pathlib.Path(file_insertion_gain)
 
             set_level = SetLevel(file_set_level).set_level
-            y_offset_dB = SetLevel(file_set_level).y_offset_dB
+            y_offset_dB = InsertionGain(file_insertion_gain).y_offset_dB
 
             sweep_config.rigol.override(amplitude_peak_to_peak=set_level)
             sweep_config.plot.override(y_offset=y_offset_dB)
@@ -174,8 +179,6 @@ def procedure(
 
             console.print(f"[FILE] - Measurement: '{measurement_file}'")
             console.print(f"[FILE] - Sweep plot: '{file_sweep_plot}'")
-
-            # Confirm.ask()
 
             sampling_curve(
                 config=sweep_config,

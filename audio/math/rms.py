@@ -8,7 +8,7 @@ from scipy.fft import fft
 
 from audio.console import console
 from audio.math import (
-    find_sin_zero_offset,
+    trim_sin_zero_offset,
     integrate,
 )
 from audio.math.interpolation import INTERPOLATION_KIND, interpolation_model
@@ -59,54 +59,61 @@ class RMS:
         timer = Timer()
 
         # Pre allocate the array
-        try:
-            voltages = read_voltages(
-                sampling_frequency=Fs,
-                number_of_samples=number_of_samples,
-                input_channel=ch_input,
-                max_voltage=max_voltage,
-                min_voltage=min_voltage,
-                input_frequency=frequency,
+        voltages = read_voltages(
+            sampling_frequency=Fs,
+            number_of_samples=number_of_samples,
+            input_channel=ch_input,
+            max_voltage=max_voltage,
+            min_voltage=min_voltage,
+            input_frequency=frequency,
+        )
+
+        if len(voltages) != number_of_samples:
+            console.log(
+                f"Lenght of voltages is {len(voltages)} instead of {number_of_samples}"
             )
 
-            if save_file:
-                with open(save_file.absolute().resolve(), "w", encoding="utf-8") as f:
-                    f.write("# frequency: {}\n".format(round(frequency, 5)))
-                    f.write("# Fs: {}\n".format(round(Fs, 5)))
-                    pd.DataFrame(voltages).to_csv(
-                        f,
-                        header=["voltage"],
-                        index=None,
-                    )
+        if save_file:
+            with open(save_file.absolute().resolve(), "w", encoding="utf-8") as f:
+                f.write("# frequency: {}\n".format(round(frequency, 5)))
+                f.write("# Fs: {}\n".format(round(Fs, 5)))
+                pd.DataFrame(voltages).to_csv(
+                    f,
+                    header=["voltage"],
+                    index=None,
+                )
 
-            _, y_interpolated = interpolation_model(
-                range(0, len(voltages)),
-                voltages,
-                int(len(voltages) * interpolation_rate),
-                kind=INTERPOLATION_KIND.CUBIC,
-            )
+        _, y_interpolated = interpolation_model(
+            range(0, len(voltages)),
+            voltages,
+            int(len(voltages) * interpolation_rate),
+            kind=INTERPOLATION_KIND.CUBIC,
+        )
 
-            if trim:
-                voltages, _, _ = find_sin_zero_offset(y_interpolated)
+        if trim:
+            trim_response = trim_sin_zero_offset(y_interpolated)
 
-            rms: Optional[float] = None
+            if trim_response is not None:
+                voltages, _, _ = trim_response
+            else:
+                console.log("trim ERROR")
 
-            if time_report:
-                timer.start("[yellow]RMS Calculation Execution time[/]")
+        rms: Optional[float] = None
 
-            if rms_mode == RMS_MODE.FFT:
-                rms = RMS.fft(voltages)
-            elif rms_mode == RMS_MODE.AVERAGE:
-                rms = RMS.average(voltages)
-            elif rms_mode == RMS_MODE.INTEGRATE:
-                rms = RMS.integration(voltages, Fs)
+        if time_report:
+            timer.start("[yellow]RMS Calculation Execution time[/]")
 
-            if time_report:
-                timer.stop().print()
+        if rms_mode == RMS_MODE.FFT:
+            rms = RMS.fft(voltages)
+        elif rms_mode == RMS_MODE.AVERAGE:
+            rms = RMS.average(voltages)
+        elif rms_mode == RMS_MODE.INTEGRATE:
+            rms = RMS.integration(voltages, Fs)
 
-            return (voltages, rms)
-        except Exception as e:
-            console.log(e)
+        if time_report:
+            timer.stop().print()
+
+        return voltages, rms
 
     @staticmethod
     def average(voltages: List[float]) -> float:

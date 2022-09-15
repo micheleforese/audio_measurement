@@ -1,6 +1,6 @@
 from enum import Enum
 import xml.etree.ElementTree as ET
-from typing import Dict, Optional
+from typing import Dict, Optional, TypeVar
 
 import rich.repr
 
@@ -54,7 +54,7 @@ class NiDaqConfigXML:
         self._tree = tree
 
     @classmethod
-    def from_tree(cls, tree: ET.ElementTree) -> None:
+    def from_tree(cls, tree: ET.ElementTree):
         # TODO: Check tree for validity
         nidaqConfigXML = NiDaqConfigXML()
         nidaqConfigXML.set_tree(tree)
@@ -96,15 +96,61 @@ class NiDaqConfigXML:
     @classmethod
     def from_xml(cls, xml: Optional[ET.ElementTree]):
         if xml is not None:
+
             nidaq_config_xml = NiDaqConfigXML.from_values(
-                Fs_max=xml.find(NidaqConfigOptionsXPATH.FS_MAX.value),
-                voltage_min=xml.find(NidaqConfigOptionsXPATH.VOLTAGE_MIN.value),
-                voltage_max=xml.find(NidaqConfigOptionsXPATH.VOLTAGE_MAX.value),
-                input_channel=xml.find(NidaqConfigOptionsXPATH.INPUT_CHANNEL.value),
+                Fs_max=NiDaqConfigXML.get_Fs_max_from_xml(xml),
+                voltage_min=NiDaqConfigXML.get_voltage_min_from_xml(xml),
+                voltage_max=NiDaqConfigXML.get_voltage_max_from_xml(xml),
+                input_channel=NiDaqConfigXML.get_input_channel_from_xml(xml),
             )
             return nidaq_config_xml
         else:
-            return None
+            return NiDaqConfigXML()
+
+    @staticmethod
+    def _get_property_from_xml(xml: Optional[ET.ElementTree], XPath: str):
+        if xml is not None:
+            prop = xml.find(XPath)
+
+            if prop is not None:
+                return prop.text
+
+    @staticmethod
+    def get_Fs_max_from_xml(xml: Optional[ET.ElementTree]):
+        Fs_max = NiDaqConfigXML._get_property_from_xml(
+            xml, NidaqConfigOptionsXPATH.FS_MAX.value
+        )
+        if Fs_max is not None:
+            return float(Fs_max)
+
+        return None
+
+    @staticmethod
+    def get_voltage_min_from_xml(xml: Optional[ET.ElementTree]):
+        voltage_min = NiDaqConfigXML._get_property_from_xml(
+            xml, NidaqConfigOptionsXPATH.VOLTAGE_MIN.value
+        )
+        if voltage_min is not None:
+            return float(voltage_min)
+
+        return None
+
+    @staticmethod
+    def get_voltage_max_from_xml(xml: Optional[ET.ElementTree]):
+        voltage_max = NiDaqConfigXML._get_property_from_xml(
+            xml, NidaqConfigOptionsXPATH.VOLTAGE_MAX.value
+        )
+        if voltage_max is not None:
+            return float(voltage_max)
+
+        return None
+
+    @staticmethod
+    def get_input_channel_from_xml(xml: Optional[ET.ElementTree]):
+        input_channel = NiDaqConfigXML._get_property_from_xml(
+            xml, NidaqConfigOptionsXPATH.INPUT_CHANNEL.value
+        )
+        return input_channel
 
     @classmethod
     def from_values(
@@ -132,20 +178,24 @@ class NiDaqConfigXML:
 
         return cls.from_tree(tree)
 
-    def __rich_repr__(self):
-        yield "nidaq"
-        yield "Fs_max", self.Fs_max, "NONE"
-        yield "voltage_min", self.voltage_min, "NONE"
-        yield "voltage_min", self.voltage_min, "NONE"
-        yield "input_channel", self.input_channel, "NONE"
+    # def __rich_repr__(self):
+    #     yield "nidaq"
+    #     yield "Fs_max", self.Fs_max, "NONE"
+    #     yield "voltage_min", self.voltage_min, "NONE"
+    #     yield "voltage_min", self.voltage_min, "NONE"
+    #     yield "input_channel", self.input_channel, "NONE"
 
     def get_node(self):
         return self._tree.getroot()
 
     def print(self):
+        from rich.syntax import Syntax
+
         root = self._tree.getroot()
         ET.indent(root)
-        console.print(ET.tostring(root, encoding="unicode"))
+        console.print(
+            Syntax(ET.tostring(root, encoding="unicode"), "xml", theme="one-dark")
+        )
 
     @property
     def Fs_max(self):

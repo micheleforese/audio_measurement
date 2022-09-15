@@ -151,25 +151,31 @@ class PlotConfigXML:
     @classmethod
     def from_xml(cls, xml: Optional[ET.ElementTree]):
         if xml is not None:
-            x_limit_min = xml.find(PlotConfigOptionsXPATH.X_LIMIT_MIN.value)
-            x_limit_max = xml.find(PlotConfigOptionsXPATH.X_LIMIT_MAX.value)
-            y_limit_min = xml.find(PlotConfigOptionsXPATH.Y_LIMIT_MIN.value)
-            y_limit_max = xml.find(PlotConfigOptionsXPATH.Y_LIMIT_MAX.value)
+            x_limit_min: Optional[float] = PlotConfigXML.get_x_limit_min_from_xml(xml)
+            x_limit_max: Optional[float] = PlotConfigXML.get_x_limit_max_from_xml(xml)
+            y_limit_min: Optional[float] = PlotConfigXML.get_y_limit_min_from_xml(xml)
+            y_limit_max: Optional[float] = PlotConfigXML.get_y_limit_max_from_xml(xml)
+
+            x_limit_range: Optional[Range[float]] = None
+            y_limit_range: Optional[Range[float]] = None
+            if x_limit_min is not None and x_limit_max is not None:
+                x_limit_range = Range.from_list([x_limit_min, x_limit_max])
+
+            if y_limit_min is not None and y_limit_max is not None:
+                y_limit_range = Range.from_list([y_limit_min, y_limit_max])
 
             plot_config_xml = PlotConfigXML.from_values(
-                x_limit=Range.from_list([x_limit_min, x_limit_max]),
-                y_limit=Range.from_list([y_limit_min, y_limit_max]),
-                y_offset=xml.find(PlotConfigOptionsXPATH.Y_OFFSET.value),
-                interpolation_rate=xml.find(
-                    PlotConfigOptionsXPATH.INTERPOLATION_RATE.value
-                ),
-                dpi=xml.find(PlotConfigOptionsXPATH.DPI.value),
-                color=xml.find(PlotConfigOptionsXPATH.COLOR.value),
+                x_limit=x_limit_range,
+                y_limit=y_limit_range,
+                y_offset=PlotConfigXML.get_y_offset_from_xml(xml),
+                interpolation_rate=PlotConfigXML.get_interpolation_rate_from_xml(xml),
+                dpi=PlotConfigXML.get_dpi_from_xml(xml),
+                color=PlotConfigXML.get_color_from_xml(xml),
             )
 
             return plot_config_xml
         else:
-            return None
+            return PlotConfigXML()
 
     @classmethod
     def from_values(
@@ -240,14 +246,14 @@ class PlotConfigXML:
 
         return yaml_string_data
 
-    def __rich_repr__(self):
-        yield "plot"
-        yield "y_offset", self.y_offset, "NONE"
-        yield "x_limit", self.x_limit, "NONE"
-        yield "y_limit", self.y_limit, "NONE"
-        yield "interpolation_rate", self.interpolation_rate, "NONE"
-        yield "dpi", self.dpi, "NONE"
-        yield "color", self.color, "NONE"
+    # def __rich_repr__(self):
+    #     yield "plot"
+    #     yield "y_offset", self.y_offset, "NONE"
+    #     yield "x_limit", self.x_limit, "NONE"
+    #     yield "y_limit", self.y_limit, "NONE"
+    #     yield "interpolation_rate", self.interpolation_rate, "NONE"
+    #     yield "dpi", self.dpi, "NONE"
+    #     yield "color", self.color, "NONE"
 
     def get_node(self):
         return self._tree.getroot()
@@ -365,89 +371,111 @@ class PlotConfigXML:
     # Options from XML
     ##################
     @staticmethod
-    def get_y_offset_from_xml(xml_tree: ET.ElementTree):
-        y_offset_text: Optional[str] = xml_tree.find(
-            f"{PlotConfigOptionsXPATH.Y_OFFSET}"
-        ).text
-        y_offset: Optional[float] = None
+    def _get_property_from_xml(xml: Optional[ET.ElementTree], XPath: str):
+        if xml is not None:
+            prop = xml.find(XPath)
 
-        if y_offset_text is not None:
-
-            y_offset = float(y_offset_text)
-
-        return y_offset
+            if prop is not None:
+                return prop.text
 
     @staticmethod
-    def get_x_limit_from_xml(xml_tree: ET.ElementTree):
+    def get_x_limit_min_from_xml(xml: Optional[ET.ElementTree]):
+        x_limit_min = PlotConfigXML._get_property_from_xml(
+            xml, PlotConfigOptionsXPATH.X_LIMIT_MIN.value
+        )
+        if x_limit_min is not None:
+            return float(x_limit_min)
 
-        x_limit: Optional[Range[float]] = None
-        x_limit_min_text: Optional[str] = xml_tree.find(
-            PlotConfigOptionsXPATH.X_LIMIT_MIN.value
-        ).text
-        x_limit_max_text: Optional[str] = xml_tree.find(
-            PlotConfigOptionsXPATH.X_LIMIT_MAX.value
-        ).text
-
-        x_limit_min: Optional[float] = None
-        x_limit_max: Optional[float] = None
-
-        if x_limit_min_text is not None and x_limit_max_text is not None:
-            x_limit_min = float(x_limit_min_text)
-            x_limit_max = float(x_limit_max_text)
-            x_limit = Range(x_limit_min, x_limit_max)
-
-        return x_limit
+        return None
 
     @staticmethod
-    def get_y_limit_from_xml(xml_tree: ET.ElementTree):
-        y_limit: Optional[Range[float]] = None
-        y_limit_min_text: Optional[str] = xml_tree.find(
-            PlotConfigOptionsXPATH.Y_LIMIT_MIN.value
-        ).text
-        y_limit_max_text: Optional[str] = xml_tree.find(
-            PlotConfigOptionsXPATH.Y_LIMIT_MAX.value
-        ).text
+    def get_x_limit_max_from_xml(xml: Optional[ET.ElementTree]):
+        x_limit_max = PlotConfigXML._get_property_from_xml(
+            xml, PlotConfigOptionsXPATH.X_LIMIT_MAX.value
+        )
+        if x_limit_max is not None:
+            return float(x_limit_max)
 
-        y_limit_min: Optional[float] = None
-        y_limit_max: Optional[float] = None
-
-        if y_limit_min_text is not None and y_limit_max_text is not None:
-            y_limit_min = float(y_limit_min_text)
-            y_limit_max = float(y_limit_max_text)
-            y_limit = Range(y_limit_min, y_limit_max)
-
-        return y_limit
+        return None
 
     @staticmethod
-    def get_interpolation_rate_from_xml(xml_tree: ET.ElementTree):
-        interpolation_rate_text: Optional[float] = xml_tree.find(
-            PlotConfigOptionsXPATH.INTERPOLATION_RATE.value
-        ).text
+    def get_x_limit_from_xml(xml: Optional[ET.ElementTree]):
+        x_limit_min: Optional[float] = PlotConfigXML.get_x_limit_min_from_xml(xml)
+        x_limit_max: Optional[float] = PlotConfigXML.get_x_limit_max_from_xml(xml)
 
-        interpolation_rate: Optional[float] = None
+        x_limit_range: Optional[Range[float]] = None
+        if x_limit_min is not None and x_limit_max is not None:
+            x_limit_range = Range.from_list([x_limit_min, x_limit_max])
 
-        if interpolation_rate_text is not None:
-            interpolation_rate = float(interpolation_rate_text)
-
-        return interpolation_rate
+        return x_limit_range
 
     @staticmethod
-    def get_dpi_from_xml(xml_tree: ET.ElementTree):
-        dpi_text: Optional[str] = xml_tree.find(PlotConfigOptionsXPATH.DPI.value).text
-        dpi: Optional[int] = None
+    def get_y_limit_min_from_xml(xml: Optional[ET.ElementTree]):
+        y_limit_min = PlotConfigXML._get_property_from_xml(
+            xml, PlotConfigOptionsXPATH.Y_LIMIT_MIN.value
+        )
+        if y_limit_min is not None:
+            return float(y_limit_min)
 
-        if dpi_text is not None:
-            dpi = int(dpi_text)
-
-        return dpi
+        return None
 
     @staticmethod
-    def get_color_from_xml(xml_tree: ET.ElementTree):
-        color: Optional[str] = xml_tree.find(PlotConfigOptionsXPATH.COLOR.value).text
+    def get_y_limit_max_from_xml(xml: Optional[ET.ElementTree]):
+        y_limit_max = PlotConfigXML._get_property_from_xml(
+            xml, PlotConfigOptionsXPATH.Y_LIMIT_MAX.value
+        )
+        if y_limit_max is not None:
+            return float(y_limit_max)
 
-        if color is not None:
-            color = str(color)
+        return None
 
+    @staticmethod
+    def get_y_limit_from_xml(xml: Optional[ET.ElementTree]):
+        y_limit_min: Optional[float] = PlotConfigXML.get_y_limit_min_from_xml(xml)
+        y_limit_max: Optional[float] = PlotConfigXML.get_y_limit_max_from_xml(xml)
+
+        y_limit_range: Optional[Range[float]] = None
+
+        if y_limit_min is not None and y_limit_max is not None:
+            y_limit_range = Range.from_list([y_limit_min, y_limit_max])
+
+        return y_limit_range
+
+    @staticmethod
+    def get_y_offset_from_xml(xml: Optional[ET.ElementTree]):
+        y_offset = PlotConfigXML._get_property_from_xml(
+            xml, PlotConfigOptionsXPATH.Y_OFFSET.value
+        )
+        if y_offset is not None:
+            return float(y_offset)
+
+        return None
+
+    @staticmethod
+    def get_interpolation_rate_from_xml(xml: Optional[ET.ElementTree]):
+        interpolation_rate = PlotConfigXML._get_property_from_xml(
+            xml, PlotConfigOptionsXPATH.INTERPOLATION_RATE.value
+        )
+        if interpolation_rate is not None:
+            return float(interpolation_rate)
+
+        return None
+
+    @staticmethod
+    def get_dpi_from_xml(xml: Optional[ET.ElementTree]):
+        dpi = PlotConfigXML._get_property_from_xml(
+            xml, PlotConfigOptionsXPATH.DPI.value
+        )
+        if dpi is not None:
+            return float(dpi)
+
+        return None
+
+    @staticmethod
+    def get_color_from_xml(xml: Optional[ET.ElementTree]):
+        color = PlotConfigXML._get_property_from_xml(
+            xml, PlotConfigOptionsXPATH.COLOR.value
+        )
         return color
 
     ####################

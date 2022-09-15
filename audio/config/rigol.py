@@ -69,13 +69,31 @@ class RigolConfigXML:
     def from_xml(cls, xml: Optional[ET.ElementTree]):
         if xml is not None:
             rigol_config_xml = RigolConfigXML.from_values(
-                amplitude_peak_to_peak=xml.find(
-                    RigolConfigOptionsXPATH.AMPLITUDE_PEAK_TO_PEAK.value
+                amplitude_peak_to_peak=RigolConfigXML.get_amplitude_peak_to_peak_from_xml(
+                    xml
                 )
             )
             return rigol_config_xml
         else:
-            return None
+            return RigolConfigXML()
+
+    @staticmethod
+    def _get_property_from_xml(xml: Optional[ET.ElementTree], XPath: str):
+        if xml is not None:
+            prop = xml.find(XPath)
+
+            if prop is not None:
+                return prop.text
+
+    @staticmethod
+    def get_amplitude_peak_to_peak_from_xml(xml: Optional[ET.ElementTree]):
+        amplitude_peak_to_peak = RigolConfigXML._get_property_from_xml(
+            xml, RigolConfigOptionsXPATH.AMPLITUDE_PEAK_TO_PEAK.value
+        )
+        if amplitude_peak_to_peak is not None:
+            return float(amplitude_peak_to_peak)
+
+        return None
 
     @classmethod
     def from_values(
@@ -90,10 +108,6 @@ class RigolConfigXML:
             )
 
         return cls.from_tree(tree)
-
-    def __rich_repr__(self):
-        yield "rigol"
-        yield "amplitude_peak_to_peak", self.amplitude_peak_to_peak, "NONE"
 
     def get_node(self):
         return self._tree.getroot()

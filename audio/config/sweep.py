@@ -25,20 +25,20 @@ class FileType(enum.Enum):
 
 class SweepConfigOptions(Enum):
     ROOT = "sweep-config"
-    RIGOL = f"{RigolConfigOptions.ROOT}"
-    NIDAQ = f"{NiDaqConfigOptions.ROOT}"
-    SAMPLING = f"{SamplingConfigOptions.ROOT}"
-    PLOT = f"{PlotConfigOptions.ROOT}"
+    RIGOL = f"{RigolConfigOptions.ROOT.value}"
+    NIDAQ = f"{NiDaqConfigOptions.ROOT.value}"
+    SAMPLING = f"{SamplingConfigOptions.ROOT.value}"
+    PLOT = f"{PlotConfigOptions.ROOT.value}"
 
     def __str__(self) -> str:
         return str(self.value)
 
 
 class SweepConfigOptionsXPATH(Enum):
-    RIGOL = f"./{SweepConfigOptions.RIGOL}"
-    NIDAQ = f"./{SweepConfigOptions.NIDAQ}"
-    SAMPLING = f"./{SweepConfigOptions.SAMPLING}"
-    PLOT = f"./{SweepConfigOptions.PLOT}"
+    RIGOL = f"./{SweepConfigOptions.RIGOL.value}"
+    NIDAQ = f"./{SweepConfigOptions.NIDAQ.value}"
+    SAMPLING = f"./{SweepConfigOptions.SAMPLING.value}"
+    PLOT = f"./{SweepConfigOptions.PLOT.value}"
 
     def __str__(self) -> str:
         return str(self.value)
@@ -171,10 +171,17 @@ class SweepConfigXML:
             sampling = SweepConfigXML.get_sampling_from_xml(xml)
             plot = SweepConfigXML.get_plot_from_xml(xml)
 
+            console.print(f"rigol: {rigol}")
+            console.print(f"nidaq: {nidaq}")
+            console.print(f"sampling: {sampling}")
+            console.print(f"plot: {plot}")
+
             rigol_config_xml = RigolConfigXML.from_xml(rigol)
             nidaq_config_xml = NiDaqConfigXML.from_xml(nidaq)
             sampling_config_xml = SamplingConfigXML.from_xml(sampling)
             plot_config_xml = PlotConfigXML.from_xml(plot)
+
+            nidaq_config_xml.print()
 
             return SweepConfigXML.from_values(
                 rigol=rigol_config_xml,

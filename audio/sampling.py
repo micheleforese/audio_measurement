@@ -22,6 +22,7 @@ from rich.progress import (
 )
 from rich.table import Column, Table
 from usbtmc import Instrument
+from audio.model.set_level import SetLevel
 
 import audio.ui.terminal as ui_t
 from audio.config.plot import PlotConfigXML
@@ -177,7 +178,7 @@ def sampling_curve(
                 1,
                 round(
                     config.rigol.amplitude_peak_to_peak
-                    if config.rigol.amplitude_peak_to_peak < 5
+                    if config.rigol.amplitude_peak_to_peak < 12
                     else 0,
                     5,
                 ),
@@ -546,7 +547,7 @@ def config_set_level(
     debug: bool = False,
 ):
 
-    voltage_amplitude_start: float = 0.01
+    voltage_amplitude_start: float = 0.1
     voltage_amplitude = voltage_amplitude_start
     frequency = 1000
     Fs = trim_value(
@@ -649,7 +650,7 @@ def config_set_level(
     while not Vpp_found:
 
         # GET MEASUREMENTS
-        voltages, rms_value = RMS.rms(
+        _, rms_value = RMS.rms(
             frequency=frequency,
             Fs=Fs,
             ch_input=config.nidaq.input_channel,

@@ -134,7 +134,8 @@ class SweepData:
         with open(path, "w", encoding="utf-8") as file:
 
             file.write(self._meta_info("amplitude", round(self.amplitude, 5)))
-            yaml_str = self._yaml_string_to_yaml_comment(self.config.to_yaml())
+            config_yaml = self.config.to_yaml()
+            yaml_str = self._yaml_string_to_yaml_comment(config_yaml)
             console.print(yaml_str)
             file.write(yaml_str)
 
