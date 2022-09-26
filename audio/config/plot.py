@@ -26,6 +26,7 @@ class PlotConfigOptions(Enum):
     INTERPOLATION_RATE = "interpolation_rate"
     DPI = "dpi"
     COLOR = "color"
+    LEGEND = "legend"
 
     def __str__(self) -> str:
         return str(self.value)
@@ -45,6 +46,7 @@ class PlotConfigOptionsXPATH(Enum):
     INTERPOLATION_RATE = f"./{PlotConfigOptions.INTERPOLATION_RATE}"
     DPI = f"./{PlotConfigOptions.DPI}"
     COLOR = f"./{PlotConfigOptions.COLOR}"
+    LEGEND = f"./{PlotConfigOptions.LEGEND}"
 
     def __str__(self) -> str:
         return str(self.value)
@@ -66,6 +68,7 @@ class PlotConfigXML:
             <{interpolation_rate}></{interpolation_rate}>
             <{dpi}></{dpi}>
             <{color}></{color}>
+            <{legend}></{legend}>
         </{root}>
         """.format(
         root=PlotConfigOptions.ROOT.value,
@@ -79,6 +82,7 @@ class PlotConfigXML:
         interpolation_rate=PlotConfigOptions.INTERPOLATION_RATE.value,
         dpi=PlotConfigOptions.DPI.value,
         color=PlotConfigOptions.COLOR.value,
+        legend=PlotConfigOptions.LEGEND.value,
     )
 
     _tree: ET.ElementTree
@@ -106,6 +110,7 @@ class PlotConfigXML:
         interpolation_rate: Optional[float] = None
         dpi: Optional[int] = None
         color: Optional[str] = None
+        legend: Optional[str] = None
 
         if dictionary is not None:
             y_offset = PlotConfigXML.get_y_offset_from_dictionary(dictionary)
@@ -116,6 +121,7 @@ class PlotConfigXML:
             )
             dpi = PlotConfigXML.get_dpi_from_dictionary(dictionary)
             color = PlotConfigXML.get_color_from_dictionary(dictionary)
+            legend = PlotConfigXML.get_legend_from_dictionary(dictionary)
 
         return cls.from_values(
             y_offset=y_offset,
@@ -124,6 +130,7 @@ class PlotConfigXML:
             interpolation_rate=interpolation_rate,
             dpi=dpi,
             color=color,
+            legend=legend,
         )
 
     @classmethod
@@ -171,6 +178,7 @@ class PlotConfigXML:
                 interpolation_rate=PlotConfigXML.get_interpolation_rate_from_xml(xml),
                 dpi=PlotConfigXML.get_dpi_from_xml(xml),
                 color=PlotConfigXML.get_color_from_xml(xml),
+                legend=PlotConfigXML.get_legend_from_xml(xml),
             )
 
             return plot_config_xml
@@ -186,6 +194,7 @@ class PlotConfigXML:
         interpolation_rate: Optional[float] = None,
         dpi: Optional[int] = None,
         color: Optional[str] = None,
+        legend: Optional[str] = None,
     ):
         tree = ET.ElementTree(ET.fromstring(cls.TREE_SKELETON))
 
@@ -210,6 +219,9 @@ class PlotConfigXML:
 
         if color is not None:
             tree.find(PlotConfigOptionsXPATH.COLOR.value).text = str(color)
+
+        if legend is not None:
+            tree.find(PlotConfigOptionsXPATH.LEGEND.value).text = str(legend)
 
         return cls.from_tree(tree)
 
@@ -241,6 +253,10 @@ class PlotConfigXML:
         color = self.color_to_yaml()
         if color is not None:
             yaml_string_list.append(color)
+
+        legend = self.legend_to_yaml()
+        if legend is not None:
+            yaml_string_list.append(legend)
 
         yaml_string_data = "\n".join(yaml_string_list)
 
@@ -299,6 +315,12 @@ class PlotConfigXML:
     def color_to_yaml(self) -> Optional[str]:
         if self.color is not None:
             return f"{PlotConfigOptions.COLOR.value}: '{self.color}'"
+        else:
+            return None
+
+    def legend_to_yaml(self) -> Optional[str]:
+        if self.legend is not None:
+            return f"{PlotConfigOptions.LEGEND.value}: '{self.legend}'"
         else:
             return None
 
@@ -366,6 +388,15 @@ class PlotConfigXML:
             color = str(color)
 
         return color
+
+    @staticmethod
+    def get_legend_from_dictionary(dictionary: Dict) -> Optional[str]:
+        legend: Optional[str] = dictionary.get(f"{PlotConfigOptions.LEGEND}", None)
+
+        if legend is not None:
+            legend = str(legend)
+
+        return legend
 
     ##################
     # Options from XML
@@ -478,6 +509,13 @@ class PlotConfigXML:
         )
         return color
 
+    @staticmethod
+    def get_legend_from_xml(xml: Optional[ET.ElementTree]):
+        legend = PlotConfigXML._get_property_from_xml(
+            xml, PlotConfigOptionsXPATH.LEGEND.value
+        )
+        return legend
+
     ####################
     # Options from Class
     ####################
@@ -505,6 +543,10 @@ class PlotConfigXML:
     def color(self):
         return self.get_color_from_xml(self._tree)
 
+    @property
+    def legend(self):
+        return self.get_legend_from_xml(self._tree)
+
     def override(
         self,
         y_offset: Optional[float] = None,
@@ -512,7 +554,8 @@ class PlotConfigXML:
         y_limit: Optional[Range[float]] = None,
         interpolation_rate: Optional[float] = None,
         dpi: Optional[int] = None,
-        color: Optional[float] = None,
+        color: Optional[str] = None,
+        legend: Optional[str] = None,
         new_config: Optional[PlotConfigXML] = None,
     ):
         if new_config is not None:
@@ -522,6 +565,7 @@ class PlotConfigXML:
             self._set_interpolation_rate(new_config.interpolation_rate)
             self._set_dpi(new_config.dpi)
             self._set_color(new_config.color)
+            self._set_legend(new_config.legend)
 
         if y_offset is not None:
             self._set_y_offset(y_offset)
@@ -540,6 +584,9 @@ class PlotConfigXML:
 
         if color is not None:
             self._set_color(color)
+
+        if legend is not None:
+            self._set_legend(legend)
 
     def _set_y_offset(self, y_offset: Optional[float]):
         if y_offset is not None:
@@ -573,6 +620,10 @@ class PlotConfigXML:
         if dpi is not None:
             self._tree.find(PlotConfigOptionsXPATH.DPI.value).text = str(dpi)
 
-    def _set_color(self, color: Optional[float]):
+    def _set_color(self, color: Optional[str]):
         if color is not None:
             self._tree.find(PlotConfigOptionsXPATH.COLOR.value).text = str(color)
+
+    def _set_legend(self, legend: Optional[str]):
+        if legend is not None:
+            self._tree.find(PlotConfigOptionsXPATH.LEGEND.value).text = str(legend)

@@ -35,6 +35,8 @@ def multiplot(
         sweep_data = SweepData.from_csv_file(csv)
         sweep_data_list.append(sweep_data)
 
+        sweep_data.config.print()
+
     DEFAULT = {
         "interpolation_rate": 5,
         "dpi": 400,
@@ -44,15 +46,6 @@ def multiplot(
         figsize=(16 * 2, 9 * 2),
         dpi=DEFAULT.get("dpi"),
     )
-
-    # Line at y=-3 is disabled
-    #
-    # axes.plot(
-    #     [0, max(x_interpolated)],
-    #     [-3, -3],
-    #     "-",
-    #     color="green",
-    # )
 
     axes.set_title(
         "Frequency response",
@@ -116,19 +109,28 @@ def multiplot(
         xy_sampled = [x_frequency, y_dBV, "o"]
         xy_interpolated = [x_interpolated, y_interpolated, "-"]
 
+        legend: Optional[str] = None
+
+        if cfg is not None:
+            if cfg.legend is not None:
+                legend = cfg.legend
+
         axes.semilogx(
             *xy_sampled,
             *xy_interpolated,
             linewidth=4,
             color=cfg.color if cfg.color is not None else "yellow",
+            label=legend,
         )
 
-        if sweep_config is not None:
-            if sweep_config.plot is not None:
-                if sweep_config.plot.y_limit is not None:
-                    axes.set_ylim(
-                        sweep_config.plot.y_limit.min, sweep_config.plot.y_limit.max
-                    )
+        axes.legend(loc="best")
+
+    if sweep_config is not None:
+        if sweep_config.plot is not None:
+            if sweep_config.plot.y_limit is not None:
+                axes.set_ylim(
+                    sweep_config.plot.y_limit.min, sweep_config.plot.y_limit.max
+                )
 
     plt.tight_layout()
 

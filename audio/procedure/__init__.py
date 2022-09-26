@@ -1,9 +1,5 @@
 from __future__ import annotations
-from ast import Str
-from fileinput import filename
 
-import pathlib
-from pydoc import classname
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, List, Optional, Union
@@ -103,7 +99,8 @@ class ProcedureSweep(ProcedureStep):
     file_set_level_name: str
     file_offset_key: str
     file_offset_name: str
-    # file_plot_name: str
+    file_insertion_gain_key: str
+    file_insertion_gain_name: str
 
     config: SweepConfigXML
 
@@ -114,6 +111,8 @@ class ProcedureSweep(ProcedureStep):
         file_set_level_name: str,
         file_offset_key: str,
         file_offset_name: str,
+        file_insertion_gain_key: str,
+        file_insertion_gain_name: str,
         # file_plot_name: str,
         config: SweepConfigXML,
     ) -> None:
@@ -122,6 +121,8 @@ class ProcedureSweep(ProcedureStep):
         self.file_set_level_name = file_set_level_name
         self.file_offset_key = file_offset_key
         self.file_offset_name = file_offset_name
+        self.file_insertion_gain_key = file_insertion_gain_key
+        self.file_insertion_gain_name = file_insertion_gain_name
         # self.file_plot_name = file_plot_name
         self.config = config
 
@@ -135,7 +136,8 @@ class ProcedureSweep(ProcedureStep):
         file_set_level_name = xml.find("./file_set_level/name")
         file_offset_key = xml.find("./file_offset/key")
         file_offset_name = xml.find("./file_offset/name")
-        # file_plot_name = xml.find("./file_plot")
+        file_insertion_gain_key = xml.find("./file_insertion_gain/key")
+        file_insertion_gain_name = xml.find("./file_insertion_gain/name")
 
         config = xml.find("./config")
 
@@ -145,6 +147,8 @@ class ProcedureSweep(ProcedureStep):
             and file_set_level_name is not None
             and file_offset_key is not None
             and file_offset_name is not None
+            and file_insertion_gain_key is not None
+            and file_insertion_gain_name is not None
             # and file_plot_name is not None
             and config is not None
         ):
@@ -154,6 +158,8 @@ class ProcedureSweep(ProcedureStep):
                 file_set_level_name=file_set_level_name.text,
                 file_offset_key=file_offset_key.text,
                 file_offset_name=file_offset_name.text,
+                file_insertion_gain_key=file_insertion_gain_key.text,
+                file_insertion_gain_name=file_insertion_gain_name.text,
                 # file_plot_name=file_plot_name.text,
                 config=SweepConfigXML.from_xml(ET.ElementTree(config)),
             )
@@ -301,7 +307,12 @@ class ProcedureMultiPlot(ProcedureStep):
 
         config = xml.find("./config")
 
-        sweep_config_xml = SweepConfigXML.from_xml(ET.ElementTree(config))
+        sweep_config_xml: SweepConfigXML
+
+        if config is not None:
+            sweep_config_xml = SweepConfigXML.from_xml(ET.ElementTree(config))
+        else:
+            sweep_config_xml = SweepConfigXML()
 
         if name is not None and file_plot is not None:
             return cls(
@@ -381,13 +392,13 @@ class Procedure:
 
         if proc_type == "text":
             procedure = ProcedureText.from_xml(xml)
-        elif proc_type == "set-level":
+        elif proc_type == "set_level":
             procedure = ProcedureSetLevel.from_xml(xml)
         elif proc_type == "sweep":
             procedure = ProcedureSweep.from_xml(xml)
-        elif proc_type == "serial-number":
+        elif proc_type == "serial_number":
             procedure = ProcedureSerialNumber.from_xml(xml)
-        elif proc_type == "insertion-gain":
+        elif proc_type == "insertion_gain":
             procedure = ProcedureInsertionGain.from_xml(xml)
         elif proc_type == "print":
             procedure = ProcedurePrint.from_xml(xml)

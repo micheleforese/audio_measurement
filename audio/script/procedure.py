@@ -150,7 +150,7 @@ def procedure(
                 console.print("sweep_config is None.", style="error")
                 exit()
 
-            # Set Level
+            # Set Level & Y Offset dB
             file_set_level = data.get(step.file_set_level_key, None)
 
             if file_set_level is None:
@@ -159,18 +159,22 @@ def procedure(
                 file_set_level = pathlib.Path(file_set_level)
 
             # Insertion Gain
-            file_insertion_gain = data.get(step.file_offset_key, None)
+            file_insertion_gain = data.get(step.file_insertion_gain_key, None)
 
             if file_insertion_gain is None:
-                file_insertion_gain = pathlib.Path(root / step.file_offset_name)
+                file_insertion_gain = pathlib.Path(root / step.file_insertion_gain_name)
             else:
                 file_insertion_gain = pathlib.Path(file_insertion_gain)
 
             set_level = SetLevel(file_set_level).set_level
-            y_offset_dB = InsertionGain(file_insertion_gain).y_offset_dB
+            y_offset_dB = SetLevel(file_set_level).y_offset_dB
+            insertion_gain = InsertionGain(file_insertion_gain).insertion_gain_dB
 
             sweep_config.rigol.override(amplitude_peak_to_peak=set_level)
             sweep_config.plot.override(y_offset=y_offset_dB)
+            sweep_config.plot.override(
+                legend=f"{sweep_config.plot.legend}, Vpp IN={set_level:.2f} V, G={insertion_gain} dB"
+            )
             sweep_config.print()
 
             home_dir_path: pathlib.Path = root / step.name_folder
@@ -198,7 +202,7 @@ def procedure(
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureMultiPlot()"))
 
             home_dir_path: pathlib.Path = root
-            file_sweep_plot: pathlib.Path = home_dir_path / (step.file_plot + ".png")
+            file_sweep_plot: pathlib.Path = home_dir_path / step.file_plot
 
             csv_files: List[pathlib.Path] = [
                 pathlib.Path(home_dir_path / f"{dir}/{dir}.csv")

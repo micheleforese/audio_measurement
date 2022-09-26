@@ -138,6 +138,7 @@ def sampling_curve(
         live_group,
         transient=True,
         console=console,
+        vertical_overflow="visible",
     )
     live.start()
 
@@ -166,6 +167,16 @@ def sampling_curve(
     if not generator.instr.instrument.connected:
         generator.open()
 
+    if config.rigol.amplitude_peak_to_peak > 12:
+        generator.exec(
+            [
+                SCPI.set_output(1, Switch.OFF),
+            ]
+        )
+        generator.close()
+        console.print("[ERROR] - Voltage Input > 12.", style="error")
+        exit()
+
     # Sets the Configuration for the Voltmeter
     generator.exec(
         [
@@ -177,9 +188,9 @@ def sampling_curve(
             SCPI.set_source_voltage_amplitude(
                 1,
                 round(
-                    config.rigol.amplitude_peak_to_peak
-                    if config.rigol.amplitude_peak_to_peak < 12
-                    else 0,
+                    config.rigol.amplitude_peak_to_peak,
+                    # if config.rigol.amplitude_peak_to_peak < 12
+                    # else 0
                     5,
                 ),
             ),
@@ -353,7 +364,7 @@ def sampling_curve(
     )
 
     sweep_data = SweepData(
-        sampling_data.copy(),
+        sampling_data,
         amplitude=config.rigol.amplitude_peak_to_peak,
         config=config.plot,
     )
@@ -465,14 +476,17 @@ def plot_from_csv(
         *xy_interpolated,
         linewidth=4,
         color=cfg.color if cfg.color is not None else "yellow",
+        label=cfg.legend,
     )
+
+    # line.set_label(f"{cfg.legend}")
+
+    axes.legend(
+        loc="best",
+    )
+
     # Added Line to y = -3
-    axes.plot(
-        [0, max(x_interpolated)],
-        [-3, -3],
-        "-",
-        color="green",
-    )
+    axes.axhline(y=-3, linestyle="-", color="green")
 
     axes.set_title(
         "Frequency response",
@@ -750,6 +764,11 @@ def config_set_level(
                 voltage_amplitude = output_variable
 
                 # Apply new Amplitude
+
+                if voltage_amplitude > 11:
+                    voltage_amplitude = 11
+                    console.print("[ERROR] - Voltage Input > 11.", style="error")
+
                 generator_configs: list = [
                     SCPI.set_source_voltage_amplitude(1, voltage_amplitude)
                 ]

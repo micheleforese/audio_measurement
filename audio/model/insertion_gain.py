@@ -5,11 +5,11 @@ from audio.console import console
 
 
 class InsertionGain:
-    y_offset_dB: float
+    insertion_gain_dB: float
 
     def __init__(self, file: pathlib.Path) -> None:
 
         if not file.exists() or not file.is_file():
             raise Exception("File does not Exists.")
 
-        self.y_offset_dB = float(file.read_text(encoding="utf-8"))
+        self.insertion_gain_dB = float(file.read_text(encoding="utf-8"))
