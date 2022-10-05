@@ -79,7 +79,13 @@ def procedure(
             file_sweep_plot: pathlib.Path = pathlib.Path(root / step.file_plot_name)
             data[step.file_plot_key] = file_sweep_plot
 
+            dBu = 4
+
+            if step.dBu is not None:
+                dBu = step.dBu
+
             config_set_level(
+                dBu=dBu,
                 config=sampling_config,
                 set_level_file_path=file_set_level,
                 plot_file_path=file_sweep_plot,

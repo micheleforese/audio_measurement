@@ -555,6 +555,7 @@ def plot_from_csv(
 
 
 def config_set_level(
+    dBu: float,
     config: SweepConfigXML,
     plot_file_path: Path,
     set_level_file_path: Optional[Path] = None,
@@ -568,7 +569,7 @@ def config_set_level(
         frequency * config.sampling.Fs_multiplier, max_value=config.nidaq.Fs_max
     )
     diff_voltage = 0.001
-    Vpp_4dBu_exact = 1.227653
+    Vpp_dBu_exact = pow(10, dBu / 20) * 0.775
 
     table = Table(
         Column("Iteration", justify="right"),
@@ -647,7 +648,7 @@ def config_set_level(
     Vpp_found: bool = False
     iteration: int = 0
     pid = PID_Controller(
-        set_point=Vpp_4dBu_exact,
+        set_point=Vpp_dBu_exact,
         controller_gain=1.5,
         tauI=1,
         tauD=0.5,
@@ -683,12 +684,12 @@ def config_set_level(
 
             pid.add_process_variable(rms_value)
 
-            error: float = Vpp_4dBu_exact - rms_value
+            error: float = Vpp_dBu_exact - rms_value
 
             pid.add_error(Timed_Value(error))
 
             error_percentage: float = percentage_error(
-                exact=Vpp_4dBu_exact, approx=rms_value
+                exact=Vpp_dBu_exact, approx=rms_value
             )
 
             gain_dB: float = 20 * np.log10(
@@ -699,7 +700,7 @@ def config_set_level(
 
             table.add_row(
                 f"{iteration}",
-                f"{Vpp_4dBu_exact:.8f}",
+                f"{Vpp_dBu_exact:.8f}",
                 f"{voltage_amplitude:.8f}",
                 f"{rms_value:.8f}",
                 "[{}]{:+.8f}[/]".format(
@@ -796,7 +797,7 @@ def config_set_level(
 
     console.print(plot_file_path)
 
-    sp = np.full(iteration, Vpp_4dBu_exact)
+    sp = np.full(iteration, Vpp_dBu_exact)
 
     plt.figure(1, figsize=(16, 9))
 

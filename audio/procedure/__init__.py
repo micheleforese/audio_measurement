@@ -41,6 +41,7 @@ class ProcedureText(ProcedureStep):
 
 @rich.repr.auto
 class ProcedureSetLevel(ProcedureStep):
+    dBu: Optional[float]
     file_set_level_key: str
     file_set_level_name: str
     file_plot_key: str
@@ -49,12 +50,14 @@ class ProcedureSetLevel(ProcedureStep):
 
     def __init__(
         self,
+        dBu: Optional[float],
         file_set_level_key: str,
         file_set_level_name: str,
         file_plot_key: str,
         file_plot_name: str,
         config: SweepConfigXML,
     ) -> None:
+        self.dBu = dBu
         self.file_set_level_key = file_set_level_key
         self.file_set_level_name = file_set_level_name
         self.file_plot_key = file_plot_key
@@ -63,6 +66,7 @@ class ProcedureSetLevel(ProcedureStep):
 
     @classmethod
     def from_xml(cls, xml: ET.Element):
+        EdBu = xml.find("./dBu")
         file_set_level_key = xml.find("./file_set_level/key")
         file_set_level_name = xml.find("./file_set_level/name")
         file_plot_key = xml.find("./file_set_level_plot/key")
@@ -71,7 +75,10 @@ class ProcedureSetLevel(ProcedureStep):
         config = xml.find("./config")
         sweep_config_xml = SweepConfigXML.from_xml(ET.ElementTree(config))
 
-        sweep_config_xml.print()
+        dBu: Optional[float] = None
+
+        if EdBu is not None:
+            dBu = float(EdBu.text)
 
         if (
             file_set_level_key is not None
@@ -81,6 +88,7 @@ class ProcedureSetLevel(ProcedureStep):
             and sweep_config_xml is not None
         ):
             return cls(
+                dBu=dBu,
                 file_set_level_key=file_set_level_key.text,
                 file_set_level_name=file_set_level_name.text,
                 file_plot_key=file_plot_key.text,

@@ -445,6 +445,7 @@ def set_level(
         console.print(config)
 
     config_set_level(
+        dBu=4,
         config=config,
         plot_file_path=HOME_PATH / "{}.config.png".format(datetime_now),
         debug=debug,
