@@ -16,7 +16,7 @@ python3 -m pip install --editable .
    cd audio-test
    ```
 
-2. For more information on the CLI go [here](./doc/cli.md)
+2. For more information on the CLI go [here](https://micheleforesedev.github.io/audio_measurement/)
 
 ## NI-DRIVER
 
