@@ -26,9 +26,7 @@ from audio.sampling import config_set_level, plot_from_csv, sampling_curve
 from audio.model.insertion_gain import InsertionGain
 
 
-@click.command(
-    # context_settings={"ignore_unknown_options": True}
-)
+@click.command()
 @click.argument("procedure_name", type=pathlib.Path)
 @click.option(
     "--home",
@@ -41,6 +39,11 @@ def procedure(
     procedure_name: pathlib.Path,
     home: pathlib.Path,
 ):
+
+    if not procedure_name.exists() or not procedure_name.is_file():
+        console.print(
+            Panel(f"[ERROR] - Procedure file: {procedure_name} does not exists.")
+        )
 
     HOME_PATH = home
 
