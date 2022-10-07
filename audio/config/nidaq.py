@@ -1,6 +1,6 @@
 from enum import Enum
 import xml.etree.ElementTree as ET
-from typing import Dict, Optional, TypeVar
+from typing import Dict, Optional
 
 import rich.repr
 
