@@ -13,7 +13,7 @@
     
     
       
-        <title>Install - Audio Measurements</title>
+        <title>Example - Audio Measurements</title>
       
     
     
@@ -62,7 +62,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#installation-process" class="md-skip">
+        <a href="#examples" class="md-skip">
           Skip to content
         </a>
       
@@ -95,7 +95,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Install
+              Example
             
           </span>
         </div>
@@ -194,73 +194,11 @@
 
   
   
-    
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          Install
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
         Install
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#install-the-ni-daqmx-driver" class="md-nav__link">
-    Install the ni-daqmx driver
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#to-add-the-chassis" class="md-nav__link">
-    TO add the Chassis
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#to-list-the-devices-ad-useful-comman-line-utility" class="md-nav__link">
-    TO list the devices ad useful comman-line utility
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#ni-daqmx-library-python" class="md-nav__link">
-    NI-DAQmx library python
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -301,11 +239,66 @@
 
   
   
+    
   
-    <li class="md-nav__item">
-      <a href="../examples/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Example
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         Example
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#shell" class="md-nav__link">
+    Shell
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#graphs" class="md-nav__link">
+    Graphs
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#maths" class="md-nav__link">
+    Maths
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -337,29 +330,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#install-the-ni-daqmx-driver" class="md-nav__link">
-    Install the ni-daqmx driver
+  <a href="#shell" class="md-nav__link">
+    Shell
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#to-add-the-chassis" class="md-nav__link">
-    TO add the Chassis
+  <a href="#graphs" class="md-nav__link">
+    Graphs
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#to-list-the-devices-ad-useful-comman-line-utility" class="md-nav__link">
-    TO list the devices ad useful comman-line utility
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#ni-daqmx-library-python" class="md-nav__link">
-    NI-DAQmx library python
+  <a href="#maths" class="md-nav__link">
+    Maths
   </a>
   
 </li>
@@ -379,19 +365,43 @@
                   
 
 
-<h1 id="installation-process">Installation Process</h1>
-<h2 id="install-the-ni-daqmx-driver">Install the ni-daqmx driver</h2>
-<p>You can install the ni-daqmx from this <a href="https://www.ni.com/it-it/support/downloads/drivers/download.ni-daqmx.html#445931">link</a>.
-<a href="https://www.ni.com/pdf/manuals/378353g.html">Here</a> is the complete list of the packages.</p>
-<div class="highlight"><pre><span></span><code>yum install ni-daqmx ni-dcpower ni-dcpower-daqmx ni-dmm ni-dmm-daqmx ni-flexrio ni-pxiplatformservices ni-fpga-interface ni-rio-mxie ni-rseries ni-rfsa ni-rfsa-daqmx ni-rfsg ni-rfsg-daqmx ni-scope ni-scope-daqmx ni-serial ni-switch ni-switch-daqmx ni-switch-daqmx-config ni-sync ni-syscfg-runtime ni-usrp-rio
+<h1 id="examples">Examples</h1>
+<h2 id="shell">Shell</h2>
+<div class="highlight"><pre><span></span><code>$ <span class="nb">echo</span> <span class="nv">$EDITOR</span>
+vim
+$ git checkout main
+Switched to branch <span class="s1">&#39;main&#39;</span>
+Your branch is up-to-date with <span class="s1">&#39;origin/main&#39;</span>.
+$ git push
+Everything up-to-date
+$ <span class="nb">echo</span> <span class="s1">&#39;All</span>
+<span class="s1">&gt; done!&#39;</span>
+All
+<span class="k">done</span>!
 </code></pre></div>
-<h2 id="to-add-the-chassis">TO add the Chassis</h2>
-<p><a href="https://knowledge.ni.com/KnowledgeArticleDetails?id=kA00Z000000g1CWSAY&amp;l=it-IT">link to documentation</a></p>
-<h2 id="to-list-the-devices-ad-useful-comman-line-utility">TO list the devices ad useful comman-line utility</h2>
-<p><a href="https://www.ge.infn.it/~didomizi/documenti/daq/Ni_Docs/software/ConfigurationGuide.html">utility</a></p>
-<h2 id="ni-daqmx-library-python">NI-DAQmx library python</h2>
-<p><a href="https://nidaqmx-python.readthedocs.io/en/latest/">library documentation</a>
-<a href="https://pythonhosted.org/PyDAQmx/">doc</a></p>
+<div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+  <span class="k">pass</span>
+</code></pre></div></td></tr></table></div>
+<h2 id="graphs">Graphs</h2>
+<pre class="mermaid"><code>graph LR
+  A[Start] --&gt; B{Error?};
+  B --&gt;|Yes| C[Hmm...];
+  C --&gt; D[Debug];
+  D --&gt; B;
+  B ----&gt;|No| E[Yay!];</code></pre>
+<h2 id="maths">Maths</h2>
+<div class="arithmatex">\[
+\operatorname{ker} f=\{g\in G:f(g)=e_{H}\}{\mbox{.}}
+\]</div>
+<div class="arithmatex">\[
+E(\mathbf{v}, \mathbf{h}) = -\sum_{i,j}w_{ij}v_i h_j - \sum_i b_i v_i - \sum_j c_j h_j
+\]</div>
+<div class="arithmatex">\[3 &lt; 4\]</div>
+<div class="arithmatex">\[\begin{align}
+p(v*i=1|\mathbf{h}) &amp; = \sigma\left(\sum_j w*{ij}h*j + b_i\right) \\
+p(h_j=1|\mathbf{v}) &amp; = \sigma\left(\sum_i w*{ij}v_i + c_j\right)
+\end{align}\]</div>
 
 
 
@@ -412,7 +422,7 @@
     <nav class="md-footer__inner md-grid" aria-label="Footer" >
       
         
-        <a href=".." class="md-footer__link md-footer__link--prev" aria-label="Previous: Home" rel="prev">
+        <a href="../config/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Configuration" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
           </div>
@@ -421,26 +431,11 @@
               <span class="md-footer__direction">
                 Previous
               </span>
-              Home
+              Configuration
             </div>
           </div>
         </a>
       
-      
-        
-        <a href="../procedure/" class="md-footer__link md-footer__link--next" aria-label="Next: Procedure" rel="next">
-          <div class="md-footer__title">
-            <div class="md-ellipsis">
-              <span class="md-footer__direction">
-                Next
-              </span>
-              Procedure
-            </div>
-          </div>
-          <div class="md-footer__button md-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
-          </div>
-        </a>
       
     </nav>
   

@@ -266,6 +266,36 @@
   
 
     
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config/" class="md-nav__link">
+        Configuration
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        Example
+      </a>
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -323,40 +353,11 @@
 
 <h1 id="procedure">Procedure</h1>
 <h2 id="cli-use">CLI use</h2>
-<div class="highlight"><pre><span></span><code>$ audio_measurements procedure &lt;procedure_file&gt;
-$ <span class="nb">echo</span> <span class="nv">$EDITOR</span>
-vim
-$ git checkout main
-Switched to branch <span class="s1">&#39;main&#39;</span>
-Your branch is up-to-date with <span class="s1">&#39;origin/main&#39;</span>.
-$ git push
-Everything up-to-date
-$ <span class="nb">echo</span> <span class="s1">&#39;All</span>
-<span class="s1">&gt; done!&#39;</span>
-All
-<span class="k">done</span>!
+<div class="highlight"><pre><span></span><code>audio_measurements procedure &lt;procedure_file&gt;
 </code></pre></div>
-<div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
-<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
-  <span class="k">pass</span>
-</code></pre></div></td></tr></table></div>
-<pre class="mermaid"><code>graph LR
-  A[Start] --&gt; B{Error?};
-  B --&gt;|Yes| C[Hmm...];
-  C --&gt; D[Debug];
-  D --&gt; B;
-  B ----&gt;|No| E[Yay!];</code></pre>
-<div class="arithmatex">\[
-\operatorname{ker} f=\{g\in G:f(g)=e_{H}\}{\mbox{.}}
-\]</div>
-<div class="arithmatex">\[
-E(\mathbf{v}, \mathbf{h}) = -\sum_{i,j}w_{ij}v_i h_j - \sum_i b_i v_i - \sum_j c_j h_j
-\]</div>
-<div class="arithmatex">\[3 &lt; 4\]</div>
-<div class="arithmatex">\[\begin{align}
-p(v*i=1|\mathbf{h}) &amp; = \sigma\left(\sum_j w*{ij}h*j + b_i\right) \\
-p(h_j=1|\mathbf{v}) &amp; = \sigma\left(\sum_i w*{ij}v_i + c_j\right)
-\end{align}\]</div>
+<p>ex:</p>
+<div class="highlight"><pre><span></span><code>audio_measurements procedure proc.xml
+</code></pre></div>
 <h2 id="xml">XML</h2>
 <p>This is the base XML structure</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&lt;proc</span> <span class="na">name=</span><span class="s">&quot;la_125_8&quot;</span><span class="nt">&gt;</span>
@@ -678,8 +679,24 @@ structure using the <code>name</code> that is provided.</p>
 <span class="nt">&lt;/sweep&gt;</span>
 </code></pre></div>
 <ul>
-<li><code>ProcedureMultiPlot</code></li>
+<li>
+<p><code>ProcedureMultiPlot</code></p>
+</li>
+<li>
+<p><code>file_plot</code>: Name of the <code>.png</code> output file</p>
+</li>
+<li><code>folder_sweep</code>: List of the sweep folders</li>
 </ul>
+<p>Example:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&lt;multiplot</span> <span class="na">name=</span><span class="s">&quot;multiplot&quot;</span><span class="nt">&gt;</span>
+  <span class="nt">&lt;file_plot&gt;</span>multiplot.png<span class="nt">&lt;/file_plot&gt;</span>
+  <span class="nt">&lt;folder_sweep&gt;</span>
+    <span class="nt">&lt;var&gt;</span>sweep PRE G1<span class="nt">&lt;/var&gt;</span>
+    <span class="nt">&lt;var&gt;</span>sweep PRE G5<span class="nt">&lt;/var&gt;</span>
+    <span class="nt">&lt;var&gt;</span>sweep PRE G9<span class="nt">&lt;/var&gt;</span>
+  <span class="nt">&lt;/folder_sweep&gt;</span>
+<span class="nt">&lt;/multiplot&gt;</span>
+</code></pre></div>
 
 
 
@@ -714,6 +731,21 @@ structure using the <code>name</code> that is provided.</p>
           </div>
         </a>
       
+      
+        
+        <a href="../config/" class="md-footer__link md-footer__link--next" aria-label="Next: Configuration" rel="next">
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              Configuration
+            </div>
+          </div>
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+          </div>
+        </a>
       
     </nav>
   
