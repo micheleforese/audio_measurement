@@ -94,7 +94,13 @@ class RMS:
             trim_response = trim_sin_zero_offset(y_interpolated)
 
             if trim_response is not None:
-                voltages, _, _ = trim_response
+                voltages_trimmed, _, _ = trim_response
+
+                if len(voltages_trimmed) > 0:
+                    voltages = voltages_trimmed
+                else:
+                    console.log("trim ERROR - len(voltages_trimmed) < 0")
+
             else:
                 console.log("trim ERROR")
 

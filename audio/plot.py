@@ -134,4 +134,7 @@ def multiplot(
 
     plt.tight_layout()
 
+    output_file_path.parent.mkdir(exist_ok=True, parents=True)
+
     plt.savefig(output_file_path)
+    plt.close("all")

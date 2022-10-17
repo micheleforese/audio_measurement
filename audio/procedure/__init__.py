@@ -47,6 +47,7 @@ class ProcedureSetLevel(ProcedureStep):
     file_plot_key: str
     file_plot_name: str
     config: SweepConfigXML
+    override: bool
 
     def __init__(
         self,
@@ -56,6 +57,7 @@ class ProcedureSetLevel(ProcedureStep):
         file_plot_key: str,
         file_plot_name: str,
         config: SweepConfigXML,
+        override: bool = False,
     ) -> None:
         self.dBu = dBu
         self.file_set_level_key = file_set_level_key
@@ -63,6 +65,7 @@ class ProcedureSetLevel(ProcedureStep):
         self.file_plot_key = file_plot_key
         self.file_plot_name = file_plot_name
         self.config = config
+        self.override = override
 
     @classmethod
     def from_xml(cls, xml: ET.Element):
@@ -71,6 +74,9 @@ class ProcedureSetLevel(ProcedureStep):
         file_set_level_name = xml.find("./file_set_level/name")
         file_plot_key = xml.find("./file_set_level_plot/key")
         file_plot_name = xml.find("./file_set_level_plot/name")
+
+        override_elem = xml.get("override", None)
+        override = override_elem is not None
 
         config = xml.find("./config")
         sweep_config_xml = SweepConfigXML.from_xml(ET.ElementTree(config))
@@ -94,6 +100,7 @@ class ProcedureSetLevel(ProcedureStep):
                 file_plot_key=file_plot_key.text,
                 file_plot_name=file_plot_name.text,
                 config=sweep_config_xml,
+                override=override,
             )
         else:
             return None
@@ -109,6 +116,7 @@ class ProcedureSweep(ProcedureStep):
     file_offset_name: str
     file_insertion_gain_key: str
     file_insertion_gain_name: str
+    override: bool
 
     config: SweepConfigXML
 
@@ -123,6 +131,7 @@ class ProcedureSweep(ProcedureStep):
         file_insertion_gain_name: str,
         # file_plot_name: str,
         config: SweepConfigXML,
+        override: bool = False,
     ) -> None:
         self.name_folder = name_folder
         self.file_set_level_key = file_set_level_key
@@ -133,6 +142,7 @@ class ProcedureSweep(ProcedureStep):
         self.file_insertion_gain_name = file_insertion_gain_name
         # self.file_plot_name = file_plot_name
         self.config = config
+        self.override = override
 
     @classmethod
     def from_xml(cls, xml: Optional[ET.ElementTree]):
@@ -148,6 +158,9 @@ class ProcedureSweep(ProcedureStep):
         file_insertion_gain_name = xml.find("./file_insertion_gain/name")
 
         config = xml.find("./config")
+
+        override_elem = xml.get("override", None)
+        override = override_elem is not None
 
         if (
             name_folder is not None
@@ -170,6 +183,7 @@ class ProcedureSweep(ProcedureStep):
                 file_insertion_gain_name=file_insertion_gain_name.text,
                 # file_plot_name=file_plot_name.text,
                 config=SweepConfigXML.from_xml(ET.ElementTree(config)),
+                override=override,
             )
         else:
             return None

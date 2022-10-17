@@ -530,12 +530,14 @@ def plot_from_csv(
     if cfg.y_limit:
         axes.set_ylim(cfg.y_limit.min, cfg.y_limit.max)
     else:
-        min_y_dBV = min(y_interpolated)
-        max_y_dBV = max(y_interpolated)
-        axes.set_ylim(
-            min_y_dBV - 1,
-            max_y_dBV + 1,
-        )
+        pass
+        # TODO: Check for Nan or Inf Values
+        # min_y_dBV = min(y_interpolated)
+        # max_y_dBV = max(y_interpolated)
+        # axes.set_ylim(
+        #     min_y_dBV - 1,
+        #     max_y_dBV + 1,
+        # )
 
     plt.tight_layout()
 
@@ -573,7 +575,7 @@ def config_set_level(
 
     table = Table(
         Column("Iteration", justify="right"),
-        Column("4dBu [V]", justify="right"),
+        Column(f"{dBu:.1f} dBu [V]", justify="right"),
         Column("Vpp [V]", justify="right"),
         Column("Rms Value [V]", justify="right"),
         Column("Diff Vpp [V]", justify="right"),

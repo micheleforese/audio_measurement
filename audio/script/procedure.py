@@ -82,6 +82,11 @@ def procedure(
             file_sweep_plot: pathlib.Path = pathlib.Path(root / step.file_plot_name)
             data[step.file_plot_key] = file_sweep_plot
 
+            if not step.override:
+                if file_set_level.exists() and file_set_level.is_file():
+                    console.log(f"[FILE] - File '{file_set_level}' already exists.")
+                    continue
+
             dBu = 4
 
             if step.dBu is not None:
@@ -193,12 +198,22 @@ def procedure(
             console.print(f"[FILE] - Measurement: '{measurement_file}'")
             console.print(f"[FILE] - Sweep plot: '{file_sweep_plot}'")
 
+            if not step.override:
+                if measurement_file.exists() and measurement_file.is_file():
+                    console.log(f"[FILE] - File '{measurement_file}' already exists.")
+                    continue
+
             sampling_curve(
                 config=sweep_config,
                 sweep_home_path=home_dir_path,
                 sweep_file_path=measurement_file,
                 debug=True,
             )
+
+            if not step.override:
+                if file_sweep_plot.exists() and file_sweep_plot.is_file():
+                    console.log(f"[FILE] - File '{file_sweep_plot}' already exists.")
+                    continue
 
             plot_from_csv(
                 measurements_file_path=measurement_file,

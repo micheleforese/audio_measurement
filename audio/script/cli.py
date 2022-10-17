@@ -22,7 +22,7 @@ from audio.math.rms import RMS
 from audio.model.set_level import SetLevel
 from audio.model.sweep import SingleSweepData
 from audio.sampling import config_set_level, plot_from_csv, sampling_curve
-from audio.script.device.ni import read_rms
+from audio.script.device.ni import read_rms, read_rms_loop
 from audio.script.device.rigol import set_amplitude, set_frequency, turn_off, turn_on
 from audio.script.procedure import procedure
 from audio.script.test import print_devices, testTimer
@@ -701,6 +701,7 @@ def ni():
 
 
 ni.add_command(read_rms)
+ni.add_command(read_rms_loop)
 
 
 @cli.group()
