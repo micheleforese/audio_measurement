@@ -1,5 +1,7 @@
-from enum import Enum
+from __future__ import annotations
+
 import xml.etree.ElementTree as ET
+from enum import Enum
 from typing import Dict, Optional
 
 import rich
@@ -131,7 +133,11 @@ class RigolConfigXML:
     def override(
         self,
         amplitude_peak_to_peak: Optional[float] = None,
+        new_config: Optional[RigolConfigXML] = None,
     ):
+        if new_config is not None:
+            self._set_amplitude_peak_to_peak(new_config.amplitude_peak_to_peak)
+
         if amplitude_peak_to_peak is not None:
             self._set_amplitude_peak_to_peak(amplitude_peak_to_peak)
 

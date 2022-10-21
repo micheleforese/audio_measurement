@@ -1,5 +1,7 @@
-from enum import Enum
+from __future__ import annotations
+
 import xml.etree.ElementTree as ET
+from enum import Enum
 from typing import Dict, Optional
 
 import rich.repr
@@ -374,7 +376,7 @@ class SamplingConfigXML:
         delay_measurements = self._tree.find("./delay_measurements").text
 
         if delay_measurements is not None:
-            delay_measurements = str(delay_measurements)
+            delay_measurements = float(delay_measurements)
 
         return delay_measurements
 
@@ -388,7 +390,17 @@ class SamplingConfigXML:
         frequency_max: Optional[float] = None,
         interpolation_rate: Optional[float] = None,
         delay_measurements: Optional[float] = None,
+        new_config: Optional[SamplingConfigXML] = None,
     ):
+        if new_config is not None:
+            self._set_Fs_multiplier(new_config.Fs_multiplier)
+            self._set_points_per_decade(new_config.points_per_decade)
+            self._set_number_of_samples(new_config.number_of_samples)
+            self._set_number_of_samples_max(new_config.number_of_samples_max)
+            self._set_frequency_min(new_config.frequency_min)
+            self._set_frequency_max(new_config.frequency_max)
+            self._set_interpolation_rate(new_config.interpolation_rate)
+            self._set_delay_measurements(new_config.delay_measurements)
 
         if Fs_multiplier is not None:
             self._set_Fs_multiplier(Fs_multiplier)

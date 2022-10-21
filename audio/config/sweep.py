@@ -171,17 +171,10 @@ class SweepConfigXML:
             sampling = SweepConfigXML.get_sampling_from_xml(xml)
             plot = SweepConfigXML.get_plot_from_xml(xml)
 
-            console.print(f"rigol: {rigol}")
-            console.print(f"nidaq: {nidaq}")
-            console.print(f"sampling: {sampling}")
-            console.print(f"plot: {plot}")
-
             rigol_config_xml = RigolConfigXML.from_xml(rigol)
             nidaq_config_xml = NiDaqConfigXML.from_xml(nidaq)
             sampling_config_xml = SamplingConfigXML.from_xml(sampling)
             plot_config_xml = PlotConfigXML.from_xml(plot)
-
-            nidaq_config_xml.print()
 
             return SweepConfigXML.from_values(
                 rigol=rigol_config_xml,
@@ -213,6 +206,12 @@ class SweepConfigXML:
             SweepConfigXML.get_plot_from_xml(tree).extend(plot.get_node())
 
         return cls.from_tree(tree)
+
+    def override_from_sweep_config_xml(self, new_sweep_config: SweepConfigXML):
+        self.rigol.override(new_config=new_sweep_config.rigol)
+        self.nidaq.override(new_config=new_sweep_config.nidaq)
+        self.sampling.override(new_config=new_sweep_config.sampling)
+        self.plot.override(new_config=new_sweep_config.plot)
 
     def __repr__(self) -> str:
         root = self.tree.getroot()

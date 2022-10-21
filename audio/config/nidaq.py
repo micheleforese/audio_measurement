@@ -1,5 +1,7 @@
-from enum import Enum
+from __future__ import annotations
+
 import xml.etree.ElementTree as ET
+from enum import Enum
 from typing import Dict, Optional
 
 import rich.repr
@@ -241,7 +243,13 @@ class NiDaqConfigXML:
         voltage_min: Optional[float] = None,
         voltage_max: Optional[float] = None,
         input_channel: Optional[str] = None,
+        new_config: Optional[NiDaqConfigXML] = None,
     ):
+        if new_config is not None:
+            self._set_Fs_max(new_config.Fs_max)
+            self._set_voltage_min(new_config.voltage_min)
+            self._set_voltage_max(new_config.voltage_max)
+            self._set_input_channel(new_config.input_channel)
 
         if Fs_max is not None:
             self._set_Fs_max(Fs_max)
