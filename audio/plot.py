@@ -1,41 +1,60 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional, Set
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
-import pandas as pd
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
 from rich.progress import track
 
-from .config.sweep import SweepConfigXML
-from .config.plot import PlotConfigOptions, PlotConfigXML
+from audio.config.sweep import SweepConfigXML
 
 from audio.math.interpolation import INTERPOLATION_KIND, logx_interpolation_model
 from audio.model.sweep import SweepData
+import hashlib
+from audio.console import console
+
+
+class CacheCsvData:
+    _csvData: Dict[str, SweepData]
+
+    def __init__(self) -> None:
+        self._csvData = dict()
+
+    def _create_hash(self, csv_path: Path) -> str:
+        path = csv_path.absolute().resolve().as_uri().encode("utf-8")
+        path_hash = hashlib.sha256(path).hexdigest()
+        return path_hash
+
+    def add_csv_file(self, csv_path: Path):
+
+        path_hash = self._create_hash(csv_path)
+
+        if self._csvData.get(path_hash, None) is None:
+            sweep_data = SweepData.from_csv_file(csv_path)
+            self._csvData[path_hash] = sweep_data
+
+    def get_csv_file_data(self, csv_path: Path) -> Optional[SweepData]:
+        path_hash = self._create_hash(csv_path)
+
+        return self._csvData.get(path_hash, None)
 
 
 def multiplot(
-    csv_files_path: List[Path],
+    csv_files_paths: List[Path],
     output_file_path: Path,
+    cache_csv_data: CacheCsvData,
     sweep_config: Optional[SweepConfigXML] = None,
 ) -> bool:
 
     # Check for Files validity
-    for csv in csv_files_path:
+    for csv in csv_files_paths:
         if not csv.exists() or not csv.is_file():
             return False
 
-    sweep_data_list: List[SweepData] = []
-
-    for csv in csv_files_path:
-        sweep_data = SweepData.from_csv_file(csv)
-        sweep_data_list.append(sweep_data)
-
-        sweep_data.config.print()
+    for csv in csv_files_paths:
+        cache_csv_data.add_csv_file(csv)
 
     DEFAULT = {
         "interpolation_rate": 5,
@@ -83,7 +102,17 @@ def multiplot(
 
     axes.grid(True, linestyle="-", which="both", color="0.7")
 
-    for sweep_data in track(sweep_data_list, description="Sweep Data Plotting..."):
+    for csv_file in track(
+        csv_files_paths,
+        transient=True,
+        description="Sweep Data Plotting...",
+    ):
+
+        sweep_data = cache_csv_data.get_csv_file_data(csv_file)
+        if sweep_data is None:
+            console.log(f"[ERROR] - data Not found at csv_file: {csv_file}")
+            continue
+
         cfg = sweep_data.config
 
         x_frequency = list(sweep_data.frequency.values)
@@ -118,7 +147,7 @@ def multiplot(
         axes.semilogx(
             *xy_sampled,
             *xy_interpolated,
-            linewidth=4,
+            linewidth=1,
             color=cfg.color if cfg.color is not None else "yellow",
             label=legend,
         )
@@ -138,3 +167,5 @@ def multiplot(
 
     plt.savefig(output_file_path)
     plt.close("all")
+
+    console.print(f"[PLOT] - Graph: [blue]{output_file_path}[/blue]")

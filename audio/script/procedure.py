@@ -1,18 +1,21 @@
+from dataclasses import dataclass
 import pathlib
 from math import log10
-from typing import Dict, List, Optional, cast, get_origin
+from typing import Dict, List, Optional
 
 import click
-from rich import inspect
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 from audio.config.sweep import SweepConfigXML
 
 from audio.console import console
 from audio.model.set_level import SetLevel
-from audio.plot import multiplot
+from audio.plot import CacheCsvData, multiplot
 from audio.procedure import (
     Procedure,
+    ProcedureAsk,
+    ProcedureDefault,
+    ProcedureFile,
     ProcedureInsertionGain,
     ProcedureMultiPlot,
     ProcedurePrint,
@@ -24,6 +27,7 @@ from audio.procedure import (
 )
 from audio.sampling import config_set_level, plot_from_csv, sampling_curve
 from audio.model.insertion_gain import InsertionGain
+from audio.model.file import CacheFile, File
 
 
 @click.command()
@@ -49,26 +53,65 @@ def procedure(
 
     proc = Procedure.from_xml_file(file_path=procedure_name)
 
-    console.print(f"Start Procedure: [blue]{proc.name}")
+    console.print(f"Start Procedure: [blue]{proc.name}", justify="center")
 
     root: pathlib.Path = HOME_PATH
     data: Dict = dict()
+    cache_csv_data: CacheCsvData = CacheCsvData()
+    cache_file: CacheFile = CacheFile()
 
-    console.print(proc.steps)
+    @dataclass
+    class DefaultSweepConfig:
+        file_set_level_key: Optional[str] = None
+        file_set_level_name: Optional[str] = None
+        file_offset_key: Optional[str] = None
+        file_offset_name: Optional[str] = None
+        file_insertion_gain_key: Optional[str] = None
+        file_insertion_gain_name: Optional[str] = None
+        config: Optional[SweepConfigXML] = None
+
+    default_sweep_config = DefaultSweepConfig()
 
     idx_tot = len(proc.steps)
 
-    for idx, step in enumerate(proc.steps):
-
-        console.print(type(step))
+    for idx, step in enumerate(proc.steps, start=1):
 
         if isinstance(step, ProcedureText):
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureText()"))
+
+            console.print(step.text)
+
+        elif isinstance(step, ProcedureAsk):
+            console.print(Panel(f"{idx}/{idx_tot}: ProcedureAsk()"))
 
             confirm: bool = False
 
             while not confirm:
                 confirm = Confirm.ask(step.text)
+
+        elif isinstance(step, ProcedureDefault):
+            console.print(Panel(f"{idx}/{idx_tot}: ProcedureDefault()"))
+
+            default_sweep_config.config = step.sweep_config
+            default_sweep_config.file_set_level_key = step.sweep_file_set_level_key
+            default_sweep_config.file_set_level_name = step.sweep_file_set_level_name
+            default_sweep_config.file_offset_key = step.sweep_file_offset_key
+            default_sweep_config.file_offset_name = step.sweep_file_offset_name
+            default_sweep_config.file_insertion_gain_key = (
+                step.sweep_file_insertion_gain_key
+            )
+            default_sweep_config.file_insertion_gain_name = (
+                step.sweep_file_insertion_gain_name
+            )
+
+        elif isinstance(step, ProcedureFile):
+            console.print(Panel(f"{idx}/{idx_tot}: ProcedureFile()"))
+
+            result: bool = cache_file.add(step.key, root / step.path)
+            if not result:
+                console.log(
+                    f"[ERROR] - File key '{step.key}' already present in the project"
+                )
 
         elif isinstance(step, ProcedureSetLevel):
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureSetLevel()"))
@@ -158,6 +201,10 @@ def procedure(
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureSweep()"))
 
             sweep_config: SweepConfigXML = step.config
+
+            sweep_config = default_sweep_config.config.override_from_sweep_config_xml(
+                sweep_config
+            )
             sweep_config.print()
 
             if sweep_config is None:
@@ -165,7 +212,19 @@ def procedure(
                 exit()
 
             # Set Level & Y Offset dB
-            file_set_level = data.get(step.file_set_level_key, None)
+            file_set_level: File = File(
+                default_sweep_config.file_set_level_key,
+                default_sweep_config.file_set_level_name,
+            )
+
+            file_set_level.overload(
+                key=step.file_set_level_key,
+                name=root / step.file_set_level_name
+                if step.file_set_level_name is not None
+                else None,
+            )
+
+            data.get(file_set_level.key, None)
 
             if file_set_level is None:
                 file_set_level = pathlib.Path(root / step.file_set_level_name)
@@ -233,7 +292,12 @@ def procedure(
                 for dir in step.folder_sweep
             ]
 
-            multiplot(csv_files, file_sweep_plot, step.config)
+            multiplot(
+                csv_files,
+                file_sweep_plot,
+                cache_csv_data,
+                step.config,
+            )
 
         elif isinstance(step, ProcedureStep):
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureStep()"))
