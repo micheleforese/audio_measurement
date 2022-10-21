@@ -1,4 +1,5 @@
 from __future__ import annotations
+from dataclasses import dataclass
 
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -37,6 +38,122 @@ class ProcedureText(ProcedureStep):
 
         if text is not None:
             return cls(text.strip())
+
+
+@dataclass
+@rich.repr.auto
+class ProcedureAsk(ProcedureStep):
+    text: Optional[str] = None
+
+    @classmethod
+    def from_xml(cls, xml: ET.Element):
+        text = xml.text
+
+        if text is not None:
+            text = text.strip()
+
+        return cls(text)
+
+
+@dataclass
+@rich.repr.auto
+class ProcedureFile(ProcedureStep):
+    key: Optional[str] = None
+    path: Optional[str] = None
+
+    @classmethod
+    def from_xml(cls, xml: ET.Element):
+        Ekey = xml.find("./key")
+        Epath = xml.find("./path")
+
+        if Ekey is not None and Epath is not None:
+            key = Ekey.text.strip()
+            path = Epath.text.strip()
+
+        return cls(key=key, path=path)
+
+
+@rich.repr.auto
+class ProcedureDefault(ProcedureStep):
+    sweep_file_set_level_key: Optional[str]
+    sweep_file_set_level_name: Optional[str]
+    sweep_file_offset_key: Optional[str]
+    sweep_file_offset_name: Optional[str]
+    sweep_file_insertion_gain_key: Optional[str]
+    sweep_file_insertion_gain_name: Optional[str]
+    sweep_config: Optional[SweepConfigXML]
+
+    def __init__(
+        self,
+        sweep_file_set_level_key: Optional[str] = None,
+        sweep_file_set_level_name: Optional[str] = None,
+        sweep_file_offset_key: Optional[str] = None,
+        sweep_file_offset_name: Optional[str] = None,
+        sweep_file_insertion_gain_key: Optional[str] = None,
+        sweep_file_insertion_gain_name: Optional[str] = None,
+        sweep_config: Optional[SweepConfigXML] = None,
+    ) -> None:
+        self.sweep_file_set_level_key = sweep_file_set_level_key
+        self.sweep_file_set_level_name = sweep_file_set_level_name
+        self.sweep_file_offset_key = sweep_file_offset_key
+        self.sweep_file_offset_name = sweep_file_offset_name
+        self.sweep_file_insertion_gain_key = sweep_file_insertion_gain_key
+        self.sweep_file_insertion_gain_name = sweep_file_insertion_gain_name
+        self.sweep_config = sweep_config
+
+    @classmethod
+    def from_xml(cls, xml: ET.Element):
+
+        if xml is None:
+            return None
+
+        sweep_file_set_level_key: Optional[str] = None
+        sweep_file_set_level_name: Optional[str] = None
+        sweep_file_offset_key: Optional[str] = None
+        sweep_file_offset_name: Optional[str] = None
+        sweep_file_insertion_gain_key: Optional[str] = None
+        sweep_file_insertion_gain_name: Optional[str] = None
+        sweep_config: Optional[SweepConfigXML] = None
+
+        Esweep = xml.find("./sweep")
+        if Esweep is not None:
+            Esweep_config = Esweep.find("./config")
+            if Esweep_config is not None:
+                sweep_config = SweepConfigXML.from_xml(ET.ElementTree(Esweep_config))
+
+            Efile_set_level_key = Esweep.find("./file_set_level/key")
+            Efile_set_level_name = Esweep.find("./file_set_level/name")
+
+            if Efile_set_level_key is not None:
+                sweep_file_set_level_key = Efile_set_level_key.text
+            if Efile_set_level_name is not None:
+                sweep_file_set_level_name = Efile_set_level_name.text
+
+            Efile_offset_key = Esweep.find("./file_offset/key")
+            Efile_offset_name = Esweep.find("./file_offset/name")
+
+            if Efile_offset_key is not None:
+                sweep_file_offset_key = Efile_offset_key.text
+            if Efile_offset_name is not None:
+                sweep_file_offset_name = Efile_offset_name.text
+
+            Efile_insertion_gain_key = Esweep.find("./file_insertion_gain/key")
+            Efile_insertion_gain_name = Esweep.find("./file_insertion_gain/name")
+
+            if Efile_insertion_gain_key is not None:
+                sweep_file_insertion_gain_key = Efile_insertion_gain_key.text
+            if Efile_insertion_gain_name is not None:
+                sweep_file_insertion_gain_name = Efile_insertion_gain_name.text
+
+        return cls(
+            sweep_file_set_level_key=sweep_file_set_level_key,
+            sweep_file_set_level_name=sweep_file_set_level_name,
+            sweep_file_offset_key=sweep_file_offset_key,
+            sweep_file_offset_name=sweep_file_offset_name,
+            sweep_file_insertion_gain_key=sweep_file_insertion_gain_key,
+            sweep_file_insertion_gain_name=sweep_file_insertion_gain_name,
+            sweep_config=SweepConfigXML.from_xml(ET.ElementTree(sweep_config)),
+        )
 
 
 @rich.repr.auto
@@ -318,7 +435,6 @@ class ProcedureMultiPlot(ProcedureStep):
             return None
 
         name = xml.find(".").get("name", None)
-        console.print(name)
 
         file_plot = xml.find("./file_plot")
         folder_sweep = [
@@ -361,6 +477,15 @@ class Procedure:
         self.name = name
         self.steps = steps
 
+    def print(self, procedure: ET.Element) -> str:
+        from rich.syntax import Syntax
+
+        ET.indent(procedure)
+        console.print("\n")
+        console.print(
+            Syntax(ET.tostring(procedure, encoding="unicode"), "xml", theme="one-dark")
+        )
+
     @classmethod
     def from_xml_file(cls, file_path: Path):
         if not file_path.exists() or not file_path.is_file():
@@ -373,15 +498,6 @@ class Procedure:
         tree = ET.ElementTree(ET.fromstring(data))
         procedure = tree.getroot()
 
-        # DEBUG PRINT
-        from rich.syntax import Syntax
-
-        ET.indent(procedure)
-        console.print("\n")
-        console.print(
-            Syntax(ET.tostring(procedure, encoding="unicode"), "xml", theme="one-dark")
-        )
-
         if procedure is None:
             return None
 
@@ -392,16 +508,12 @@ class Procedure:
 
         for idx, step in enumerate(step_nodes):
             proc_type = step.tag
-            console.print(f"Procedure idx: {idx} with tag {proc_type}")
 
             procedure = Procedure.proc_type_to_procedure(proc_type, step)
             if procedure is not None:
                 steps.append(procedure)
             else:
                 console.print(f"procedure idx {idx} is NULL")
-
-        for idx, step in enumerate(steps):
-            console.print(f"{idx}: {step}")
 
         return cls(
             name,
