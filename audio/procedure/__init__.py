@@ -10,6 +10,7 @@ import rich
 
 from audio.config.sweep import SweepConfigXML
 from audio.console import console
+from audio.model.file import File
 from audio.type import Dictionary
 
 
@@ -91,12 +92,18 @@ class ProcedureFile(ProcedureStep):
 
 @rich.repr.auto
 class ProcedureDefault(ProcedureStep):
+    sweep_file_set_level: Optional[File]
     sweep_file_set_level_key: Optional[str]
     sweep_file_set_level_name: Optional[str]
+
+    sweep_file_offset: Optional[File]
     sweep_file_offset_key: Optional[str]
     sweep_file_offset_name: Optional[str]
+
+    sweep_file_insertion_gain: Optional[File]
     sweep_file_insertion_gain_key: Optional[str]
     sweep_file_insertion_gain_name: Optional[str]
+
     sweep_config: Optional[SweepConfigXML]
 
     @property
@@ -105,10 +112,13 @@ class ProcedureDefault(ProcedureStep):
 
     def __init__(
         self,
+        sweep_file_set_level: Optional[File] = None,
         sweep_file_set_level_key: Optional[str] = None,
         sweep_file_set_level_name: Optional[str] = None,
+        sweep_file_offset: Optional[File] = None,
         sweep_file_offset_key: Optional[str] = None,
         sweep_file_offset_name: Optional[str] = None,
+        sweep_file_insertion_gain: Optional[File] = None,
         sweep_file_insertion_gain_key: Optional[str] = None,
         sweep_file_insertion_gain_name: Optional[str] = None,
         sweep_config: Optional[SweepConfigXML] = None,
@@ -141,29 +151,37 @@ class ProcedureDefault(ProcedureStep):
             if Esweep_config is not None:
                 sweep_config = SweepConfigXML.from_xml(ET.ElementTree(Esweep_config))
 
-            Efile_set_level_key = Esweep.find("./file_set_level/key")
-            Efile_set_level_name = Esweep.find("./file_set_level/name")
+            Efile_set_level = Esweep.find("./file_set_level")
 
-            if Efile_set_level_key is not None:
-                sweep_file_set_level_key = Efile_set_level_key.text
-            if Efile_set_level_name is not None:
-                sweep_file_set_level_name = Efile_set_level_name.text
+            if Efile_set_level is not None:
+                Efile_set_level_key = Esweep.find("./file_set_level/key")
+                Efile_set_level_name = Esweep.find("./file_set_level/name")
 
-            Efile_offset_key = Esweep.find("./file_offset/key")
-            Efile_offset_name = Esweep.find("./file_offset/name")
+                if Efile_set_level_key is not None and Efile_set_level_name is not None:
+                    sweep_file_set_level_key = Efile_set_level_key.text
+                    sweep_file_set_level_name = Efile_set_level_name.text
 
-            if Efile_offset_key is not None:
-                sweep_file_offset_key = Efile_offset_key.text
-            if Efile_offset_name is not None:
-                sweep_file_offset_name = Efile_offset_name.text
+                    File(key=sweep_file_set_level_key, path=sweep_file_set_level_name)
 
-            Efile_insertion_gain_key = Esweep.find("./file_insertion_gain/key")
-            Efile_insertion_gain_name = Esweep.find("./file_insertion_gain/name")
+            Efile_offset = Esweep.find("./file_offset")
+            if Efile_offset is not None:
+                Efile_offset_key = Esweep.find("./file_offset/key")
+                Efile_offset_name = Esweep.find("./file_offset/name")
 
-            if Efile_insertion_gain_key is not None:
-                sweep_file_insertion_gain_key = Efile_insertion_gain_key.text
-            if Efile_insertion_gain_name is not None:
-                sweep_file_insertion_gain_name = Efile_insertion_gain_name.text
+                if Efile_offset_key is not None:
+                    sweep_file_offset_key = Efile_offset_key.text
+                if Efile_offset_name is not None:
+                    sweep_file_offset_name = Efile_offset_name.text
+
+            Efile_insertion_gain = Esweep.find("./file_insertion_gain")
+            if Efile_insertion_gain is not None:
+                Efile_insertion_gain_key = Esweep.find("./file_insertion_gain/key")
+                Efile_insertion_gain_name = Esweep.find("./file_insertion_gain/name")
+
+                if Efile_insertion_gain_key is not None:
+                    sweep_file_insertion_gain_key = Efile_insertion_gain_key.text
+                if Efile_insertion_gain_name is not None:
+                    sweep_file_insertion_gain_name = Efile_insertion_gain_name.text
 
         return cls(
             sweep_file_set_level_key=sweep_file_set_level_key,

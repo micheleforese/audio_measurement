@@ -62,12 +62,18 @@ def procedure(
 
     @dataclass
     class DefaultSweepConfig:
+        set_level: Optional[File] = None
         file_set_level_key: Optional[str] = None
         file_set_level_name: Optional[str] = None
+
+        offset: Optional[File] = None
         file_offset_key: Optional[str] = None
         file_offset_name: Optional[str] = None
+
+        insertion_gain: Optional[File] = None
         file_insertion_gain_key: Optional[str] = None
         file_insertion_gain_name: Optional[str] = None
+
         config: Optional[SweepConfigXML] = None
 
     default_sweep_config = DefaultSweepConfig()
@@ -92,17 +98,18 @@ def procedure(
         elif isinstance(step, ProcedureDefault):
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureDefault()"))
 
+            default_sweep_config.set_level = File(
+                step.sweep_file_set_level_key, step.sweep_file_set_level_name
+            )
+
+            default_sweep_config.offset = File(
+                step.sweep_file_offset_key, step.sweep_file_offset_name
+            )
+
+            default_sweep_config.insertion_gain = File(
+                step.sweep_file_insertion_gain_key, step.sweep_file_insertion_gain_name
+            )
             default_sweep_config.config = step.sweep_config
-            default_sweep_config.file_set_level_key = step.sweep_file_set_level_key
-            default_sweep_config.file_set_level_name = step.sweep_file_set_level_name
-            default_sweep_config.file_offset_key = step.sweep_file_offset_key
-            default_sweep_config.file_offset_name = step.sweep_file_offset_name
-            default_sweep_config.file_insertion_gain_key = (
-                step.sweep_file_insertion_gain_key
-            )
-            default_sweep_config.file_insertion_gain_name = (
-                step.sweep_file_insertion_gain_name
-            )
 
         elif isinstance(step, ProcedureFile):
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureFile()"))
