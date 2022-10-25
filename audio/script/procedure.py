@@ -168,17 +168,17 @@ def procedure(
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureInsertionGain()"))
 
             calibration_path: pathlib.Path = pathlib.Path(
-                root / step.file_calibration_name
+                root / step.file_calibration_path
             )
 
-            file_set_level: pathlib.Path = pathlib.Path(root / step.file_set_level_name)
+            file_set_level: pathlib.Path = pathlib.Path(root / step.file_set_level_path)
 
             calibration: float = SetLevel(calibration_path).set_level
             set_level: float = SetLevel(file_set_level).set_level
 
             gain: float = 20 * log10(calibration / set_level)
 
-            gain_file_path: pathlib.Path = pathlib.Path(root / step.file_gain_name)
+            gain_file_path: pathlib.Path = pathlib.Path(root / step.file_gain_path)
             gain_file_path.write_text(f"{gain:.5}", encoding="utf-8")
 
             data[step.file_gain_key] = gain_file_path
@@ -219,15 +219,15 @@ def procedure(
 
             file_set_level.overload(
                 key=step.file_set_level_key,
-                name=root / step.file_set_level_name
-                if step.file_set_level_name is not None
+                name=root / step.file_set_level_path
+                if step.file_set_level_path is not None
                 else None,
             )
 
             data.get(file_set_level.key, None)
 
             if file_set_level is None:
-                file_set_level = pathlib.Path(root / step.file_set_level_name)
+                file_set_level = pathlib.Path(root / step.file_set_level_path)
             else:
                 file_set_level = pathlib.Path(file_set_level)
 
@@ -235,7 +235,7 @@ def procedure(
             file_insertion_gain = data.get(step.file_insertion_gain_key, None)
 
             if file_insertion_gain is None:
-                file_insertion_gain = pathlib.Path(root / step.file_insertion_gain_name)
+                file_insertion_gain = pathlib.Path(root / step.file_insertion_gain_path)
             else:
                 file_insertion_gain = pathlib.Path(file_insertion_gain)
 

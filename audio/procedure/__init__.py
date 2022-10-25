@@ -1,9 +1,10 @@
 from __future__ import annotations
-from dataclasses import dataclass
 
 import xml.etree.ElementTree as ET
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Type, Union
 
 import rich
 
@@ -12,13 +13,20 @@ from audio.console import console
 from audio.type import Dictionary
 
 
-class ProcedureStep:
-    pass
+class ProcedureStep(ABC):
+    @property
+    @abstractmethod
+    def xml_tag(self):
+        return ""
 
 
 @rich.repr.auto
 class ProcedureText(ProcedureStep):
     text: str
+
+    @property
+    def xml_tag(self):
+        return "text"
 
     def __init__(self, text: str) -> None:
         self.text = text
@@ -45,6 +53,10 @@ class ProcedureText(ProcedureStep):
 class ProcedureAsk(ProcedureStep):
     text: Optional[str] = None
 
+    @property
+    def xml_tag(self):
+        return "ask"
+
     @classmethod
     def from_xml(cls, xml: ET.Element):
         text = xml.text
@@ -60,6 +72,10 @@ class ProcedureAsk(ProcedureStep):
 class ProcedureFile(ProcedureStep):
     key: Optional[str] = None
     path: Optional[str] = None
+
+    @property
+    def xml_tag(self):
+        return "file"
 
     @classmethod
     def from_xml(cls, xml: ET.Element):
@@ -82,6 +98,10 @@ class ProcedureDefault(ProcedureStep):
     sweep_file_insertion_gain_key: Optional[str]
     sweep_file_insertion_gain_name: Optional[str]
     sweep_config: Optional[SweepConfigXML]
+
+    @property
+    def xml_tag(self):
+        return "default"
 
     def __init__(
         self,
@@ -156,160 +176,156 @@ class ProcedureDefault(ProcedureStep):
         )
 
 
+@dataclass
 @rich.repr.auto
 class ProcedureSetLevel(ProcedureStep):
     dBu: Optional[float]
-    file_set_level_key: str
-    file_set_level_name: str
-    file_plot_key: str
-    file_plot_name: str
-    config: SweepConfigXML
-    override: bool
+    file_set_level_key: Optional[str]
+    file_set_level_name: Optional[str]
+    file_plot_key: Optional[str]
+    file_plot_name: Optional[str]
+    config: Optional[SweepConfigXML]
+    override: bool = False
 
-    def __init__(
-        self,
-        dBu: Optional[float],
-        file_set_level_key: str,
-        file_set_level_name: str,
-        file_plot_key: str,
-        file_plot_name: str,
-        config: SweepConfigXML,
-        override: bool = False,
-    ) -> None:
-        self.dBu = dBu
-        self.file_set_level_key = file_set_level_key
-        self.file_set_level_name = file_set_level_name
-        self.file_plot_key = file_plot_key
-        self.file_plot_name = file_plot_name
-        self.config = config
-        self.override = override
+    @property
+    def xml_tag(self):
+        return "set_level"
 
     @classmethod
     def from_xml(cls, xml: ET.Element):
-        EdBu = xml.find("./dBu")
-        file_set_level_key = xml.find("./file_set_level/key")
-        file_set_level_name = xml.find("./file_set_level/name")
-        file_plot_key = xml.find("./file_set_level_plot/key")
-        file_plot_name = xml.find("./file_set_level_plot/name")
-
-        override_elem = xml.get("override", None)
-        override = override_elem is not None
-
-        config = xml.find("./config")
-        sweep_config_xml = SweepConfigXML.from_xml(ET.ElementTree(config))
-
         dBu: Optional[float] = None
+        file_set_level_key: Optional[str] = None
+        file_set_level_name: Optional[str] = None
+        file_plot_key: Optional[str] = None
+        file_plot_name: Optional[str] = None
+        override: bool = False
+        sweep_config_xml: Optional[SweepConfigXML] = None
 
+        EdBu = xml.find("./dBu")
         if EdBu is not None:
             dBu = float(EdBu.text)
 
-        if (
-            file_set_level_key is not None
-            and file_set_level_name is not None
-            and file_plot_key is not None
-            and file_plot_name is not None
-            and sweep_config_xml is not None
-        ):
-            return cls(
-                dBu=dBu,
-                file_set_level_key=file_set_level_key.text,
-                file_set_level_name=file_set_level_name.text,
-                file_plot_key=file_plot_key.text,
-                file_plot_name=file_plot_name.text,
-                config=sweep_config_xml,
-                override=override,
-            )
-        else:
-            return None
+        Efile_set_level = xml.find("./file_set_level")
+        if Efile_set_level is not None:
+            file_set_level_key = Efile_set_level.get("key")
+            file_set_level_name = Efile_set_level.get("path")
+
+        Efile_plot = xml.find("./file_set_level_plot")
+        if Efile_plot is not None:
+            file_plot_key = Efile_plot.get("key")
+            file_plot_name = Efile_plot.get("path")
+
+        override_elem = xml.get("override")
+        override = override_elem is not None
+
+        config = xml.find("./config")
+        if config is not None:
+            sweep_config_xml = SweepConfigXML.from_xml(ET.ElementTree(config))
+
+        return cls(
+            dBu=dBu,
+            file_set_level_key=file_set_level_key,
+            file_set_level_name=file_set_level_name,
+            file_plot_key=file_plot_key,
+            file_plot_name=file_plot_name,
+            config=sweep_config_xml,
+            override=override,
+        )
 
 
+@dataclass
 @rich.repr.auto
 class ProcedureSweep(ProcedureStep):
 
     name_folder: str
-    file_set_level_key: str
-    file_set_level_name: str
-    file_offset_key: str
-    file_offset_name: str
-    file_insertion_gain_key: str
-    file_insertion_gain_name: str
-    override: bool
+    file_set_level_key: Optional[str] = None
+    file_set_level_path: Optional[str] = None
+    file_offset_key: Optional[str] = None
+    file_offset_path: Optional[str] = None
+    file_insertion_gain_key: Optional[str] = None
+    file_insertion_gain_path: Optional[str] = None
+    config: Optional[SweepConfigXML] = None
+    override: bool = False
 
-    config: SweepConfigXML
-
-    def __init__(
-        self,
-        name_folder: str,
-        file_set_level_key: str,
-        file_set_level_name: str,
-        file_offset_key: str,
-        file_offset_name: str,
-        file_insertion_gain_key: str,
-        file_insertion_gain_name: str,
-        # file_plot_name: str,
-        config: SweepConfigXML,
-        override: bool = False,
-    ) -> None:
-        self.name_folder = name_folder
-        self.file_set_level_key = file_set_level_key
-        self.file_set_level_name = file_set_level_name
-        self.file_offset_key = file_offset_key
-        self.file_offset_name = file_offset_name
-        self.file_insertion_gain_key = file_insertion_gain_key
-        self.file_insertion_gain_name = file_insertion_gain_name
-        # self.file_plot_name = file_plot_name
-        self.config = config
-        self.override = override
+    @property
+    def xml_tag(self):
+        return "sweep"
 
     @classmethod
     def from_xml(cls, xml: Optional[ET.ElementTree]):
         if xml is None:
             return None
 
-        name_folder = xml.find("./name_folder")
-        file_set_level_key = xml.find("./file_set_level/key")
-        file_set_level_name = xml.find("./file_set_level/name")
-        file_offset_key = xml.find("./file_offset/key")
-        file_offset_name = xml.find("./file_offset/name")
-        file_insertion_gain_key = xml.find("./file_insertion_gain/key")
-        file_insertion_gain_name = xml.find("./file_insertion_gain/name")
+        name_folder: str
+        file_set_level_key: Optional[str] = None
+        file_set_level_path: Optional[str] = None
+        file_offset_key: Optional[str] = None
+        file_offset_path: Optional[str] = None
+        file_insertion_gain_key: Optional[str] = None
+        file_insertion_gain_path: Optional[str] = None
+        override: bool = False
 
-        config = xml.find("./config")
+        config: SweepConfigXML
 
-        override_elem = xml.get("override", None)
+        Ename_folder = xml.find("./name_folder")
+        if Ename_folder is None:
+            return None
+        name_folder = Ename_folder.text
+
+        Efile_set_level = xml.find("./file_set_level")
+        if Efile_set_level is not None:
+            file_set_level_key = Efile_set_level.get("key")
+            file_set_level_path = Efile_set_level.get("path")
+
+            if not (file_set_level_key is not None or file_set_level_path is not None):
+                return None
+
+        Efile_offset = xml.find("./file_offset")
+        if Efile_offset is not None:
+            file_offset_key = Efile_offset.get("key")
+            file_offset_path = Efile_offset.get("path")
+
+            if not (file_offset_key is not None or file_offset_path is not None):
+                return None
+
+        Efile_insertion_gain = xml.find("./file_set_level_plot")
+        if Efile_insertion_gain is not None:
+            file_insertion_gain_key = Efile_insertion_gain.get("key")
+            file_insertion_gain_path = Efile_insertion_gain.get("path")
+
+            if not (
+                file_insertion_gain_key is not None
+                or file_insertion_gain_path is not None
+            ):
+                return None
+
+        Econfig = xml.find("./config")
+        config = SweepConfigXML.from_xml(ET.ElementTree(Econfig))
+
+        override_elem = xml.getroot().get("override", None)
         override = override_elem is not None
 
-        if (
-            name_folder is not None
-            and file_set_level_key is not None
-            and file_set_level_name is not None
-            and file_offset_key is not None
-            and file_offset_name is not None
-            and file_insertion_gain_key is not None
-            and file_insertion_gain_name is not None
-            # and file_plot_name is not None
-            and config is not None
-        ):
-            return cls(
-                name_folder=name_folder.text,
-                file_set_level_key=file_set_level_key.text,
-                file_set_level_name=file_set_level_name.text,
-                file_offset_key=file_offset_key.text,
-                file_offset_name=file_offset_name.text,
-                file_insertion_gain_key=file_insertion_gain_key.text,
-                file_insertion_gain_name=file_insertion_gain_name.text,
-                # file_plot_name=file_plot_name.text,
-                config=SweepConfigXML.from_xml(ET.ElementTree(config)),
-                override=override,
-            )
-        else:
-            return None
+        return cls(
+            name_folder=name_folder,
+            file_set_level_key=file_set_level_key,
+            file_set_level_path=file_set_level_path,
+            file_offset_key=file_offset_key,
+            file_offset_path=file_offset_path,
+            file_insertion_gain_key=file_insertion_gain_key,
+            file_insertion_gain_path=file_insertion_gain_path,
+            config=config,
+            override=override,
+        )
 
 
 @rich.repr.auto
 class ProcedureSerialNumber(ProcedureStep):
 
     text: str
+
+    @property
+    def xml_tag(self):
+        return "serial_number"
 
     def __init__(self, text: str) -> None:
         self.text = text
@@ -329,69 +345,79 @@ class ProcedureSerialNumber(ProcedureStep):
             return None
 
 
+@dataclass
 @rich.repr.auto
 class ProcedureInsertionGain(ProcedureStep):
 
-    file_calibration_key: str
-    file_calibration_name: str
+    file_calibration_key: Optional[str] = None
+    file_calibration_path: Optional[str] = None
 
-    file_set_level_key: str
-    file_set_level_name: str
+    file_set_level_key: Optional[str] = None
+    file_set_level_path: Optional[str] = None
 
-    file_gain_key: str
-    file_gain_name: str
+    file_gain_key: Optional[str] = None
+    file_gain_path: Optional[str] = None
 
-    def __init__(
-        self,
-        file_calibration_key: str,
-        file_calibration_name: str,
-        file_set_level_key: str,
-        file_set_level_name: str,
-        file_gain_key: str,
-        file_gain_name: str,
-    ) -> None:
-        self.file_calibration_key = file_calibration_key
-        self.file_calibration_name = file_calibration_name
-        self.file_set_level_key = file_set_level_key
-        self.file_set_level_name = file_set_level_name
-        self.file_gain_key = file_gain_key
-        self.file_gain_name = file_gain_name
+    @property
+    def xml_tag(self):
+        return "insertion_gain"
 
     @classmethod
     def from_xml(cls, xml: Optional[ET.ElementTree]):
         if xml is None:
             return None
 
-        file_calibration_key = xml.find("./file_calibration/key")
-        file_calibration_name = xml.find("./file_calibration/name")
-        file_set_level_key = xml.find("./file_set_level/key")
-        file_set_level_name = xml.find("./file_set_level/name")
-        file_gain_key = xml.find("./file_gain/key")
-        file_gain_name = xml.find("./file_gain/name")
-        if (
-            file_calibration_key is not None
-            and file_calibration_name is not None
-            and file_set_level_key is not None
-            and file_set_level_name is not None
-            and file_gain_key is not None
-            and file_gain_name is not None
-        ):
-            return cls(
-                file_calibration_key=file_calibration_key.text,
-                file_calibration_name=file_calibration_name.text,
-                file_set_level_key=file_set_level_key.text,
-                file_set_level_name=file_set_level_name.text,
-                file_gain_key=file_gain_key.text,
-                file_gain_name=file_gain_name.text,
-            )
-        else:
-            return None
+        file_calibration_key: Optional[str] = None
+        file_calibration_path: Optional[str] = None
+        file_set_level_key: Optional[str] = None
+        file_set_level_path: Optional[str] = None
+        file_gain_key: Optional[str] = None
+        file_gain_path: Optional[str] = None
+
+        Efile_file_calibration = xml.find("./file_calibration")
+        if Efile_file_calibration is not None:
+            file_calibration_key = Efile_file_calibration.get("key")
+            file_calibration_path = Efile_file_calibration.get("path")
+
+            if not (
+                file_calibration_key is not None or file_calibration_path is not None
+            ):
+                return None
+
+        Efile_set_level = xml.find("./file_set_level")
+        if Efile_set_level is not None:
+            file_set_level_key = Efile_set_level.get("key")
+            file_set_level_path = Efile_set_level.get("path")
+
+            if not (file_set_level_key is not None or file_set_level_path is not None):
+                return None
+
+        Efile_gain = xml.find("./file_gain")
+        if Efile_gain is not None:
+            file_gain_key = Efile_gain.get("key")
+            file_gain_path = Efile_gain.get("path")
+
+            if not (file_gain_key is not None or file_gain_path is not None):
+                return None
+
+        return cls(
+            file_calibration_key=file_calibration_key,
+            file_calibration_path=file_calibration_path,
+            file_set_level_key=file_set_level_key,
+            file_set_level_path=file_set_level_path,
+            file_gain_key=file_gain_key,
+            file_gain_path=file_gain_path,
+        )
 
 
 @rich.repr.auto
 class ProcedurePrint(ProcedureStep):
 
     variables: List[str] = []
+
+    @property
+    def xml_tag(self):
+        return "print"
 
     def __init__(self, variables: List[str]) -> None:
         self.variables = variables
@@ -415,6 +441,10 @@ class ProcedureMultiPlot(ProcedureStep):
     file_plot: str
     folder_sweep: List[str]
     config: Optional[SweepConfigXML]
+
+    @property
+    def xml_tag(self):
+        return "multiplot"
 
     def __init__(
         self,
@@ -524,21 +554,22 @@ class Procedure:
     def proc_type_to_procedure(proc_type: str, xml: ET.Element):
         procedure: Optional[ProcedureStep] = None
 
-        if proc_type == "text":
-            procedure = ProcedureText.from_xml(xml)
-        elif proc_type == "set_level":
-            procedure = ProcedureSetLevel.from_xml(xml)
-        elif proc_type == "sweep":
-            procedure = ProcedureSweep.from_xml(xml)
-        elif proc_type == "serial_number":
-            procedure = ProcedureSerialNumber.from_xml(xml)
-        elif proc_type == "insertion_gain":
-            procedure = ProcedureInsertionGain.from_xml(xml)
-        elif proc_type == "print":
-            procedure = ProcedurePrint.from_xml(xml)
-        elif proc_type == "multiplot":
-            procedure = ProcedureMultiPlot.from_xml(xml)
-        else:
-            procedure = ProcedureStep()
+        procedure_list_type: List[Type] = [
+            ProcedureText,
+            ProcedureAsk,
+            ProcedureDefault,
+            ProcedureSetLevel,
+            ProcedureSweep,
+            ProcedureSerialNumber,
+            ProcedureInsertionGain,
+            ProcedurePrint,
+            ProcedureMultiPlot,
+            ProcedureFile,
+        ]
+
+        for proc_type_class in procedure_list_type:
+            if proc_type == proc_type_class.xml_tag:
+                procedure = proc_type_class.from_xml(xml)
+                break
 
         return procedure
