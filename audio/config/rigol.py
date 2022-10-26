@@ -1,4 +1,5 @@
 from __future__ import annotations
+from dataclasses import dataclass
 
 import xml.etree.ElementTree as ET
 from enum import Enum
@@ -148,3 +149,44 @@ class RigolConfigXML:
             ).text = str(amplitude_peak_to_peak)
         except Exception:
             self.print()
+
+
+@dataclass
+@rich.repr.auto
+class RigolConfig:
+    amplitude_peak_to_peak: Optional[float] = None
+
+    @classmethod
+    def from_xml(cls, xml: Optional[ET.ElementTree]):
+        if xml is not None:
+            return cls(
+                amplitude_peak_to_peak=RigolConfig.get_amplitude_peak_to_peak_from_xml(
+                    xml
+                )
+            )
+        else:
+            return cls()
+
+    def merge(self, other: Optional[RigolConfig]):
+        if other is None:
+            return
+
+        if self.amplitude_peak_to_peak is None:
+            self.amplitude_peak_to_peak = other.amplitude_peak_to_peak
+
+    def override(self, other: Optional[RigolConfig]):
+        if other is None:
+            return
+
+        if other.amplitude_peak_to_peak is not None:
+            self.amplitude_peak_to_peak = other.amplitude_peak_to_peak
+
+    @staticmethod
+    def get_amplitude_peak_to_peak_from_xml(xml: Optional[ET.ElementTree]):
+        Eamplitude_peak_to_peak = xml.find(
+            RigolConfigOptionsXPATH.AMPLITUDE_PEAK_TO_PEAK.value
+        )
+        if Eamplitude_peak_to_peak is not None:
+            return float(Eamplitude_peak_to_peak.text)
+
+        return None

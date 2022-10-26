@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 import pandas as pd
 import yaml
 from pandas import DataFrame, Series
-from audio.config.plot import PlotConfigXML
+from audio.config.plot import PlotConfig, PlotConfigXML
 
 from audio.console import console
 
@@ -88,7 +88,7 @@ class SweepData:
 
     # Meta Information
     amplitude: Optional[float]
-    config: Optional[PlotConfigXML]
+    config: Optional[PlotConfig]
 
     # CSV Data
     data: DataFrame
@@ -97,7 +97,7 @@ class SweepData:
         self,
         data: DataFrame,
         amplitude: Optional[float] = None,
-        config: PlotConfigXML = None,
+        config: PlotConfig = None,
     ) -> None:
         self.data = data
         self.amplitude = amplitude

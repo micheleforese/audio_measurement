@@ -1,4 +1,5 @@
 from __future__ import annotations
+from dataclasses import dataclass
 from enum import Enum, auto
 import enum
 
@@ -9,10 +10,14 @@ from typing import Dict, Optional
 import rich
 
 from audio.config import json5_string_to_dict, json5_to_dict
-from audio.config.nidaq import NiDaqConfigOptions, NiDaqConfigXML
-from audio.config.plot import PlotConfigOptions, PlotConfigXML
-from audio.config.rigol import RigolConfigOptions, RigolConfigXML
-from audio.config.sampling import SamplingConfigOptions, SamplingConfigXML
+from audio.config.nidaq import NiDaqConfig, NiDaqConfigOptions, NiDaqConfigXML
+from audio.config.plot import PlotConfig, PlotConfigOptions, PlotConfigXML
+from audio.config.rigol import RigolConfig, RigolConfigOptions, RigolConfigXML
+from audio.config.sampling import (
+    SamplingConfig,
+    SamplingConfigOptions,
+    SamplingConfigXML,
+)
 from audio.console import console
 from audio.type import Dictionary
 from rich.syntax import Syntax
@@ -60,20 +65,6 @@ class SweepConfigXML:
         sampling=SweepConfigOptions.SAMPLING.value,
         plot=SweepConfigOptions.PLOT.value,
     )
-    # TREE_SKELETON: str = """
-    # <{root}>
-    #     {rigol_xml}
-    #     {nidaq_xml}
-    #     {sampling_xml}
-    #     {plot_xml}
-    # </{root}>
-    # """.format(
-    #     root=SweepConfigOptions.ROOT.value,
-    #     rigol_xml=RigolConfigXML.TREE_SKELETON,
-    #     nidaq_xml=NiDaqConfigXML.TREE_SKELETON,
-    #     sampling_xml=SamplingConfigXML.TREE_SKELETON,
-    #     plot_xml=PlotConfigXML.TREE_SKELETON,
-    # )
     _tree: ET.ElementTree
 
     def __init__(self) -> None:
@@ -285,3 +276,85 @@ class SweepConfigXML:
         return PlotConfigXML.from_tree(
             ET.ElementTree(self.tree.find(SweepConfigOptionsXPATH.PLOT.value))
         )
+
+
+@dataclass
+@rich.repr.auto
+class SweepConfig:
+
+    rigol: Optional[RigolConfig] = None
+    nidaq: Optional[NiDaqConfig] = None
+    sampling: Optional[SamplingConfig] = None
+    plot: Optional[PlotConfig] = None
+
+    @classmethod
+    def from_xml(cls, xml: Optional[ET.ElementTree]):
+        if xml is not None:
+            Erigol = SweepConfig.get_rigol_from_xml(xml)
+            Enidaq = SweepConfig.get_nidaq_from_xml(xml)
+            Esampling = SweepConfig.get_sampling_from_xml(xml)
+            Eplot = SweepConfig.get_plot_from_xml(xml)
+
+            rigol_config = RigolConfig.from_xml(Erigol)
+            nidaq_config = NiDaqConfig.from_xml(Enidaq)
+            sampling_config = SamplingConfig.from_xml(Esampling)
+            plot_config = PlotConfig.from_xml(Eplot)
+
+            return cls(
+                rigol=rigol_config,
+                nidaq=nidaq_config,
+                sampling=sampling_config,
+                plot=plot_config,
+            )
+
+        else:
+            return None
+
+    def merge(self, other: Optional[SweepConfig]):
+        if other is None:
+            return
+
+        if self.rigol is not None:
+            self.rigol.merge(other.rigol)
+        if self.nidaq is not None:
+            self.nidaq.merge(other.nidaq)
+        if self.sampling is not None:
+            self.sampling.merge(other.sampling)
+        if self.plot is not None:
+            self.plot.merge(other.plot)
+
+    def override(self, other: Optional[SweepConfig]):
+        if other is None:
+            return
+
+        if other.rigol is not None:
+            self.rigol.override(other.rigol)
+        if other.nidaq is not None:
+            self.nidaq.override(other.nidaq)
+        if other.sampling is not None:
+            self.sampling.override(other.sampling)
+        if other.plot is not None:
+            self.plot.override(other.plot)
+
+    def print(self):
+        console.print(self)
+
+    @staticmethod
+    def get_rigol_from_xml(xml: ET.ElementTree):
+        rigol = xml.find(SweepConfigOptionsXPATH.RIGOL.value)
+        return rigol
+
+    @staticmethod
+    def get_nidaq_from_xml(xml: ET.ElementTree):
+        nidaq = xml.find(SweepConfigOptionsXPATH.NIDAQ.value)
+        return nidaq
+
+    @staticmethod
+    def get_sampling_from_xml(xml: ET.ElementTree):
+        sampling = xml.find(SweepConfigOptionsXPATH.SAMPLING.value)
+        return sampling
+
+    @staticmethod
+    def get_plot_from_xml(xml: ET.ElementTree):
+        plot = xml.find(SweepConfigOptionsXPATH.PLOT.value)
+        return plot

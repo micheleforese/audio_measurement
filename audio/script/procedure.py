@@ -1,14 +1,18 @@
-from dataclasses import dataclass
+import copy
 import pathlib
+from calendar import c
+from dataclasses import dataclass
 from math import log10
 from typing import Dict, List, Optional
 
 import click
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
-from audio.config.sweep import SweepConfigXML
 
+from audio.config.sweep import SweepConfig, SweepConfigXML
 from audio.console import console
+from audio.model.file import CacheFile, File
+from audio.model.insertion_gain import InsertionGain
 from audio.model.set_level import SetLevel
 from audio.plot import CacheCsvData, multiplot
 from audio.procedure import (
@@ -26,8 +30,6 @@ from audio.procedure import (
     ProcedureText,
 )
 from audio.sampling import config_set_level, plot_from_csv, sampling_curve
-from audio.model.insertion_gain import InsertionGain
-from audio.model.file import CacheFile, File
 
 
 @click.command()
@@ -63,18 +65,12 @@ def procedure(
     @dataclass
     class DefaultSweepConfig:
         set_level: Optional[File] = None
-        file_set_level_key: Optional[str] = None
-        file_set_level_name: Optional[str] = None
 
         offset: Optional[File] = None
-        file_offset_key: Optional[str] = None
-        file_offset_name: Optional[str] = None
 
         insertion_gain: Optional[File] = None
-        file_insertion_gain_key: Optional[str] = None
-        file_insertion_gain_name: Optional[str] = None
 
-        config: Optional[SweepConfigXML] = None
+        config: Optional[SweepConfig] = None
 
     default_sweep_config = DefaultSweepConfig()
 
@@ -102,13 +98,18 @@ def procedure(
                 step.sweep_file_set_level_key, step.sweep_file_set_level_name
             )
 
+            console.print(default_sweep_config.set_level)
+
             default_sweep_config.offset = File(
                 step.sweep_file_offset_key, step.sweep_file_offset_name
             )
+            console.print(default_sweep_config.offset)
 
             default_sweep_config.insertion_gain = File(
                 step.sweep_file_insertion_gain_key, step.sweep_file_insertion_gain_name
             )
+            console.print(default_sweep_config.insertion_gain)
+
             default_sweep_config.config = step.sweep_config
 
         elif isinstance(step, ProcedureFile):
@@ -119,6 +120,8 @@ def procedure(
                 console.log(
                     f"[ERROR] - File key '{step.key}' already present in the project"
                 )
+            else:
+                console.log(f"[FILE] - File added: '{step.key}' - '{step.path}'")
 
         elif isinstance(step, ProcedureSetLevel):
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureSetLevel()"))
@@ -126,15 +129,44 @@ def procedure(
             sampling_config = step.config
             sampling_config.print()
 
-            file_set_level: pathlib = pathlib.Path(root / step.file_set_level_name)
-            data[step.file_set_level_key] = file_set_level
+            file_set_level_path: Optional[pathlib.Path] = None
+            file_sweep_plot_path: Optional[pathlib.Path] = None
 
-            file_sweep_plot: pathlib.Path = pathlib.Path(root / step.file_plot_name)
-            data[step.file_plot_key] = file_sweep_plot
+            if step.file_set_level_key is not None:
+                file_set_level_path = cache_file.get(step.file_set_level_key)
+
+                if file_set_level_path is None:
+                    console.log(
+                        f"[FILE] - key '{step.file_set_level_key}' not found.",
+                        style="error",
+                    )
+
+                    console.log(cache_file.database)
+            elif step.file_set_level_name is not None:
+                file_set_level_path = pathlib.Path(root / step.file_set_level_name)
+            else:
+                console.log(f"[FILE] - File not present.", style="error")
+
+            if step.file_plot_key is not None:
+                file_sweep_plot_path = cache_file.get(step.file_plot_key)
+
+                if file_sweep_plot_path is None:
+                    console.log(
+                        f"[FILE] - key '{step.file_plot_key}' not found.",
+                        style="error",
+                    )
+
+                    console.log(cache_file.database)
+            elif step.file_plot_name is not None:
+                file_sweep_plot_path = pathlib.Path(root / step.file_plot_name)
+            else:
+                console.log(f"[FILE] - File not present.", style="error")
 
             if not step.override:
-                if file_set_level.exists() and file_set_level.is_file():
-                    console.log(f"[FILE] - File '{file_set_level}' already exists.")
+                if file_set_level_path.exists() and file_set_level_path.is_file():
+                    console.log(
+                        f"[FILE] - File '{file_set_level_path}' already exists."
+                    )
                     continue
 
             dBu = 4
@@ -145,12 +177,10 @@ def procedure(
             config_set_level(
                 dBu=dBu,
                 config=sampling_config,
-                set_level_file_path=file_set_level,
-                plot_file_path=file_sweep_plot,
+                set_level_file_path=file_set_level_path,
+                plot_file_path=file_sweep_plot_path,
                 debug=True,
             )
-
-            console.print(data)
 
         elif isinstance(step, ProcedureSerialNumber):
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureSerialNumber()"))
@@ -174,23 +204,35 @@ def procedure(
         elif isinstance(step, ProcedureInsertionGain):
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureInsertionGain()"))
 
-            calibration_path: pathlib.Path = pathlib.Path(
-                root / step.file_calibration_path
-            )
+            file_calibration_path: pathlib.Path
+            file_set_level: pathlib.Path
+            file_gain_path: pathlib.Path
 
-            file_set_level: pathlib.Path = pathlib.Path(root / step.file_set_level_path)
+            if step.file_calibration_key is not None:
+                file_calibration_path = cache_file.get(step.file_calibration_key)
+                if file_calibration_path is None:
+                    console.log(
+                        f"[FILE] - key: {step.file_calibration_key} not present."
+                    )
+                    console.log(cache_file)
 
-            calibration: float = SetLevel(calibration_path).set_level
+            if step.file_set_level_key is not None:
+                file_set_level = cache_file.get(step.file_set_level_key)
+                if file_set_level is None:
+                    console.log(f"[FILE] - key: {step.file_set_level_key} not present.")
+                    console.log(cache_file)
+
+            if step.file_gain_key is not None:
+                file_gain_path = cache_file.get(step.file_gain_key)
+                if file_gain_path is None:
+                    console.log(f"[FILE] - key: {step.file_gain_key} not present.")
+                    console.log(cache_file)
+
+            calibration: float = SetLevel(file_calibration_path).set_level
             set_level: float = SetLevel(file_set_level).set_level
-
             gain: float = 20 * log10(calibration / set_level)
 
-            gain_file_path: pathlib.Path = pathlib.Path(root / step.file_gain_path)
-            gain_file_path.write_text(f"{gain:.5}", encoding="utf-8")
-
-            data[step.file_gain_key] = gain_file_path
-
-            console.print(f"GAIN: {gain} dB.")
+            file_gain_path.write_text(f"{gain:.5}", encoding="utf-8")
 
         elif isinstance(step, ProcedurePrint):
             console.print(Panel(f"{idx}/{idx_tot}: ProcedurePrint()"))
@@ -206,56 +248,100 @@ def procedure(
 
         elif isinstance(step, ProcedureSweep):
             console.print(Panel(f"{idx}/{idx_tot}: ProcedureSweep()"))
+            file_set_level_path: Optional[pathlib.Path] = None
+            file_insertion_gain_path: Optional[pathlib.Path] = None
 
-            sweep_config: SweepConfigXML = step.config
+            config: SweepConfig = copy.deepcopy(default_sweep_config.config)
 
-            sweep_config = default_sweep_config.config.override_from_sweep_config_xml(
-                sweep_config
-            )
-            sweep_config.print()
+            config.override(step.config)
 
-            if sweep_config is None:
-                console.print("sweep_config is None.", style="error")
+            config.print()
+
+            if config is None:
+                console.print("config is None.", style="error")
                 exit()
 
             # Set Level & Y Offset dB
             file_set_level: File = File(
-                default_sweep_config.file_set_level_key,
-                default_sweep_config.file_set_level_name,
+                key=default_sweep_config.set_level.key,
+                path=default_sweep_config.set_level.path,
             )
+            console.print(file_set_level)
 
             file_set_level.overload(
-                key=step.file_set_level_key,
-                name=root / step.file_set_level_path
-                if step.file_set_level_path is not None
-                else None,
+                key=step.file_set_level_key, path=step.file_set_level_path
             )
+            console.print(file_set_level)
 
-            data.get(file_set_level.key, None)
+            if file_set_level.key is not None:
+                file_set_level_path = cache_file.get(file_set_level.key)
 
-            if file_set_level is None:
-                file_set_level = pathlib.Path(root / step.file_set_level_path)
+                if file_set_level_path is None:
+                    console.log(
+                        f"[FILE] - key '{file_set_level.key}' not found.",
+                        style="error",
+                    )
+
+                    console.log(cache_file.database)
+
+            elif file_set_level.path is not None:
+                file_sweep_plot_path = pathlib.Path(root / file_set_level.path)
             else:
-                file_set_level = pathlib.Path(file_set_level)
+                console.log(f"[FILE] - File not present.", style="error")
+                console.log(cache_file.database)
+                exit()
 
             # Insertion Gain
-            file_insertion_gain = data.get(step.file_insertion_gain_key, None)
-
-            if file_insertion_gain is None:
-                file_insertion_gain = pathlib.Path(root / step.file_insertion_gain_path)
-            else:
-                file_insertion_gain = pathlib.Path(file_insertion_gain)
-
-            set_level = SetLevel(file_set_level).set_level
-            y_offset_dB = SetLevel(file_set_level).y_offset_dB
-            insertion_gain = InsertionGain(file_insertion_gain).insertion_gain_dB
-
-            sweep_config.rigol.override(amplitude_peak_to_peak=set_level)
-            sweep_config.plot.override(y_offset=y_offset_dB)
-            sweep_config.plot.override(
-                legend=f"{sweep_config.plot.legend}, Vpp IN={set_level:.2f} V, G={insertion_gain} dB"
+            console.print(
+                f"default_sweep_config.insertion_gain.key: {default_sweep_config.insertion_gain.key or ''}"
             )
-            sweep_config.print()
+            console.print(
+                f"default_sweep_config.insertion_gain.path: {default_sweep_config.insertion_gain.path or ''}"
+            )
+            file_insertion_gain: File = File(
+                default_sweep_config.insertion_gain.key,
+                default_sweep_config.insertion_gain.path,
+            )
+            console.print(file_insertion_gain)
+
+            console.print(
+                f"step.file_insertion_gain_key: {step.file_insertion_gain_key or ''}"
+            )
+            console.print(
+                f"step.file_insertion_gain_path: {step.file_insertion_gain_path or ''}"
+            )
+            file_insertion_gain.overload(
+                key=step.file_insertion_gain_key, path=step.file_insertion_gain_path
+            )
+            console.print(file_insertion_gain)
+
+            if file_insertion_gain.key is not None:
+                file_insertion_gain_path = cache_file.get(file_insertion_gain.key)
+
+                if file_insertion_gain_path is None:
+                    console.log(
+                        f"[FILE] - key '{file_insertion_gain.key}' not found.",
+                        style="error",
+                    )
+                    console.log(cache_file.database)
+            elif file_insertion_gain.path is not None:
+                file_insertion_gain_path = pathlib.Path(root / file_insertion_gain.path)
+            else:
+                console.log(f"[FILE] - File not present.", style="error")
+                console.log(cache_file.database)
+                exit()
+
+            # Retrieving the data
+            set_level = SetLevel(file_set_level_path).set_level
+            y_offset_dB = SetLevel(file_set_level_path).y_offset_dB
+            insertion_gain = InsertionGain(file_insertion_gain_path).insertion_gain_dB
+
+            config.rigol.amplitude_peak_to_peak = set_level
+            config.plot.y_offset = y_offset_dB
+            config.plot.legend = (
+                f"{config.plot.legend}, Vpp IN={set_level:.2f} V, G={insertion_gain} dB"
+            )
+            config.print()
 
             home_dir_path: pathlib.Path = root / step.name_folder
             measurement_file: pathlib.Path = home_dir_path / (step.name_folder + ".csv")
@@ -270,7 +356,7 @@ def procedure(
                     continue
 
             sampling_curve(
-                config=sweep_config,
+                config=config,
                 sweep_home_path=home_dir_path,
                 sweep_file_path=measurement_file,
                 debug=True,
@@ -283,7 +369,7 @@ def procedure(
 
             plot_from_csv(
                 measurements_file_path=measurement_file,
-                plot_config=sweep_config.plot,
+                plot_config=config.plot,
                 plot_file_path=file_sweep_plot,
                 debug=True,
             )

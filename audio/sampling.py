@@ -25,8 +25,8 @@ from usbtmc import Instrument
 from audio.model.set_level import SetLevel
 
 import audio.ui.terminal as ui_t
-from audio.config.plot import PlotConfigXML
-from audio.config.sweep import SweepConfigXML
+from audio.config.plot import PlotConfig, PlotConfigXML
+from audio.config.sweep import SweepConfig, SweepConfigXML
 from audio.console import console
 from audio.math import dBV, percentage_error, transfer_function
 from audio.math.algorithm import LogarithmicScale
@@ -41,7 +41,7 @@ from audio.utility.timer import Timer, Timer_Message
 
 
 def sampling_curve(
-    config: SweepConfigXML,
+    config: SweepConfig,
     sweep_home_path: Path,
     sweep_file_path: Path,
     debug: bool = False,
@@ -189,8 +189,6 @@ def sampling_curve(
                 1,
                 round(
                     config.rigol.amplitude_peak_to_peak,
-                    # if config.rigol.amplitude_peak_to_peak < 12
-                    # else 0
                     5,
                 ),
             ),
@@ -401,7 +399,7 @@ def sampling_curve(
 def plot_from_csv(
     measurements_file_path: Path,
     plot_file_path: Path,
-    plot_config: Optional[PlotConfigXML] = None,
+    plot_config: Optional[PlotConfig] = None,
     debug: bool = False,
 ):
 
@@ -558,7 +556,7 @@ def plot_from_csv(
 
 def config_set_level(
     dBu: float,
-    config: SweepConfigXML,
+    config: SweepConfig,
     plot_file_path: Path,
     set_level_file_path: Optional[Path] = None,
     debug: bool = False,
