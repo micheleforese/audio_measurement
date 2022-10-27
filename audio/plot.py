@@ -8,7 +8,7 @@ import matplotlib.ticker as ticker
 import numpy as np
 from rich.progress import track
 
-from audio.config.sweep import SweepConfigXML
+from audio.config.sweep import SweepConfig
 
 from audio.math.interpolation import INTERPOLATION_KIND, logx_interpolation_model
 from audio.model.sweep import SweepData
@@ -45,7 +45,7 @@ def multiplot(
     csv_files_paths: List[Path],
     output_file_path: Path,
     cache_csv_data: CacheCsvData,
-    sweep_config: Optional[SweepConfigXML] = None,
+    sweep_config: Optional[SweepConfig] = None,
 ) -> bool:
 
     # Check for Files validity

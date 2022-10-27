@@ -22,11 +22,10 @@ from rich.progress import (
 )
 from rich.table import Column, Table
 from usbtmc import Instrument
-from audio.model.set_level import SetLevel
 
 import audio.ui.terminal as ui_t
-from audio.config.plot import PlotConfig, PlotConfigXML
-from audio.config.sweep import SweepConfig, SweepConfigXML
+from audio.config.plot import PlotConfig
+from audio.config.sweep import SweepConfig
 from audio.console import console
 from audio.math import dBV, percentage_error, transfer_function
 from audio.math.algorithm import LogarithmicScale

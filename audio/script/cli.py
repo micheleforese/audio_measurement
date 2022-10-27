@@ -12,7 +12,7 @@ from rich.panel import Panel
 from rich.prompt import Confirm
 
 from audio.config.plot import PlotConfigXML
-from audio.config.sweep import SweepConfigXML
+from audio.config.sweep import SweepConfig
 from audio.config.type import Range
 from audio.console import console
 from audio.docker.latex import create_latex_file
@@ -157,7 +157,7 @@ def sweep(
     datetime_now = datetime.now().strftime(r"%Y-%m-%d--%H-%M-%f")
 
     # Load JSON config
-    cfg = SweepConfigXML.from_file(config_path)
+    cfg = SweepConfig.from_xml_file(config_path)
 
     if cfg is None:
         raise Exception("Configurations not loaded correctly.")
@@ -342,7 +342,7 @@ def plot(
     csv_file_path: Optional[pathlib.Path] = None
     plot_file_path: Optional[pathlib.Path] = None
 
-    sweep_config = SweepConfigXML.from_file(config_path)
+    sweep_config = SweepConfig.from_file(config_path)
 
     if sweep_config is None:
         raise Exception("sweep_config is NULL")
@@ -439,7 +439,7 @@ def set_level(
     datetime_now = datetime.now().strftime(r"%Y-%m-%d--%H-%M-%f")
 
     config_file = config_path.absolute()
-    config: SweepConfigXML = SweepConfigXML.from_file(config_file)
+    config: SweepConfig = SweepConfig.from_xml_file(config_file)
 
     if debug:
         console.print(config)

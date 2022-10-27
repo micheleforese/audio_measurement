@@ -1,4 +1,5 @@
 from __future__ import annotations
+from enum import Enum, auto
 
 import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
@@ -8,14 +9,38 @@ from typing import ClassVar, Dict, List, Optional, Type, Union
 
 import rich
 
-from audio.config.sweep import SweepConfig, SweepConfigXML
+from audio.config.sweep import SweepConfig
 from audio.console import console
-from audio.model.file import File
+from audio.model.file import CacheFile, File
+from audio.plot import CacheCsvData
 from audio.type import Dictionary
 
 
 class ProcedureStep(ABC):
     XML_TAG: str = ""
+
+    @staticmethod
+    def proc_type_to_procedure(proc_type: str, xml: ET.Element):
+        procedure: Optional[ProcedureStep] = None
+
+        procedure_list_type: Dict[str, Type] = {
+            ProcedureText.XML_TAG: ProcedureText,
+            ProcedureAsk.XML_TAG: ProcedureAsk,
+            ProcedureDefault.XML_TAG: ProcedureDefault,
+            ProcedureSetLevel.XML_TAG: ProcedureSetLevel,
+            ProcedureSweep.XML_TAG: ProcedureSweep,
+            ProcedureSerialNumber.XML_TAG: ProcedureSerialNumber,
+            ProcedureInsertionGain.XML_TAG: ProcedureInsertionGain,
+            ProcedurePrint.XML_TAG: ProcedurePrint,
+            ProcedureMultiPlot.XML_TAG: ProcedureMultiPlot,
+            ProcedureFile.XML_TAG: ProcedureFile,
+        }
+
+        procedure_type: Optional[Type] = procedure_list_type.get(proc_type)
+        if procedure_type is not None:
+            procedure = procedure_type.from_xml(xml)
+
+        return procedure
 
 
 @dataclass
@@ -80,21 +105,23 @@ class ProcedureFile(ProcedureStep):
 
 
 @dataclass
+class DefaultSweepConfig:
+    set_level: Optional[File] = None
+    offset: Optional[File] = None
+    insertion_gain: Optional[File] = None
+
+    config: Optional[SweepConfig] = None
+
+
+@dataclass
 @rich.repr.auto
 class ProcedureDefault(ProcedureStep):
     sweep_file_set_level: Optional[File] = None
-    sweep_file_set_level_key: Optional[str] = None
-    sweep_file_set_level_name: Optional[str] = None
-
     sweep_file_offset: Optional[File] = None
-    sweep_file_offset_key: Optional[str] = None
-    sweep_file_offset_name: Optional[str] = None
-
     sweep_file_insertion_gain: Optional[File] = None
-    sweep_file_insertion_gain_key: Optional[str] = None
-    sweep_file_insertion_gain_name: Optional[str] = None
 
     sweep_config: Optional[SweepConfig] = None
+
     XML_TAG: ClassVar[str] = "default"
 
     @classmethod
@@ -103,12 +130,10 @@ class ProcedureDefault(ProcedureStep):
         if xml is None:
             return None
 
-        sweep_file_set_level_key: Optional[str] = None
-        sweep_file_set_level_name: Optional[str] = None
-        sweep_file_offset_key: Optional[str] = None
-        sweep_file_offset_name: Optional[str] = None
-        sweep_file_insertion_gain_key: Optional[str] = None
-        sweep_file_insertion_gain_name: Optional[str] = None
+        sweep_file_set_level: Optional[File] = None
+        sweep_file_offset: Optional[File] = None
+        sweep_file_insertion_gain: Optional[File] = None
+
         sweep_config: Optional[SweepConfig] = None
 
         Esweep = xml.find("./sweep")
@@ -122,25 +147,29 @@ class ProcedureDefault(ProcedureStep):
             Efile_set_level = Esweep.find("./file_set_level")
             if Efile_set_level is not None:
                 sweep_file_set_level_key = Efile_set_level.get("key")
-                sweep_file_set_level_name = Efile_set_level.find("path")
+                sweep_file_set_level_path = Efile_set_level.find("path")
+                sweep_file_set_level = File(
+                    sweep_file_set_level_key, sweep_file_set_level_path
+                )
 
             Efile_offset = Esweep.find("./file_offset")
             if Efile_offset is not None:
                 sweep_file_offset_key = Efile_offset.get("key")
-                sweep_file_offset_name = Efile_offset.find("path")
+                sweep_file_offset_path = Efile_offset.find("path")
+                sweep_file_offset = File(sweep_file_offset_key, sweep_file_offset_path)
 
             Efile_insertion_gain = Esweep.find("./file_insertion_gain")
             if Efile_insertion_gain is not None:
                 sweep_file_insertion_gain_key = Efile_insertion_gain.get("key")
-                sweep_file_insertion_gain_name = Efile_insertion_gain.find("path")
+                sweep_file_insertion_gain_path = Efile_insertion_gain.find("path")
+                sweep_file_insertion_gain = File(
+                    sweep_file_insertion_gain_key, sweep_file_insertion_gain_path
+                )
 
         return cls(
-            sweep_file_set_level_key=sweep_file_set_level_key,
-            sweep_file_set_level_name=sweep_file_set_level_name,
-            sweep_file_offset_key=sweep_file_offset_key,
-            sweep_file_offset_name=sweep_file_offset_name,
-            sweep_file_insertion_gain_key=sweep_file_insertion_gain_key,
-            sweep_file_insertion_gain_name=sweep_file_insertion_gain_name,
+            sweep_file_set_level=sweep_file_set_level,
+            sweep_file_offset=sweep_file_offset,
+            sweep_file_insertion_gain=sweep_file_insertion_gain,
             sweep_config=sweep_config,
         )
 
@@ -366,6 +395,117 @@ class ProcedureInsertionGain(ProcedureStep):
         )
 
 
+@dataclass
+@rich.repr.auto
+class ProcedureTask(ProcedureStep):
+
+    text: Optional[str] = None
+    steps: List[ProcedureStep] = field(default_factory=[])
+    XML_TAG: ClassVar[str] = "task"
+
+    @classmethod
+    def from_xml(cls, xml: Optional[ET.Element]):
+        if xml is None:
+            return None
+
+        text: Optional[str] = None
+
+        text = xml.find(".").get("text")
+
+        step_nodes: List[ET.Element] = xml.findall("./*")
+
+        steps: List[ProcedureStep] = []
+
+        for idx, step in enumerate(step_nodes):
+            proc_type = step.tag
+
+            console.print(proc_type)
+            procedure = ProcedureStep.proc_type_to_procedure(proc_type, step)
+            if procedure is not None:
+                steps.append(procedure)
+            else:
+                console.print(f"procedure idx {idx} is NULL")
+
+        return cls(
+            text=text,
+            steps=steps,
+        )
+
+
+class ProcedureCheckCondition(Enum):
+    NOT_EXISTS = "not exists"
+
+    @staticmethod
+    def from_str(label: Optional[str]) -> Optional[ProcedureCheckCondition]:
+        if label is None:
+            return None
+
+        if label in ProcedureCheckCondition:
+            return ProcedureCheckCondition[label]
+        else:
+            return None
+
+
+class ProcedureCheckAction(Enum):
+    BREAK_TASK = "break"
+
+    @staticmethod
+    def from_str(label: Optional[str]) -> Optional[ProcedureCheckAction]:
+        if label is None:
+            return None
+
+        if label in ProcedureCheckAction:
+            return ProcedureCheckAction[label]
+        else:
+            return None
+
+
+@dataclass
+@rich.repr.auto
+class ProcedureCheck(ProcedureStep):
+
+    condition: ProcedureCheckCondition = field(
+        default_factory=ProcedureCheckCondition.NOT_EXISTS
+    )
+    action: ProcedureCheckAction = field(
+        default_factory=ProcedureCheckAction.BREAK_TASK
+    )
+    file: Optional[File] = None
+
+    XML_TAG: ClassVar[str] = "check"
+    example = """
+    <check condition="not exists" action="break">
+        <file key="file_key"/>
+    </check>
+
+    <check>
+        <file key="file_key"/>
+    </check>
+    """
+
+    @classmethod
+    def from_xml(cls, xml: Optional[ET.Element]):
+        if xml is None:
+            return None
+
+        condition: Optional[ProcedureCheckCondition] = None
+        action: Optional[ProcedureCheckAction] = None
+        file: Optional[File] = None
+
+        condition = ProcedureCheckCondition.from_str(xml.find(".").get("condition"))
+        action = ProcedureCheckAction.from_str(xml.find(".").get("action"))
+
+        Efile = xml.find("./file")
+        if Efile is not None:
+            file = File(key=Efile.get("key"), path=Efile.get("path"))
+
+        return cls(
+            condition=condition,
+            action=action,
+            file=file,
+        )
+
+
 @rich.repr.auto
 class ProcedurePrint(ProcedureStep):
 
@@ -488,7 +628,7 @@ class Procedure:
             proc_type = step.tag
 
             console.print(proc_type)
-            procedure = Procedure.proc_type_to_procedure(proc_type, step)
+            procedure = ProcedureStep.proc_type_to_procedure(proc_type, step)
             if procedure is not None:
                 steps.append(procedure)
             else:
@@ -499,39 +639,14 @@ class Procedure:
             steps,
         )
 
-    @staticmethod
-    def proc_type_to_procedure(proc_type: str, xml: ET.Element):
-        procedure: Optional[ProcedureStep] = None
 
-        procedure_list_type: Dict[str, List[Type]] = {
-            ProcedureText.XML_TAG: ProcedureText,
-            ProcedureAsk.XML_TAG: ProcedureAsk,
-            ProcedureDefault.XML_TAG: ProcedureDefault,
-            ProcedureSetLevel.XML_TAG: ProcedureSetLevel,
-            ProcedureSweep.XML_TAG: ProcedureSweep,
-            ProcedureSerialNumber.XML_TAG: ProcedureSerialNumber,
-            ProcedureInsertionGain.XML_TAG: ProcedureInsertionGain,
-            ProcedurePrint.XML_TAG: ProcedurePrint,
-            ProcedureMultiPlot.XML_TAG: ProcedureMultiPlot,
-            ProcedureFile.XML_TAG: ProcedureFile,
-        }
-
-        procedure_type: Optional[
-            Union[
-                ProcedureText,
-                ProcedureAsk,
-                ProcedureDefault,
-                ProcedureSetLevel,
-                ProcedureSweep,
-                ProcedureSerialNumber,
-                ProcedureInsertionGain,
-                ProcedurePrint,
-                ProcedureMultiPlot,
-                ProcedureFile,
-            ]
-        ] = procedure_list_type.get(proc_type)
-        console.log(procedure_type)
-        if procedure_type is not None:
-            procedure = procedure_type.from_xml(xml)
-
-        return procedure
+@dataclass
+class DataProcedure:
+    procedure: Procedure
+    root: Path
+    data: Dict = field(default_factory=dict())
+    cache_csv_data: CacheCsvData = field(default_factory=CacheCsvData())
+    cache_file: CacheFile = field(default_factory=CacheFile())
+    default_sweep_config: DefaultSweepConfig = field(
+        default_factory=DefaultSweepConfig()
+    )
