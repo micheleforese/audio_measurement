@@ -2,7 +2,7 @@ from __future__ import annotations
 from enum import Enum, auto
 
 import xml.etree.ElementTree as ET
-from abc import ABC, abstractmethod
+from abc import ABC
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar, Dict, List, Optional, Type, Union
@@ -34,6 +34,8 @@ class ProcedureStep(ABC):
             ProcedurePrint.XML_TAG: ProcedurePrint,
             ProcedureMultiPlot.XML_TAG: ProcedureMultiPlot,
             ProcedureFile.XML_TAG: ProcedureFile,
+            ProcedureTask.XML_TAG: ProcedureTask,
+            ProcedureCheck.XML_TAG: ProcedureCheck,
         }
 
         procedure_type: Optional[Type] = procedure_list_type.get(proc_type)
@@ -440,8 +442,8 @@ class ProcedureCheckCondition(Enum):
         if label is None:
             return None
 
-        if label in ProcedureCheckCondition:
-            return ProcedureCheckCondition[label]
+        if label == ProcedureCheckCondition.NOT_EXISTS.value:
+            return ProcedureCheckCondition.NOT_EXISTS
         else:
             return None
 
@@ -450,12 +452,15 @@ class ProcedureCheckAction(Enum):
     BREAK_TASK = "break"
 
     @staticmethod
-    def from_str(label: Optional[str]) -> Optional[ProcedureCheckAction]:
+    def from_str(
+        label: Optional[str],
+    ) -> Optional[ProcedureCheckAction]:
+
         if label is None:
             return None
 
-        if label in ProcedureCheckAction:
-            return ProcedureCheckAction[label]
+        if label == ProcedureCheckAction.BREAK_TASK.value:
+            return ProcedureCheckAction.BREAK_TASK
         else:
             return None
 
@@ -642,11 +647,11 @@ class Procedure:
 
 @dataclass
 class DataProcedure:
-    procedure: Procedure
+    name: str
     root: Path
-    data: Dict = field(default_factory=dict())
-    cache_csv_data: CacheCsvData = field(default_factory=CacheCsvData())
-    cache_file: CacheFile = field(default_factory=CacheFile())
+    data: Dict = field(default_factory=lambda: dict())
+    cache_csv_data: CacheCsvData = field(default_factory=lambda: CacheCsvData())
+    cache_file: CacheFile = field(default_factory=lambda: CacheFile())
     default_sweep_config: DefaultSweepConfig = field(
-        default_factory=DefaultSweepConfig()
+        default_factory=lambda: DefaultSweepConfig()
     )

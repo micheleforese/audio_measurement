@@ -1,4 +1,5 @@
 import copy
+from enum import Enum, auto
 from pathlib import Path
 from math import log10
 from typing import Callable, Dict, List, Optional, Type
@@ -17,6 +18,8 @@ from audio.procedure import (
     DataProcedure,
     Procedure,
     ProcedureAsk,
+    ProcedureCheck,
+    ProcedureCheckCondition,
     ProcedureDefault,
     ProcedureFile,
     ProcedureInsertionGain,
@@ -26,6 +29,7 @@ from audio.procedure import (
     ProcedureSetLevel,
     ProcedureStep,
     ProcedureSweep,
+    ProcedureTask,
     ProcedureText,
 )
 from audio.sampling import config_set_level, plot_from_csv, sampling_curve
@@ -51,14 +55,24 @@ def procedure(
         )
 
     proc = Procedure.from_xml_file(file_path=procedure_name)
+    procedure_data = DataProcedure(proc.name, home)
 
-    console.print(f"Start Procedure: [blue]{proc.name}", justify="center")
+    console.print(f"Start Procedure: [blue]{procedure_data.name}", justify="center")
 
-    procedure_data = DataProcedure(proc, root=home)
+    exec_proc(procedure_data, proc.steps)
 
-    idx_tot = len(proc.steps)
 
-    procedure_step_dict: Dict[Type, Callable[[DataProcedure, ProcedureStep], None]] = {
+class AppAction(Enum):
+    EXIT_APP = auto()
+    EXIT_TASK = auto()
+
+
+def exec_proc(data: DataProcedure, list_step: List[ProcedureStep]):
+    idx_tot = len(list_step)
+
+    procedure_step_dict: Dict[
+        Type, Callable[[DataProcedure, ProcedureStep], Optional[AppAction]]
+    ] = {
         ProcedureText: step_procedure_text,
         ProcedureAsk: step_procedure_ask,
         ProcedureDefault: step_procedure_default,
@@ -69,20 +83,36 @@ def procedure(
         ProcedurePrint: step_procedure_print,
         ProcedureSweep: step_procedure_sweep,
         ProcedureMultiPlot: step_procedure_multiplot,
+        ProcedureTask: step_procedure_task,
+        ProcedureCheck: step_procedure_check,
     }
 
-    for idx, step in enumerate(proc.steps, start=1):
+    for idx, step in enumerate(list_step, start=1):
         console.print(Panel(f"{idx}/{idx_tot}: {step.__class__.__name__}()"))
 
-        procedure_step_dict.get(type(step), step_not_implemented)(procedure_data, step)
+        app_action: Optional[AppAction] = procedure_step_dict.get(
+            type(step), step_not_implemented
+        )(data, step)
+
+        if app_action is not None:
+            if app_action == AppAction.EXIT_APP:
+                exit()
+            elif app_action == AppAction.EXIT_TASK:
+                return None
+
+    return None
 
 
 def step_not_implemented(_: DataProcedure, step: ProcedureStep):
     console.print("[STEP] - Unknown.")
 
+    return None
+
 
 def step_procedure_text(_: DataProcedure, step: ProcedureText):
     console.print(step.text)
+
+    return None
 
 
 def step_procedure_ask(_: DataProcedure, step: ProcedureAsk):
@@ -90,6 +120,8 @@ def step_procedure_ask(_: DataProcedure, step: ProcedureAsk):
 
     while not confirm:
         confirm = Confirm.ask(step.text)
+
+    return None
 
 
 def step_procedure_default(data: DataProcedure, step: ProcedureDefault):
@@ -101,6 +133,8 @@ def step_procedure_default(data: DataProcedure, step: ProcedureDefault):
 
     data.default_sweep_config.config = step.sweep_config
 
+    return None
+
 
 def step_procedure_file(data: DataProcedure, step: ProcedureFile):
     result: bool = data.cache_file.add(step.key, data.root / step.path)
@@ -108,6 +142,8 @@ def step_procedure_file(data: DataProcedure, step: ProcedureFile):
         console.log(f"[ERROR] - File key '{step.key}' already present in the project")
     else:
         console.log(f"[FILE] - File added: '{step.key}' - '{step.path}'")
+
+    return None
 
 
 def step_procedure_set_level(data: DataProcedure, step: ProcedureSetLevel):
@@ -165,6 +201,8 @@ def step_procedure_set_level(data: DataProcedure, step: ProcedureSetLevel):
         debug=True,
     )
 
+    return None
+
 
 def step_procedure_serial_number(data: DataProcedure, step: ProcedureSerialNumber):
     console.print(step.text)
@@ -180,6 +218,8 @@ def step_procedure_serial_number(data: DataProcedure, step: ProcedureSerialNumbe
 
     data.root.mkdir(parents=True, exist_ok=True)
     console.print(f"Created Dir at: '{data.root}'")
+
+    return None
 
 
 def step_procedure_insertion_gain(data: DataProcedure, step: ProcedureInsertionGain):
@@ -211,6 +251,8 @@ def step_procedure_insertion_gain(data: DataProcedure, step: ProcedureInsertionG
 
     file_gain_path.write_text(f"{gain:.5}", encoding="utf-8")
 
+    return None
+
 
 def step_procedure_print(data: DataProcedure, step: ProcedurePrint):
     for var in step.variables:
@@ -219,6 +261,8 @@ def step_procedure_print(data: DataProcedure, step: ProcedurePrint):
             console.print(
                 "{}: {}".format(var, Path(variable).read_text(encoding="utf-8"))
             )
+
+    return None
 
 
 def step_procedure_sweep(data: DataProcedure, step: ProcedureSweep):
@@ -236,11 +280,9 @@ def step_procedure_sweep(data: DataProcedure, step: ProcedureSweep):
         exit()
 
     # Set Level & Y Offset dB
-    file_set_level: File = File(
-        key=data.default_sweep_config.set_level.key,
-        path=data.default_sweep_config.set_level.path,
-    )
-    console.print(file_set_level)
+    file_set_level: File = File()
+    if data.default_sweep_config.set_level is not None:
+        file_set_level = data.default_sweep_config.set_level
 
     file_set_level.overload(key=step.file_set_level_key, path=step.file_set_level_path)
     console.print(file_set_level)
@@ -264,22 +306,10 @@ def step_procedure_sweep(data: DataProcedure, step: ProcedureSweep):
         exit()
 
     # Insertion Gain
-    console.print(
-        f"default_sweep_config.insertion_gain.key: {data.default_sweep_config.insertion_gain.key or ''}"
-    )
-    console.print(
-        f"default_sweep_config.insertion_gain.path: {data.default_sweep_config.insertion_gain.path or ''}"
-    )
-    file_insertion_gain: File = File(
-        data.default_sweep_config.insertion_gain.key,
-        data.default_sweep_config.insertion_gain.path,
-    )
-    console.print(file_insertion_gain)
+    file_insertion_gain: File = File()
+    if data.default_sweep_config.insertion_gain is not None:
+        file_insertion_gain = data.default_sweep_config.insertion_gain
 
-    console.print(f"step.file_insertion_gain_key: {step.file_insertion_gain_key or ''}")
-    console.print(
-        f"step.file_insertion_gain_path: {step.file_insertion_gain_path or ''}"
-    )
     file_insertion_gain.overload(
         key=step.file_insertion_gain_key, path=step.file_insertion_gain_path
     )
@@ -344,6 +374,8 @@ def step_procedure_sweep(data: DataProcedure, step: ProcedureSweep):
         debug=True,
     )
 
+    return None
+
 
 def step_procedure_multiplot(data: DataProcedure, step: ProcedureMultiPlot):
     home_dir_path: Path = data.root
@@ -359,3 +391,37 @@ def step_procedure_multiplot(data: DataProcedure, step: ProcedureMultiPlot):
         data.cache_csv_data,
         step.config,
     )
+
+    return None
+
+
+def step_procedure_task(data: DataProcedure, step: ProcedureTask):
+    console.print(Panel.fit(f"[TASK] - [green]{step.text}[/]"), justify="center")
+
+    exec_proc(data, list_step=step.steps)
+    return None
+
+
+def step_procedure_check(data: DataProcedure, step: ProcedureCheck):
+
+    condition = step.condition
+
+    if condition == ProcedureCheckCondition.NOT_EXISTS:
+        file = step.file
+        file_path: Optional[Path] = None
+
+        if file.key is not None:
+            file_path = data.cache_file.get(file.key)
+        elif file.path is not None:
+            file_path = data.root / file.path
+
+        if file_path is not None:
+            exists: bool = file_path.exists() and file_path.is_file()
+
+            if exists:
+                console.print(
+                    f"[CHECK - [yellow]EXIT_TASK[/]] - File {file_path} already exists."
+                )
+                return AppAction.EXIT_TASK
+
+    return None
