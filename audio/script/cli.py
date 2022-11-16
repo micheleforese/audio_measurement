@@ -16,6 +16,7 @@ from audio.config.sweep import SweepConfig
 from audio.config.type import Range
 from audio.console import console
 from audio.docker.latex import create_latex_file
+from audio.gui.rigol_admin import rigol_admin
 from audio.math import trim_sin_zero_offset, rms_full_cycle
 from audio.math.interpolation import INTERPOLATION_KIND, interpolation_model
 from audio.math.rms import RMS
@@ -717,3 +718,11 @@ test.add_command(print_devices)
 def config():
 
     pass
+
+
+@cli.group()
+def gui():
+    pass
+
+
+gui.add_command(rigol_admin)
