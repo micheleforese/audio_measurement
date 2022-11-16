@@ -110,6 +110,7 @@ class ProcedureFile(ProcedureStep):
 class DefaultSweepConfig:
     set_level: Optional[File] = None
     offset: Optional[File] = None
+    offset_sweep: Optional[File] = None
     insertion_gain: Optional[File] = None
 
     config: Optional[SweepConfig] = None
@@ -120,6 +121,7 @@ class DefaultSweepConfig:
 class ProcedureDefault(ProcedureStep):
     sweep_file_set_level: Optional[File] = None
     sweep_file_offset: Optional[File] = None
+    sweep_file_offset_sweep: Optional[File] = None
     sweep_file_insertion_gain: Optional[File] = None
 
     sweep_config: Optional[SweepConfig] = None
@@ -134,6 +136,7 @@ class ProcedureDefault(ProcedureStep):
 
         sweep_file_set_level: Optional[File] = None
         sweep_file_offset: Optional[File] = None
+        sweep_file_offset_sweep: Optional[File] = None
         sweep_file_insertion_gain: Optional[File] = None
 
         sweep_config: Optional[SweepConfig] = None
@@ -160,6 +163,14 @@ class ProcedureDefault(ProcedureStep):
                 sweep_file_offset_path = Efile_offset.find("path")
                 sweep_file_offset = File(sweep_file_offset_key, sweep_file_offset_path)
 
+            Efile_offset_sweep = Esweep.find("./file_offset_sweep")
+            if Efile_offset_sweep is not None:
+                sweep_file_offset_sweep_key = Efile_offset_sweep.get("key")
+                sweep_file_offset_sweep_path = Efile_offset_sweep.find("path")
+                sweep_file_offset_sweep = File(
+                    sweep_file_offset_sweep_key, sweep_file_offset_sweep_path
+                )
+
             Efile_insertion_gain = Esweep.find("./file_insertion_gain")
             if Efile_insertion_gain is not None:
                 sweep_file_insertion_gain_key = Efile_insertion_gain.get("key")
@@ -171,6 +182,7 @@ class ProcedureDefault(ProcedureStep):
         return cls(
             sweep_file_set_level=sweep_file_set_level,
             sweep_file_offset=sweep_file_offset,
+            sweep_file_offset_sweep=sweep_file_offset_sweep,
             sweep_file_insertion_gain=sweep_file_insertion_gain,
             sweep_config=sweep_config,
         )
@@ -235,12 +247,10 @@ class ProcedureSetLevel(ProcedureStep):
 class ProcedureSweep(ProcedureStep):
 
     name_folder: Optional[str] = None
-    file_set_level_key: Optional[str] = None
-    file_set_level_path: Optional[str] = None
-    file_offset_key: Optional[str] = None
-    file_offset_path: Optional[str] = None
-    file_insertion_gain_key: Optional[str] = None
-    file_insertion_gain_path: Optional[str] = None
+    file_set_level: Optional[File] = None
+    file_offset: Optional[File] = None
+    file_offset_sweep: Optional[File] = None
+    file_insertion_gain: Optional[File] = None
     config: Optional[SweepConfig] = None
     override: bool = False
     XML_TAG: ClassVar[str] = "sweep"
@@ -251,12 +261,11 @@ class ProcedureSweep(ProcedureStep):
             return None
 
         name_folder: str
-        file_set_level_key: Optional[str] = None
-        file_set_level_path: Optional[str] = None
-        file_offset_key: Optional[str] = None
-        file_offset_path: Optional[str] = None
-        file_insertion_gain_key: Optional[str] = None
-        file_insertion_gain_path: Optional[str] = None
+
+        file_set_level: Optional[File] = None
+        file_offset: Optional[File] = None
+        file_offset_sweep: Optional[File] = None
+        file_insertion_gain: Optional[File] = None
         override: bool = False
 
         config: Optional[SweepConfig] = None
@@ -268,29 +277,39 @@ class ProcedureSweep(ProcedureStep):
 
         Efile_set_level = xml.find("./file_set_level")
         if Efile_set_level is not None:
-            file_set_level_key = Efile_set_level.get("key")
-            file_set_level_path = Efile_set_level.get("path")
+            file_set_level = File(
+                key=Efile_set_level.get("key"), path=Efile_set_level.get("path")
+            )
 
-            if not (file_set_level_key is not None or file_set_level_path is not None):
+            if file_set_level.is_null():
                 return None
 
         Efile_offset = xml.find("./file_offset")
         if Efile_offset is not None:
-            file_offset_key = Efile_offset.get("key")
-            file_offset_path = Efile_offset.get("path")
+            file_offset = File(
+                key=Efile_offset.get("key"), path=Efile_offset.get("path")
+            )
 
-            if not (file_offset_key is not None or file_offset_path is not None):
+            if file_offset.is_null():
+                return None
+
+        Efile_offset_sweep = xml.find("./file_offset_sweep")
+        if Efile_offset_sweep is not None:
+            file_offset_sweep = File(
+                key=Efile_offset_sweep.get("key"), path=Efile_offset_sweep.get("path")
+            )
+
+            if file_offset_sweep.is_null():
                 return None
 
         Efile_insertion_gain = xml.find("./file_insertion_gain")
         if Efile_insertion_gain is not None:
-            file_insertion_gain_key = Efile_insertion_gain.get("key")
-            file_insertion_gain_path = Efile_insertion_gain.get("path")
+            file_insertion_gain = File(
+                key=Efile_insertion_gain.get("key"),
+                path=Efile_insertion_gain.get("path"),
+            )
 
-            if not (
-                file_insertion_gain_key is not None
-                or file_insertion_gain_path is not None
-            ):
+            if file_insertion_gain.is_null():
                 return None
 
         Econfig = xml.find("./config")
@@ -302,12 +321,10 @@ class ProcedureSweep(ProcedureStep):
 
         return cls(
             name_folder=name_folder,
-            file_set_level_key=file_set_level_key,
-            file_set_level_path=file_set_level_path,
-            file_offset_key=file_offset_key,
-            file_offset_path=file_offset_path,
-            file_insertion_gain_key=file_insertion_gain_key,
-            file_insertion_gain_path=file_insertion_gain_path,
+            file_set_level=file_set_level,
+            file_offset=file_offset,
+            file_offset_sweep=file_offset_sweep,
+            file_insertion_gain=file_insertion_gain,
             config=config,
             override=override,
         )
@@ -562,11 +579,22 @@ class ProcedureMultiPlot(ProcedureStep):
         name = xml.find(".").get("name", None)
 
         file_plot = xml.find("./file_plot")
-        folder_sweep = [
-            csv.text
-            for csv in xml.findall("./folder_sweep/var")
-            if csv.text is not None
-        ]
+
+        folder_sweep: List[str] = []
+
+        Efolders = xml.findall("./folder_sweep/var")
+
+        for Efolder in Efolders:
+            if Efolder.text is None:
+                continue
+
+            text = Efolder.text
+            if Efolder.get("balanced") is not None:
+                folder_sweep.append(f"{text}/{text}.balanced.csv")
+            else:
+                folder_sweep.append(f"{text}/{text}.csv")
+
+        console.print(folder_sweep)
 
         Econfig = xml.find("./config")
 

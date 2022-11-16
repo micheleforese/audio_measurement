@@ -127,6 +127,7 @@ def step_procedure_ask(_: DataProcedure, step: ProcedureAsk):
 def step_procedure_default(data: DataProcedure, step: ProcedureDefault):
     data.default_sweep_config.set_level = copy.deepcopy(step.sweep_file_set_level)
     data.default_sweep_config.offset = copy.deepcopy(step.sweep_file_offset)
+    data.default_sweep_config.offset_sweep = copy.deepcopy(step.sweep_file_offset_sweep)
     data.default_sweep_config.insertion_gain = copy.deepcopy(
         step.sweep_file_insertion_gain
     )
@@ -188,7 +189,7 @@ def step_procedure_set_level(data: DataProcedure, step: ProcedureSetLevel):
             console.log(f"[FILE] - File '{file_set_level_path}' already exists.")
             return
 
-    dBu = 4
+    dBu = 0
 
     if step.dBu is not None:
         dBu = step.dBu
@@ -267,6 +268,8 @@ def step_procedure_print(data: DataProcedure, step: ProcedurePrint):
 
 def step_procedure_sweep(data: DataProcedure, step: ProcedureSweep):
     file_set_level_path: Optional[Path] = None
+    file_offset_path: Optional[Path] = None
+    file_offset_sweep_path: Optional[Path] = None
     file_insertion_gain_path: Optional[Path] = None
 
     config: SweepConfig = copy.deepcopy(data.default_sweep_config.config)
@@ -279,12 +282,15 @@ def step_procedure_sweep(data: DataProcedure, step: ProcedureSweep):
         console.print("config is None.", style="error")
         exit()
 
-    # Set Level & Y Offset dB
+    # Set Level
     file_set_level: File = File()
     if data.default_sweep_config.set_level is not None:
         file_set_level = data.default_sweep_config.set_level
 
-    file_set_level.overload(key=step.file_set_level_key, path=step.file_set_level_path)
+    if step.file_set_level is not None:
+        file_set_level.overload(
+            key=step.file_set_level.key, path=step.file_set_level.path
+        )
     console.print(file_set_level)
 
     if file_set_level.key is not None:
@@ -305,14 +311,74 @@ def step_procedure_sweep(data: DataProcedure, step: ProcedureSweep):
         console.log(data.cache_file.database)
         exit()
 
+    # Y Offset dB
+    file_offset: File = File()
+    if data.default_sweep_config.offset is not None:
+        file_offset = data.default_sweep_config.offset
+
+    if step.file_offset is not None:
+        file_offset.overload(key=step.file_offset.key, path=step.file_offset.path)
+    console.print(file_offset)
+
+    if file_offset.key is not None:
+        file_offset_path = data.cache_file.get(file_offset.key)
+
+        if file_offset_path is None:
+            console.log(
+                f"[FILE] - key '{file_offset.key}' not found.",
+                style="error",
+            )
+
+            console.log(data.cache_file.database)
+
+    elif file_offset.path is not None:
+        file_offset_path = Path(data.root / file_offset.path)
+    else:
+        console.log(f"[FILE] - File not present.", style="error")
+        console.log(data.cache_file.database)
+        exit()
+
+    # Y Offset dB - file_offset_sweep_path
+    file_offset_sweep: File = File()
+    if data.default_sweep_config.offset_sweep is not None:
+        file_offset_sweep = data.default_sweep_config.offset_sweep
+
+    console.log(["file_offset_sweep", step.file_offset_sweep])
+    console.log(["STP", step])
+
+    if step.file_offset_sweep is not None:
+        file_offset_sweep.overload(
+            key=step.file_offset_sweep.key, path=step.file_offset_sweep.path
+        )
+
+    console.print(file_offset_sweep)
+
+    console.log(file_offset_sweep.key)
+    if file_offset_sweep.key is not None:
+        file_offset_sweep_path = data.cache_file.get(file_offset_sweep.key)
+
+        if file_offset_sweep_path is None:
+            console.log(
+                f"[FILE] - key '{file_offset_sweep.key}' not found.",
+                style="error",
+            )
+
+            console.log(data.cache_file.database)
+
+    elif file_offset_sweep.path is not None:
+        file_offset_sweep_path = Path(data.root / file_offset_sweep.path)
+    else:
+        file_offset_sweep_path = None
+
     # Insertion Gain
     file_insertion_gain: File = File()
     if data.default_sweep_config.insertion_gain is not None:
         file_insertion_gain = data.default_sweep_config.insertion_gain
 
-    file_insertion_gain.overload(
-        key=step.file_insertion_gain_key, path=step.file_insertion_gain_path
-    )
+    if step.file_insertion_gain is not None:
+        file_insertion_gain.overload(
+            key=step.file_insertion_gain.key, path=step.file_insertion_gain.path
+        )
     console.print(file_insertion_gain)
 
     if file_insertion_gain.key is not None:
@@ -333,7 +399,7 @@ def step_procedure_sweep(data: DataProcedure, step: ProcedureSweep):
 
     # Retrieving the data
     set_level = SetLevel(file_set_level_path).set_level
-    y_offset_dB = SetLevel(file_set_level_path).y_offset_dB
+    y_offset_dB = SetLevel(file_offset_path).y_offset_dB
     insertion_gain = InsertionGain(file_insertion_gain_path).insertion_gain_dB
 
     config.rigol.amplitude_peak_to_peak = set_level
@@ -370,6 +436,7 @@ def step_procedure_sweep(data: DataProcedure, step: ProcedureSweep):
     plot_from_csv(
         measurements_file_path=measurement_file,
         plot_config=config.plot,
+        file_offset_sweep_path=file_offset_sweep_path,
         plot_file_path=file_sweep_plot,
         debug=True,
     )
@@ -382,7 +449,7 @@ def step_procedure_multiplot(data: DataProcedure, step: ProcedureMultiPlot):
     file_sweep_plot: Path = home_dir_path / step.file_plot
 
     csv_files: List[Path] = [
-        Path(home_dir_path / f"{dir}/{dir}.csv") for dir in step.folder_sweep
+        Path(home_dir_path / dir) for dir in step.folder_sweep
     ]
 
     multiplot(

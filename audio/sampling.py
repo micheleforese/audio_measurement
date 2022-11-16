@@ -32,6 +32,7 @@ from audio.math.algorithm import LogarithmicScale
 from audio.math.interpolation import INTERPOLATION_KIND, logx_interpolation_model
 from audio.math.pid import PID_Controller, Timed_Value
 from audio.math.rms import RMS
+from audio.math.voltage import VdBu_to_Vrms, Vpp_to_Vrms
 from audio.model.sweep import SweepData
 from audio.usb.usbtmc import UsbTmc
 from audio.utility import trim_value
@@ -200,6 +201,8 @@ def sampling_curve(
         ]
     )
 
+    sleep(2)
+
     log_scale: LogarithmicScale = LogarithmicScale(
         config.sampling.frequency_min,
         config.sampling.frequency_max,
@@ -303,12 +306,12 @@ def sampling_curve(
             )
 
             gain_bBV: float = dBV(
-                V_in=config.rigol.amplitude_peak_to_peak / (2 * sqrt(2)),
+                V_in=Vpp_to_Vrms(config.rigol.amplitude_peak_to_peak),
                 V_out=rms_value,
             )
 
             transfer_func_dB = transfer_function(
-                rms_value, config.rigol.amplitude_peak_to_peak / (2 * np.math.sqrt(2))
+                rms_value, Vpp_to_Vrms(config.rigol.amplitude_peak_to_peak)
             )
 
             if max_dB:
@@ -398,6 +401,7 @@ def sampling_curve(
 def plot_from_csv(
     measurements_file_path: Path,
     plot_file_path: Path,
+    file_offset_sweep_path: Optional[Path] = None,
     plot_config: Optional[PlotConfig] = None,
     debug: bool = False,
 ):
@@ -423,8 +427,23 @@ def plot_from_csv(
 
     cfg = sweep_data.config
 
+    if file_offset_sweep_path is not None:
+
+        balancer = SweepData.from_csv_file(file_offset_sweep_path)
+
+        sweep_data.data["dBV"] = sweep_data.data["dBV"] - balancer.data["dBV"]
+
+        sweep_data.save(measurements_file_path.with_suffix(".balanced.csv"))
+
+    if cfg.y_offset:
+        sweep_data.data["dBV"] = sweep_data.data["dBV"] - cfg.y_offset
+
     x_frequency = list(sweep_data.frequency.values)
     y_dBV = list(sweep_data.dBV.values)
+
+    ui_t.progress_list_task.update(task_plotting, task="Apply Offset")
+
+    sweep_data.config.override(new_config=plot_config)
 
     if debug:
         console.print(
@@ -434,13 +453,6 @@ def plot_from_csv(
                 + "diff dB: {}".format(abs(max(y_dBV) - min(y_dBV)))
             )
         )
-
-    ui_t.progress_list_task.update(task_plotting, task="Apply Offset")
-
-    sweep_data.config.override(new_config=plot_config)
-
-    if cfg.y_offset:
-        y_dBV = [dBV - cfg.y_offset for dBV in y_dBV]
 
     ui_t.progress_list_task.update(task_plotting, task="Interpolate")
 
@@ -568,12 +580,12 @@ def config_set_level(
         frequency * config.sampling.Fs_multiplier, max_value=config.nidaq.Fs_max
     )
     diff_voltage = 0.001
-    Vpp_dBu_exact = pow(10, dBu / 20) * 0.775
+    target_Vrms = VdBu_to_Vrms(dBu)
 
     table = Table(
         Column("Iteration", justify="right"),
-        Column(f"{dBu:.1f} dBu [V]", justify="right"),
-        Column("Vpp [V]", justify="right"),
+        Column(f"{dBu:.1f} dBu [Vrms]", justify="right"),
+        Column("Vpp [Vpp]", justify="right"),
         Column("Rms Value [V]", justify="right"),
         Column("Diff Vpp [V]", justify="right"),
         Column("Gain [dB]", justify="right"),
@@ -647,7 +659,7 @@ def config_set_level(
     Vpp_found: bool = False
     iteration: int = 0
     pid = PID_Controller(
-        set_point=Vpp_dBu_exact,
+        set_point=target_Vrms,
         controller_gain=1.5,
         tauI=1,
         tauD=0.5,
@@ -683,23 +695,21 @@ def config_set_level(
 
             pid.add_process_variable(rms_value)
 
-            error: float = Vpp_dBu_exact - rms_value
+            error: float = target_Vrms - rms_value
 
             pid.add_error(Timed_Value(error))
 
             error_percentage: float = percentage_error(
-                exact=Vpp_dBu_exact, approx=rms_value
+                exact=target_Vrms, approx=rms_value
             )
 
-            gain_dB: float = 20 * np.log10(
-                rms_value / (voltage_amplitude / (2 * sqrt(2)))
-            )
+            gain_dB: float = 20 * np.log10(rms_value / Vpp_to_Vrms(voltage_amplitude))
 
             gain_dB_list.append(gain_dB)
 
             table.add_row(
                 f"{iteration}",
-                f"{Vpp_dBu_exact:.8f}",
+                f"{target_Vrms:.8f}",
                 f"{voltage_amplitude:.8f}",
                 f"{rms_value:.8f}",
                 "[{}]{:+.8f}[/]".format(
@@ -796,7 +806,7 @@ def config_set_level(
 
     console.print(plot_file_path)
 
-    sp = np.full(iteration, Vpp_dBu_exact)
+    sp = np.full(iteration, target_Vrms)
 
     plt.figure(1, figsize=(16, 9))
 
