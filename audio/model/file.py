@@ -31,3 +31,6 @@ class File:
             self.key = key
         if path is not None:
             self.path = path
+
+    def is_null(self) -> bool:
+        return self.key is None and self.path is None
