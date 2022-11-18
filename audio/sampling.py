@@ -596,13 +596,51 @@ def config_set_level(
         title="[blue]Configuration.",
     )
 
+    progress_list_task = Progress(
+        SpinnerColumn(),
+        "•",
+        TextColumn(
+            "[bold blue]{task.description}[/] - [bold green]{task.fields[task]}[/]",
+        ),
+        transient=True,
+    )
+
+    progress_sweep = Progress(
+        SpinnerColumn(),
+        "•",
+        TextColumn(
+            "[bold blue]{task.description}",
+            justify="right",
+        ),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        "•",
+        TimeElapsedColumn(),
+        "•",
+        MofNCompleteColumn(),
+        TextColumn(
+            " - Frequency: [bold green]{task.fields[frequency]} - RMS: {task.fields[rms]}"
+        ),
+        console=console,
+        transient=True,
+    )
+
+    progress_task = Progress(
+        SpinnerColumn(),
+        "•",
+        TextColumn(
+            "[bold blue]{task.description}",
+        ),
+        transient=True,
+    )
+
     live_group = Group(
         table,
         Panel(
             Group(
-                ui_t.progress_list_task,
-                ui_t.progress_sweep,
-                ui_t.progress_task,
+                progress_list_task,
+                progress_sweep,
+                progress_task,
             )
         ),
     )
@@ -615,10 +653,10 @@ def config_set_level(
     )
     live.start()
 
-    task_sampling = ui_t.progress_list_task.add_task(
+    task_sampling = progress_list_task.add_task(
         "CONFIGURING", start=False, task="Retrieving Devices"
     )
-    ui_t.progress_list_task.start_task(task_sampling)
+    progress_list_task.start_task(task_sampling)
 
     # Asks for the 2 instruments
     list_devices: List[Instrument] = UsbTmc.search_devices()
@@ -627,7 +665,7 @@ def config_set_level(
 
     generator: UsbTmc = UsbTmc(list_devices[0])
 
-    ui_t.progress_list_task.update(task_sampling, task="Setting Devices")
+    progress_list_task.update(task_sampling, task="Setting Devices")
 
     # Open the Instruments interfaces
     # Auto Close with the destructor
@@ -646,15 +684,15 @@ def config_set_level(
 
     SCPI.exec_commands(generator, generator_configs)
 
+    sleep(2)
+
     generator_ac_curves: List[str] = [
         SCPI.set_output(1, Switch.ON),
     ]
 
     SCPI.exec_commands(generator, generator_ac_curves)
 
-    # sleep(2)
-
-    ui_t.progress_list_task.update(task_sampling, task="Searching for Voltage offset")
+    progress_list_task.update(task_sampling, task="Searching for Voltage offset")
 
     Vpp_found: bool = False
     iteration: int = 0

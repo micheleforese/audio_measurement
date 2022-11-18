@@ -7,13 +7,11 @@ import pandas as pd
 from scipy.fft import fft
 
 from audio.console import console
-from audio.math import (
-    trim_sin_zero_offset,
-    integrate,
-)
+from audio.math import integrate, trim_sin_zero_offset
 from audio.math.interpolation import INTERPOLATION_KIND, interpolation_model
 from audio.utility import read_voltages
 from audio.utility.timer import Timer
+from audio.model.sampling import VoltageSampling
 
 
 class RMS_MODE(enum.Enum):
@@ -173,3 +171,55 @@ class RMS:
             float: The RMS Voltage
         """
         return integrate(voltages, 1 / Fs) / (len(voltages) / Fs)
+
+    @staticmethod
+    def rms_v2(
+        voltages_sampling: VoltageSampling,
+        rms_mode: RMS_MODE = RMS_MODE.FFT,
+        time_report: bool = False,
+        trim: bool = True,
+        interpolation_rate: float = 10,
+    ):
+        timer = Timer()
+
+        voltages = list(voltages_sampling.voltages)
+
+        _, y_interpolated = interpolation_model(
+            range(0, len(voltages)),
+            voltages,
+            int(len(voltages) * interpolation_rate),
+            kind=INTERPOLATION_KIND.CUBIC,
+        )
+
+        voltages = y_interpolated
+
+        if trim:
+            trim_response = trim_sin_zero_offset(y_interpolated)
+
+            if trim_response is not None:
+                voltages_trimmed, _, _ = trim_response
+
+                if len(voltages_trimmed) > 0:
+                    voltages = voltages_trimmed
+                else:
+                    console.log("trim ERROR - len(voltages_trimmed) < 0")
+
+            else:
+                console.log("trim ERROR")
+
+        rms: Optional[float] = None
+
+        if time_report:
+            timer.start("[yellow]RMS Calculation Execution time[/]")
+
+        if rms_mode == RMS_MODE.FFT:
+            rms = RMS.fft(voltages)
+        elif rms_mode == RMS_MODE.AVERAGE:
+            rms = RMS.average(voltages)
+        elif rms_mode == RMS_MODE.INTEGRATE:
+            rms = RMS.integration(voltages, voltages_sampling.sampling_frequency)
+
+        if time_report:
+            timer.stop().print()
+
+        return voltages, rms
