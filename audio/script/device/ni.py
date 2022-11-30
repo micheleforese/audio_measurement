@@ -12,6 +12,7 @@ from audio.usb.usbtmc import UsbTmc
 from audio.utility import trim_value
 from audio.utility.scpi import SCPI, Bandwidth, Switch
 from pandas import DataFrame
+from audio.math.rms import RMSResult
 
 
 @click.command()
@@ -229,6 +230,7 @@ def read_rms_v2(
     generator_configs: list = [
         SCPI.clear(),
         SCPI.set_output(1, Switch.OFF),
+        SCPI.set_output(2, Switch.OFF),
         SCPI.set_function_voltage_ac(),
         SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
         SCPI.set_source_voltage_amplitude(1, round(amplitude, 5)),
@@ -239,45 +241,54 @@ def read_rms_v2(
 
     generator_ac_curves: List[str] = [
         SCPI.set_output(1, Switch.ON),
+        SCPI.set_output(2, Switch.ON),
     ]
 
     SCPI.exec_commands(generator, generator_ac_curves)
 
     sleep(1)
 
+    from rich.prompt import Confirm
+
+    Confirm.ask()
+
     from audio.device.cDAQ import ni9223
 
-    Fs = trim_value(frequency * 10, max_value=1000000)
-    nidaq = ni9223(
+    nidaq = ni9223(n_sample)
+
+    nidaq.create_task("Test")
+    channels = [
+        "cDAQ9189-1CDBE0AMod5/ai0",
         "cDAQ9189-1CDBE0AMod5/ai1",
-        n_sample,
-        Fs,
-    )
+    ]
+    nidaq.add_ai_channel(channels)
+    console.log(channels)
 
-    nidaq.create_task()
-    nidaq.add_ai_channel()
-
+    Fs = trim_value(frequency * 20, max_value=1000000)
     nidaq.set_sampling_clock_timing(Fs)
 
-    for n in range(1, 21):
-        Fs = trim_value(frequency * n, max_value=1000000)
-        nidaq.set_sampling_clock_timing(Fs)
-        nidaq.task_start()
-
-        voltages = nidaq.read_voltages()
-        nidaq.task_stop()
-        voltages_sampling = VoltageSampling.from_list(voltages, frequency, Fs)
-
-        rms_value: Optional[float]
-        _, rms_value = RMS.rms_v2(
-            voltages_sampling,
-        )
-
-        console.print(Panel(f"[blue][RMS] - Fs: {Fs:.5f}, rms: {rms_value:.5f}[/]"))
+    nidaq.task_start()
+    voltages = nidaq.read_multi_voltages()
+    nidaq.task_stop()
 
     generator_ac_curves: List[str] = [
         SCPI.set_output(1, Switch.OFF),
+        SCPI.set_output(2, Switch.OFF),
     ]
     SCPI.exec_commands(generator, generator_ac_curves)
     generator.close()
     nidaq.task_close()
+
+    voltages_sampling_1 = VoltageSampling.from_list(voltages[0], frequency, Fs)
+    voltages_sampling_2 = VoltageSampling.from_list(voltages[1], frequency, Fs)
+
+    result_1 = RMS.rms_v2(voltages_sampling_1, trim=False)
+    result_2 = RMS.rms_v2(voltages_sampling_2, trim=False)
+    console.log(f"RMS: {result_1.rms}")
+    console.log(f"RMS: {result_2.rms}")
+
+    import matplotlib.pyplot as plt
+
+    plt.plot(result_1.voltages, color="#00ff00")
+    plt.plot(result_2.voltages, color="#3050ff")
+    # plt.show()

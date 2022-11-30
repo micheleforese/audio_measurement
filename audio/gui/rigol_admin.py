@@ -1,43 +1,83 @@
 from __future__ import annotations
 
+import copy
 import tkinter as tk
 import tkinter.ttk as ttk
 from enum import Enum, auto
 from math import log10, sqrt
 from time import sleep
 from tkinter import BooleanVar, DoubleVar, IntVar, StringVar, Variable
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import click
 from rich.panel import Panel
 from usbtmc import Instrument
 
 from audio.console import console
+from audio.device.cDAQ import ni9223
 from audio.math.rms import RMS
 from audio.math.voltage import VoltageMode, Vrms_to_VdBu, Vrms_to_Vpp, voltage_converter
+from audio.model.sampling import VoltageSampling
 from audio.usb.usbtmc import UsbTmc
 from audio.utility import trim_value
 from audio.utility.scpi import SCPI, Bandwidth, Switch
+from threading import Thread, Lock
+from dataclasses import dataclass, field
+
+rms_data_lock = Lock()
+
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
+
+
+class LockValue(Generic[T]):
+    lock: Lock
+    value: T
+
+    def __init__(self, value: T) -> None:
+        self.lock = Lock()
+        self.value = value
 
 
 @click.command()
 def rigol_admin():
     console.log("HELLO GUI")
     rigol_admin_gui = RigolAdminGUI()
+    rigol_admin_gui.start_loop()
+
+
+@dataclass
+class RmsDataParameters:
+    frequency: LockValue[float]
+    Fs_multiplier: LockValue[float]
+    device: Optional[LockValue[ni9223]] = None
+    gain: Optional[LockValue[ttk.Label]] = None
+    phase: Optional[LockValue[ttk.Label]] = None
+
+    lbls: List[
+        Tuple[LockValue[ttk.Label], LockValue[ttk.Label], LockValue[ttk.Label]]
+    ] = field(default_factory=lambda: [])
 
 
 class RigolAdminGUI:
 
     windows: tk.Tk
     generator: UsbTmc
+    device: ni9223
     b_on: bool
+
+    channels = [
+        "cDAQ9189-1CDBE0AMod5/ai1",
+        "cDAQ9189-1CDBE0AMod5/ai3",
+    ]
 
     amplitude_mode: VoltageMode
     amplitude: float
-    frequency: float
     n_sample: int
     fs_multiplier: int
-    rms_value: float
+
+    data: RmsDataParameters
 
     lbl_Vrms: ttk.Label
     ent_frequency: ttk.Entry
@@ -46,10 +86,10 @@ class RigolAdminGUI:
     amplitude_mode_curr_string_var: StringVar
     amplitude_var: DoubleVar
     amplitude_multiplier_var: DoubleVar
-    amplitude_multiplier_list_radio_button: List[ttk.Radiobutton]
     frequency_string_var: StringVar
 
     on_off_state: BooleanVar
+    thread: Thread
 
     class Focus(Enum):
         AMPLITUDE = auto()
@@ -58,38 +98,7 @@ class RigolAdminGUI:
 
     focus: Focus
 
-    def __init__(self) -> None:
-        self.amplitude = 1
-        self.frequency = 1000
-        self.n_sample = 100
-        self.fs_multiplier = 50
-        self.amplitude_mode = VoltageMode.Vpp
-
-        self.rms_value = 0
-        self.b_on = False
-
-        self.focus = RigolAdminGUI.Focus.UNKNOWN
-
-        self.windows = tk.Tk()
-        self.windows.wm_title("Rigol Admin Panel")
-        self.windows.geometry("600x400")
-        # self.windows.columnconfigure(0, minsize=250)
-        # self.windows.rowconfigure(0, minsize=200)
-
-        self.amplitude_mode_curr_string_var = StringVar(value=self.amplitude_mode.name)
-        # amplitude_mode_curr_string_var.trace_add("write", self.on_amplitude_mode_change)
-
-        self.amplitude_var = DoubleVar(value=self.amplitude)
-        self.amplitude_var.trace_add("write", self.on_amplitude_change)
-
-        self.amplitude_multiplier_var = DoubleVar(value=1)
-        self.amplitude_multiplier_list_radio_button = []
-
-        self.frequency_string_var = StringVar(value=str(self.frequency))
-        self.frequency_string_var.trace_add("write", self.on_frequency_change)
-
-        self.on_off_state = BooleanVar(value=False)
-        self.on_off_state.trace_add("write", callback=self._handle_on_off)
+    def _ui_build(self):
 
         frm_app = tk.Frame(
             master=self.windows,
@@ -102,6 +111,13 @@ class RigolAdminGUI:
             ipady=20,
         )
 
+        self._ui_build_amplitude_modes(frm_app=frm_app)
+        self._ui_build_amplitude(frm_app=frm_app)
+        # self._ui_build_frequency(frm_app=frm_app)
+        self._ui_build_read_voltage(frm_app=frm_app)
+        self._ui_build_on_off(frm_app=frm_app)
+
+    def _ui_build_amplitude_modes(self, frm_app: tk.Frame):
         frm_amplitude_modes = tk.Frame(
             master=frm_app,
             borderwidth=5,
@@ -137,8 +153,7 @@ class RigolAdminGUI:
         btn_amplitude_modes_Vrms.grid(row=0, column=2, ipadx=5)
         btn_amplitude_modes_VdBu.grid(row=0, column=3, ipadx=5)
 
-        self.amplitude_mode = VoltageMode.Vpp
-
+    def _ui_build_amplitude(self, frm_app: tk.Frame):
         frm_amplitude = tk.Frame(
             master=frm_app,
         )
@@ -191,6 +206,7 @@ class RigolAdminGUI:
 
         frm_amplitude.bind("<FocusOut>", _handle_frm_amplitude_focus_out)
 
+    def _ui_build_frequency(self, frm_app: tk.Frame):
         frm_frequency = tk.Frame(
             master=frm_app,
             background="blue",
@@ -205,8 +221,11 @@ class RigolAdminGUI:
             master=frm_frequency,
             name="frequency",
             width=50,
-            textvariable=self.frequency_string_var,
+            # textvariable=self.frequency_string_var,
+            validatecommand=self.update_frequency,
         )
+        ent_frequency["text"] = f"{self.data.frequency}"
+
         self.ent_frequency = ent_frequency
 
         frm_frequency.pack(
@@ -229,6 +248,7 @@ class RigolAdminGUI:
 
         frm_frequency.bind("<FocusOut>", _handle_frm_frequency_focus_out)
 
+    def _ui_build_read_voltage(self, frm_app: tk.Frame):
         frm_read_voltage = tk.Frame(
             master=frm_app,
             background="green",
@@ -236,25 +256,47 @@ class RigolAdminGUI:
             borderwidth=5,
         )
         lbl_read_voltage_title = ttk.Label(master=frm_read_voltage, text="Voltage Read")
-        lbl_Vrms = ttk.Label(master=frm_read_voltage)
-        self.lbl_Vrms = lbl_Vrms
-        lbl_VdBu = ttk.Label(master=frm_read_voltage)
-        self.lbl_VdBu = lbl_VdBu
-        lbl_Vpp = ttk.Label(master=frm_read_voltage)
-        self.lbl_Vpp = lbl_Vpp
-
         frm_read_voltage.pack(
             side=tk.TOP,
             fill=tk.X,
             expand=True,
         )
-        frm_read_voltage.rowconfigure([0, 1], minsize=50)
-        frm_read_voltage.columnconfigure([0, 1, 2], minsize=50)
-        lbl_read_voltage_title.grid(row=0, column=0, columnspan=3, ipady=30)
-        lbl_Vrms.grid(row=1, column=0, ipadx=20, sticky="ew")
-        lbl_VdBu.grid(row=1, column=1, ipadx=20, sticky="ew")
-        lbl_Vpp.grid(row=1, column=2, ipadx=20, sticky="ew")
+        frm_read_voltage.rowconfigure([0, 1, 2, 3, 4], minsize=50)
+        frm_read_voltage.columnconfigure([0, 1, 2, 3, 4], minsize=50)
+        lbl_read_voltage_title.grid(row=0, column=0, columnspan=3, pady=30)
 
+        for idx, channel in enumerate(self.channels, start=1):
+            lbl_channel = ttk.Label(master=frm_read_voltage, text=channel)
+            lbl_Vrms = ttk.Label(master=frm_read_voltage)
+            lbl_Vpp = ttk.Label(master=frm_read_voltage)
+            lbl_VdBu = ttk.Label(master=frm_read_voltage)
+
+            self.data.lbls.append(
+                (LockValue(lbl_Vrms), LockValue(lbl_Vpp), LockValue(lbl_VdBu))
+            )
+
+            lbl_channel.grid(row=idx, column=0, ipadx=20, sticky="ew")
+            lbl_Vrms.grid(row=idx, column=1, ipadx=20, sticky="ew")
+            lbl_VdBu.grid(row=idx, column=2, ipadx=20, sticky="ew")
+            lbl_Vpp.grid(row=idx, column=3, ipadx=20, sticky="ew")
+
+        lbl_gain = ttk.Label(master=frm_read_voltage, text="Gain (dB)")
+        lbl_gain_value = ttk.Label(master=frm_read_voltage)
+
+        self.data.gain = LockValue(lbl_gain_value)
+
+        lbl_gain.grid(row=3, column=0, ipadx=20, sticky="ew")
+        lbl_gain_value.grid(row=3, column=1, ipadx=20, sticky="ew")
+
+        lbl_phase = ttk.Label(master=frm_read_voltage, text="Phase (deg)")
+        lbl_phase_value = ttk.Label(master=frm_read_voltage)
+
+        self.data.phase = LockValue(lbl_phase_value)
+
+        lbl_phase.grid(row=4, column=0, ipadx=20, sticky="ew")
+        lbl_phase_value.grid(row=4, column=1, ipadx=20, sticky="ew")
+
+    def _ui_build_on_off(self, frm_app: tk.Frame):
         # ON - OFF
         frm_on_off = tk.Frame(
             master=frm_app,
@@ -275,12 +317,50 @@ class RigolAdminGUI:
         btn_on.grid(row=0, column=0)
         btn_off.grid(row=0, column=1)
 
+    def __init__(self) -> None:
+        self.amplitude = 1
+        self.n_sample = 100
+        self.fs_multiplier = 50
+        self.amplitude_mode = VoltageMode.Vpp
+
+        self.rms_value_safe = LockValue[float](0.0)
+        self.b_on = False
+
+        self.focus = RigolAdminGUI.Focus.UNKNOWN
+        self.amplitude_mode = VoltageMode.Vpp
+
+        self.windows = tk.Tk()
+        self.windows.wm_title("Rigol Admin Panel")
+        self.windows.geometry("600x400")
+        # self.windows.columnconfigure(0, minsize=250)
+        # self.windows.rowconfigure(0, minsize=200)
+
+        self.amplitude_mode_curr_string_var = StringVar(value=self.amplitude_mode.name)
+        # amplitude_mode_curr_string_var.trace_add("write", self.on_amplitude_mode_change)
+
+        self.amplitude_var = DoubleVar(value=self.amplitude)
+        self.amplitude_var.trace_add("write", self.on_amplitude_change)
+
+        self.amplitude_multiplier_var = DoubleVar(value=1)
+
+        self.on_off_state = BooleanVar(value=False)
+        self.on_off_state.trace_add("write", callback=self._handle_on_off)
+
+        self.data = RmsDataParameters(
+            frequency=LockValue(1000),
+            Fs_multiplier=LockValue(50),
+        )
+        self._init_instruments()
+        self.data.device = LockValue(self.device)
+
+        self._ui_build()
+
         self.windows.bind("<Key>", self._handle_keypress)
 
-        self.init_instrument()
+        self.thread = Thread(target=update_rms_value, args=(self.data,))
+        self.thread.start()
 
-        self.update_rms_value()
-
+    def start_loop(self):
         self.windows.mainloop()
 
     # Create an event handler
@@ -395,7 +475,25 @@ class RigolAdminGUI:
         else:
             self.device_turn_off()
 
-    def init_instrument(self):
+    # def _handle_rms_Vrms(self, *args):
+    #     with self.data.rms_Vrms_var_safe.lock:
+    #         self.lbl_Vrms.config(
+    #             text="{:.5f} Vrms".format(self.data.rms_Vrms_var_safe.value.get())
+    #         )
+
+    # def _handle_rms_Vpp(self, *args):
+    #     with self.data.rms_Vpp_var_safe.lock:
+    #         self.lbl_Vpp.config(
+    #             text="{:.5f} Vpp".format(self.data.rms_Vpp_var_safe.value.get())
+    #         )
+
+    # def _handle_rms_VdBu(self, *args):
+    #     with self.data.rms_VdBu_var_safe.lock:
+    #         self.lbl_VdBu.config(
+    #             text="{:.5f} VdBu".format(self.data.rms_VdBu_var_safe.value.get())
+    #         )
+
+    def _init_instruments(self):
         # Asks for the 2 instruments
         list_devices: List[Instrument] = UsbTmc.search_devices()
 
@@ -412,18 +510,24 @@ class RigolAdminGUI:
             SCPI.set_function_voltage_ac(),
             SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
             SCPI.set_source_voltage_amplitude(1, round(self.amplitude, 5)),
-            SCPI.set_source_frequency(1, round(self.frequency, 5)),
-            # SCPI.set_output_impedance(1, 50),
+            SCPI.set_source_frequency(1, round(self.data.frequency.value, 5)),
         ]
         SCPI.exec_commands(self.generator, generator_configs)
+
+        self.device = ni9223(self.n_sample)
+
+        self.device.create_task("Rigol Admin")
+
+        self.device.add_ai_channel(self.channels)
 
     def update_frequency(self):
-        # Sets the Configuration for the Voltmeter
-        generator_configs: list = [
-            SCPI.set_source_frequency(1, round(self.frequency, 5)),
-        ]
+        with self.data.frequency.lock:
+            # Sets the Configuration for the Voltmeter
+            generator_configs: list = [
+                SCPI.set_source_frequency(1, round(self.data.frequency.value, 5)),
+            ]
 
-        SCPI.exec_commands(self.generator, generator_configs)
+            SCPI.exec_commands(self.generator, generator_configs)
 
     def update_amplitude(self):
         # Sets the Configuration for the Voltmeter
@@ -447,49 +551,23 @@ class RigolAdminGUI:
         SCPI.exec_commands(self.generator, generator_configs)
         console.log("[DEVICE]: TURN OFF")
 
-    def update_rms_value(self):
-
-        Fs = trim_value(self.frequency * self.fs_multiplier, max_value=1000000)
-
-        Vrms: Optional[float]
-
-        _, Vrms = RMS.rms(
-            frequency=self.frequency,
-            Fs=Fs,
-            ch_input="cDAQ9189-1CDBE0AMod5/ai0",
-            max_voltage=10,
-            min_voltage=-10,
-            number_of_samples=self.n_sample,
-            time_report=False,
-            save_file=None,
-            trim=True,
-        )
-        self.rms_value = float(Vrms)
-
-        self.lbl_Vrms.config(text="{:.5f} Vrms".format(self.rms_value))
-
-        Vpp = Vrms_to_Vpp(self.rms_value)
-        self.lbl_Vpp.config(text="{:.5f} Vpp".format(Vpp))
-
-        VdBu = Vrms_to_VdBu(self.rms_value)
-        self.lbl_VdBu.config(text="{:.5f} VdBu".format(VdBu))
-
-        self.lbl_Vrms.after(500, self.update_rms_value)
-
     def on_frequency_change(self, *args):
-        new_frequency: float
-        try:
-            new_frequency = float(self.frequency_string_var.get())
-            if new_frequency == 0:
-                new_frequency = self.frequency
+        with self.data.frequency.lock:
+            new_frequency: float
+            try:
+                new_frequency = float(self.data.frequency.value)
+                if new_frequency == 0:
+                    new_frequency = self.data.frequency.value
 
-        except Exception:
-            new_frequency = self.frequency
+            except Exception:
+                new_frequency = self.data.frequency.value
 
-        console.log(f"[FREQUENCY]: '{self.frequency} Hz' -> '{new_frequency}' Hz")
+            console.log(
+                f"[FREQUENCY]: '{self.data.frequency.value} Hz' -> '{new_frequency}' Hz"
+            )
 
-        self.frequency = new_frequency
-        self.update_frequency()
+            self.data.frequency.value = new_frequency
+            self.update_frequency()
 
     def on_amplitude_change(self, *args):
         curr_amplitude = self.amplitude
@@ -515,3 +593,92 @@ class RigolAdminGUI:
 
         console.log(f"[RIGOL AMPLITUDE]: {self.amplitude} Vpp")
         self.update_amplitude()
+
+
+class UpdateRms(Thread):
+    device: ni9223
+    data: RmsDataParameters
+
+    def __init__(self, device: ni9223, data: RmsDataParameters) -> None:
+        Thread.__init__(self)
+        self.device = device
+        self.data = data
+
+
+def update_rms_value(data: RmsDataParameters):
+    while True:
+        Fs: Optional[float] = None
+        with data.frequency.lock, data.Fs_multiplier.lock:
+            Fs = trim_value(
+                data.frequency.value * data.Fs_multiplier.value, max_value=1000000
+            )
+        if Fs is not None:
+            with data.device.lock:
+                data.device.value.set_sampling_clock_timing(Fs)
+        voltages = []
+        with data.device.lock:
+            data.device.value.task_start()
+            voltages = data.device.value.read_multi_voltages()
+            data.device.value.task_stop()
+
+        voltages_sampling_n: List[VoltageSampling] = []
+
+        for voltage_sampling in voltages:
+            voltages_sampling_n.append(
+                VoltageSampling.from_list(voltage_sampling, data.frequency, Fs)
+            )
+
+        from audio.math.rms import RMSResult
+
+        rms_result_n: List[RMSResult] = []
+
+        for volts in voltages_sampling_n:
+            rms_result_n.append(RMS.rms_v2(volts, interpolation_rate=20))
+
+        voltage_rms_values: List[Tuple[float, float, float]] = []
+
+        for result in rms_result_n:
+            Vrms = result.rms
+            Vpp = Vrms_to_Vpp(Vrms)
+            VdBu = Vrms_to_VdBu(Vrms)
+            voltage_rms_values.append((Vrms, Vpp, VdBu))
+
+        for lbls, values in zip(data.lbls, voltage_rms_values):
+
+            lblVrms, lblVpp, lblVdBu = lbls
+            Vrms, Vpp, VdBu = values
+
+            with lblVrms.lock:
+                lblVrms.value["text"] = f"{Vrms:.05f} Vrms"
+            with lblVpp.lock:
+                lblVpp.value["text"] = f"{Vpp:.05f} Vpp"
+            with lblVdBu.lock:
+                lblVdBu.value["text"] = f"{VdBu:.05f} VdBu"
+
+        import time
+        from audio.math.voltage import calculate_gain_dB
+
+        gain_dB = calculate_gain_dB(voltage_rms_values[1][1], voltage_rms_values[0][1])
+        with data.gain.lock:
+
+            data.gain.value["text"] = f"{gain_dB:.05f}"
+
+        # if abs(gain_dB) > 1:
+        #     time.sleep(5)
+
+        from audio.math.phase import phase_offset_v2
+
+        v_0 = rms_result_n[0].voltages
+        v_1 = rms_result_n[1].voltages
+
+        with data.frequency.lock:
+            freq = data.frequency.value
+            volts_0 = VoltageSampling.from_list(v_0, freq, Fs * 20)
+            volts_1 = VoltageSampling.from_list(v_1, freq, Fs * 20)
+
+        phase_offset = phase_offset_v2(volts_0, volts_1)
+
+        if phase_offset is not None:
+
+            with data.phase.lock:
+                data.phase.value["text"] = f"{phase_offset:.05f}"

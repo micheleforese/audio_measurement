@@ -22,7 +22,9 @@ from rich.progress import (
 )
 from rich.table import Column, Table
 from usbtmc import Instrument
-
+from audio.device.cDAQ import ni9223
+from audio.model.sampling import VoltageSampling
+from audio.math.voltage import calculate_gain_dB
 import audio.ui.terminal as ui_t
 from audio.config.plot import PlotConfig
 from audio.config.sweep import SweepConfig
@@ -31,7 +33,7 @@ from audio.math import dBV, percentage_error, transfer_function
 from audio.math.algorithm import LogarithmicScale
 from audio.math.interpolation import INTERPOLATION_KIND, logx_interpolation_model
 from audio.math.pid import PID_Controller, Timed_Value
-from audio.math.rms import RMS
+from audio.math.rms import RMS, RMSResult
 from audio.math.voltage import VdBu_to_Vrms, Vpp_to_Vrms
 from audio.model.sweep import SweepData
 from audio.usb.usbtmc import UsbTmc
@@ -232,6 +234,19 @@ def sampling_curve(
     )
     progress_sweep.start_task(task_sweep)
 
+    Fs = trim_value(
+        frequency * config.sampling.Fs_multiplier, max_value=config.nidaq.Fs_max
+    )
+
+    nidaq = ni9223(
+        config.sampling.number_of_samples,
+        input_channel=[config.nidaq.input_channel],
+    )
+
+    nidaq.create_task("Sampling")
+    nidaq.add_ai_channel([config.nidaq.input_channel])
+    nidaq.set_sampling_clock_timing(Fs)
+
     for frequency in log_scale.f_list:
 
         # Sets the Frequency
@@ -280,38 +295,41 @@ def sampling_curve(
         save_file_path = sweep_frequency_path / "sample.csv"
 
         # GET MEASUREMENTS
-        voltages, rms_value = RMS.rms(
-            Fs=Fs,
-            ch_input=config.nidaq.input_channel,
-            max_voltage=config.nidaq.voltage_max,
-            min_voltage=config.nidaq.voltage_min,
-            number_of_samples=config.sampling.number_of_samples,
-            time_report=False,
-            frequency=frequency,
-            save_file=save_file_path,
+
+        nidaq.set_sampling_clock_timing(Fs)
+        nidaq.task_start()
+        voltages = nidaq.read_single_voltages()
+        nidaq.task_stop()
+
+        voltages_sampling = VoltageSampling.from_list(
+            voltages,
+            frequency,
+            Fs,
         )
+        result: RMSResult = RMS.rms_v2(voltages_sampling)
+        voltages_sampling.save(save_file_path)
 
         message: Timer_Message = time.stop()
 
-        if rms_value:
-            max_voltage = max(voltages)
-            min_voltage = min(voltages)
+        if result.rms:
+            max_voltage = max(result.voltages)
+            min_voltage = min(result.voltages)
 
-            rms_list.append(rms_value)
+            rms_list.append(result.rms)
 
             progress_sweep.update(
                 task_sweep,
                 frequency=f"{round(frequency, 5)}",
-                rms="{}".format(round(rms_value, 5)),
+                rms="{}".format(round(result.rms, 5)),
             )
 
             gain_bBV: float = dBV(
                 V_in=Vpp_to_Vrms(config.rigol.amplitude_peak_to_peak),
-                V_out=rms_value,
+                V_out=result.rms,
             )
 
             transfer_func_dB = transfer_function(
-                rms_value, Vpp_to_Vrms(config.rigol.amplitude_peak_to_peak)
+                result.rms, Vpp_to_Vrms(config.rigol.amplitude_peak_to_peak)
             )
 
             if max_dB:
@@ -324,7 +342,7 @@ def sampling_curve(
                 "{:.2f}".format(Fs),
                 "{}".format(config.sampling.number_of_samples),
                 "{}".format(config.rigol.amplitude_peak_to_peak),
-                "{:.5f} ".format(round(rms_value, 5)),
+                "{:.5f} ".format(round(result.rms, 5)),
                 "[{}]{:.2f}[/]".format(
                     "red" if gain_bBV <= 0 else "green", transfer_func_dB
                 ),
@@ -711,37 +729,46 @@ def config_set_level(
 
     level_offset: Optional[float] = None
 
+    nidaq = ni9223(
+        config.sampling.number_of_samples,
+        Fs,
+        input_channel=[config.nidaq.input_channel],
+    )
+
+    nidaq.create_task()
+    nidaq.add_ai_channel(["cDAQ9189-1CDBE0AMod5/ai1"])
+    nidaq.set_sampling_clock_timing(Fs)
+
     while not Vpp_found:
 
         # GET MEASUREMENTS
-        _, rms_value = RMS.rms(
-            frequency=frequency,
-            Fs=Fs,
-            ch_input=config.nidaq.input_channel,
-            max_voltage=config.nidaq.voltage_max,
-            min_voltage=config.nidaq.voltage_min,
-            number_of_samples=config.sampling.number_of_samples,
-            # interpolation_rate=config.plot.interpolation_rate,
-            time_report=False,
+        nidaq.task_start()
+        voltages = nidaq.read_single_voltages()
+        nidaq.task_stop()
+        voltages_sampling = VoltageSampling.from_list(voltages, frequency, Fs)
+        result: RMSResult = RMS.rms_v2(
+            voltages_sampling,
         )
 
-        if rms_value:
+        if result.rms is not None:
 
             if not gain_apparato:
-                gain_apparato = rms_value / voltage_amplitude_start
+                gain_apparato = result.rms / voltage_amplitude_start
                 pid.controller_gain = k_tot / gain_apparato
 
-            pid.add_process_variable(rms_value)
+            pid.add_process_variable(result.rms)
 
-            error: float = target_Vrms - rms_value
+            error: float = target_Vrms - result.rms
 
             pid.add_error(Timed_Value(error))
 
             error_percentage: float = percentage_error(
-                exact=target_Vrms, approx=rms_value
+                exact=target_Vrms, approx=result.rms
             )
 
-            gain_dB: float = 20 * np.log10(rms_value / Vpp_to_Vrms(voltage_amplitude))
+            gain_dB: float = calculate_gain_dB(
+                result.rms, Vpp_to_Vrms(voltage_amplitude)
+            )
 
             gain_dB_list.append(gain_dB)
 
@@ -749,7 +776,7 @@ def config_set_level(
                 f"{iteration}",
                 f"{target_Vrms:.8f}",
                 f"{voltage_amplitude:.8f}",
-                f"{rms_value:.8f}",
+                f"{result.rms:.8f}",
                 "[{}]{:+.8f}[/]".format(
                     "red" if error > diff_voltage else "green",
                     error,
@@ -780,7 +807,7 @@ def config_set_level(
                 )
 
                 table_result.add_row(
-                    f"{rms_value / voltage_amplitude:.8f}",
+                    f"{result.rms / voltage_amplitude:.8f}",
                     f"{pid.controller_gain}",
                     f"{pid.tauI}",
                     f"{pid.tauD}",
@@ -828,6 +855,8 @@ def config_set_level(
                 iteration += 1
         else:
             console.print("[SAMPLING] - Error retrieving rms_value.")
+
+    nidaq.task_close()
 
     generator_ac_curves: List[str] = [
         SCPI.set_output(1, Switch.OFF),

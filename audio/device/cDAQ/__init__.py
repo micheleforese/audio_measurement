@@ -1,20 +1,24 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Optional
+from typing import List, Optional, Tuple
 
 import nidaqmx
 import nidaqmx.constants
 import nidaqmx.stream_readers
 import nidaqmx.stream_writers
 import nidaqmx.system
+import numpy
 import numpy as np
 from nidaqmx._task_modules.channels.ao_channel import AOChannel
-from nidaqmx.system import System
+from nidaqmx.constants import VoltageUnits
+from nidaqmx.system import Device, System
 from nidaqmx.system._collections.device_collection import DeviceCollection
+from nidaqmx.utils import flatten_channel_string
 from rich.panel import Panel
 from rich.table import Column, Table
 from rich.tree import Tree
-from nidaqmx.constants import VoltageUnits
+
 from audio.console import console
 
 
@@ -167,17 +171,36 @@ class ni9251(cDAQAIDevice):
         return voltages
 
 
+from audio.config.type import Range
+
+
 @dataclass
 class ni9223(cDAQAIDevice):
-    input_channel: str
     number_of_samples: int
-    sampling_frequency: float
+    sampling_frequency: float = None
+    input_channel: List[str] = None
     task: nidaqmx.Task = None
+    device: Optional[Device] = None
 
-    def create_task(self):
+    def init_device(self):
+        self.device = Device(self.input_channel)
+
+    @property
+    def device_voltage_ranges(self) -> Range[float]:
+        ranges: Tuple[float, float] = self.device.ai_voltage_rngs
+        range_min, range_max = ranges
+        r: Range[float] = Range(range_min, range_max)
+        return r
+
+    @property
+    def device_Fs_max(self) -> float:
+        self.device.anlg_trig_supported
+        return self.device.ai_max_single_chan_rate
+
+    def create_task(self, name: str = ""):
         try:
             # 1. Create a NidaqMX Task
-            self.task = nidaqmx.Task("Input Voltage")
+            self.task = nidaqmx.Task(name)
         except Exception as e:
             console.print("[EXCEPTION] - {}".format(e))
             self.task_close()
@@ -186,11 +209,12 @@ class ni9223(cDAQAIDevice):
         self.task.timing.cfg_samp_clk_timing(sampling_frequency)
         self.sampling_frequency = sampling_frequency
 
-    def add_ai_channel(self):
+    def add_ai_channel(self, input_channel: List[str]):
         # 2. Add the AI Voltage Channel
         self.task.ai_channels.add_ai_voltage_chan(
-            physical_channel=self.input_channel,
+            flatten_channel_string(input_channel),
         )
+        self.input_channel = input_channel
 
     def add_rms_channel(self):
         self.task.ai_channels.add_ai_voltage_rms_chan(
@@ -209,7 +233,7 @@ class ni9223(cDAQAIDevice):
     def task_close(self):
         self.task.close()
 
-    def read_voltages(self):
+    def read_single_voltages(self):
         # 4. Pre allocate the array
         voltages = np.ndarray(self.number_of_samples, dtype=float)
 
@@ -224,3 +248,15 @@ class ni9223(cDAQAIDevice):
         )
 
         return voltages
+
+    def read_multi_voltages(self):
+        reader = nidaqmx.stream_readers.AnalogMultiChannelReader(self.task.in_stream)
+
+        values_read = numpy.zeros(
+            (len(self.input_channel), self.number_of_samples),
+            dtype=numpy.float64,
+        )
+        reader.read_many_sample(
+            values_read, number_of_samples_per_channel=self.number_of_samples
+        )
+        return values_read

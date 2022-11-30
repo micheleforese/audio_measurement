@@ -52,3 +52,7 @@ def voltage_converter(voltage: float, frm: VoltageMode, to: VoltageMode):
             return VdBu_to_Vrms(voltage)
         elif to == VoltageMode.Vpp:
             return VdBu_to_Vpp(voltage)
+
+
+def calculate_gain_dB(Vin: float, Vout: float):
+    return 20 * log10(Vin / Vout)

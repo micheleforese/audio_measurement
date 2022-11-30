@@ -12,6 +12,7 @@ class VoltageSampling:
     data: Optional[DataFrame]
     input_frequency: float
     sampling_frequency: float
+    amplitude_peak_to_peak: Optional[float] = None
 
     @classmethod
     def from_list(

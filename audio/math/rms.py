@@ -1,5 +1,6 @@
 import enum
 import pathlib
+from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
 import numpy as np
@@ -9,9 +10,9 @@ from scipy.fft import fft
 from audio.console import console
 from audio.math import integrate, trim_sin_zero_offset
 from audio.math.interpolation import INTERPOLATION_KIND, interpolation_model
+from audio.model.sampling import VoltageSampling
 from audio.utility import read_voltages
 from audio.utility.timer import Timer
-from audio.model.sampling import VoltageSampling
 
 
 class RMS_MODE(enum.Enum):
@@ -180,6 +181,7 @@ class RMS:
         trim: bool = True,
         interpolation_rate: float = 10,
     ):
+        result = RMSResult()
         timer = Timer()
 
         voltages = list(voltages_sampling.voltages)
@@ -222,4 +224,13 @@ class RMS:
         if time_report:
             timer.stop().print()
 
-        return voltages, rms
+        result.voltages = voltages
+        result.rms = rms
+
+        return result
+
+
+@dataclass
+class RMSResult:
+    rms: Optional[float] = None
+    voltages: Optional[List[float]] = None

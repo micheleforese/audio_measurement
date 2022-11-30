@@ -26,7 +26,7 @@ from audio.sampling import config_set_level, plot_from_csv, sampling_curve
 from audio.script.device.ni import read_rms, read_rms_loop, read_rms_v2
 from audio.script.device.rigol import set_amplitude, set_frequency, turn_off, turn_on
 from audio.script.procedure import procedure
-from audio.script.test import print_devices, testTimer
+from audio.script.test import phase_analysis, print_devices, testTimer
 from audio.utility import get_subfolder
 from audio.utility.timer import Timer
 
@@ -713,6 +713,7 @@ def test():
 
 test.add_command(testTimer)
 test.add_command(print_devices)
+test.add_command(phase_analysis)
 
 
 @test.command()

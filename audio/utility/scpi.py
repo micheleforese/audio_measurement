@@ -145,3 +145,15 @@ class SCPI:
     @staticmethod
     def ask_voltage_bandwidth() -> str:
         return "VOLTage:AC:BANDwidth?"
+
+    @staticmethod
+    def set_output_sync(source: int, switch: Switch):
+        return f":OUTPut{source}:SYNC {switch.value}"
+
+    @staticmethod
+    def source_phase_init(source: int):
+        return f":SOURce{source}:PHASe:INITiate"
+
+    @staticmethod
+    def source_phase_sync(source: int):
+        return f":SOURce{source}:PHASe:SYNChronize"
