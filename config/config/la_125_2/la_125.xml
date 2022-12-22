@@ -119,6 +119,20 @@
         <file_offset key="set_level_0" />
         <file_insertion_gain key="gain_0" />
         <config>
+          <nidaq>
+            <Fs_max>1000000</Fs_max>
+            <voltage_min>-10</voltage_min>
+            <voltage_max>10</voltage_max>
+            <input_channel>cDAQ9189-1CDBE0AMod5/ai1</input_channel>
+          </nidaq>
+          <sampling>
+            <Fs_multiplier>50</Fs_multiplier>
+            <points_per_decade>50</points_per_decade>
+            <frequency_min>10</frequency_min>
+            <frequency_max>99999</frequency_max>
+            <number_of_samples>200</number_of_samples>
+            <delay_measurements>0</delay_measurements>
+          </sampling>
           <plot>
             <color>#ff0000</color>
             <legend>PRE 125-2 G0</legend>
@@ -179,6 +193,20 @@
         <file_offset key="set_level_15" />
         <file_insertion_gain key="gain_15" />
         <config>
+          <nidaq>
+            <Fs_max>1000000</Fs_max>
+            <voltage_min>-10</voltage_min>
+            <voltage_max>10</voltage_max>
+            <input_channel>cDAQ9189-1CDBE0AMod5/ai1</input_channel>
+          </nidaq>
+          <sampling>
+            <Fs_multiplier>50</Fs_multiplier>
+            <points_per_decade>50</points_per_decade>
+            <frequency_min>10</frequency_min>
+            <frequency_max>99999</frequency_max>
+            <number_of_samples>200</number_of_samples>
+            <delay_measurements>0</delay_measurements>
+          </sampling>
           <plot>
             <color>#00ff00</color>
             <legend>PRE G15</legend>
@@ -239,6 +267,20 @@
         <file_offset key="set_level_30" />
         <file_insertion_gain key="gain_30" />
         <config>
+          <nidaq>
+            <Fs_max>1000000</Fs_max>
+            <voltage_min>-10</voltage_min>
+            <voltage_max>10</voltage_max>
+            <input_channel>cDAQ9189-1CDBE0AMod5/ai1</input_channel>
+          </nidaq>
+          <sampling>
+            <Fs_multiplier>50</Fs_multiplier>
+            <points_per_decade>50</points_per_decade>
+            <frequency_min>10</frequency_min>
+            <frequency_max>99999</frequency_max>
+            <number_of_samples>200</number_of_samples>
+            <delay_measurements>0</delay_measurements>
+          </sampling>
           <plot>
             <color>#0000ff</color>
             <legend>PRE G30</legend>
