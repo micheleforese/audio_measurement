@@ -30,4 +30,4 @@ audio-test/**
 docs/site
 
 #TEST
-!audio-test/config/*
+!audio-test/config/**
