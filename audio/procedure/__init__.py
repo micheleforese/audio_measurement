@@ -36,6 +36,7 @@ class ProcedureStep(ABC):
             ProcedureFile.XML_TAG: ProcedureFile,
             ProcedureTask.XML_TAG: ProcedureTask,
             ProcedureCheck.XML_TAG: ProcedureCheck,
+            ProcedurePhaseSweep.XML_TAG: ProcedurePhaseSweep,
         }
 
         procedure_type: Optional[Type] = procedure_list_type.get(proc_type)
@@ -612,6 +613,59 @@ class ProcedureMultiPlot(ProcedureStep):
             )
         else:
             return None
+
+
+@dataclass
+class ProcedurePhaseSweepData:
+    name: Optional[str] = None
+    folder_path: Optional[str] = None
+    graph_path: Optional[str] = None
+    config: Optional[SweepConfig] = None
+
+
+@dataclass
+@rich.repr.auto
+class ProcedurePhaseSweep(ProcedureStep):
+
+    data: ProcedurePhaseSweepData = field(default_factory=ProcedurePhaseSweepData())
+    XML_TAG: ClassVar[str] = "phase_sweep"
+
+    @classmethod
+    def from_xml(cls, xml: Optional[ET.Element]):
+        if xml is None:
+            return None
+
+        name: Optional[str] = None
+        folder_path: Optional[str] = None
+        graph_path: Optional[str] = None
+
+        Ename = xml.find(".")
+        if Ename is not None:
+            name = Ename.get("name", None)
+
+        Efolder = xml.find("./folder_path")
+        if Efolder is not None:
+            folder_path = Efolder.text
+
+        Egraph_path = xml.find("./graph_path")
+        if Egraph_path is not None:
+            graph_path = Egraph_path.text
+
+        Econfig = xml.find("./config")
+
+        sweep_config_xml: Optional[SweepConfig] = None
+
+        if Econfig is not None:
+            sweep_config_xml = SweepConfig.from_xml(ET.ElementTree(Econfig))
+
+        data = ProcedurePhaseSweepData(
+            name=name,
+            folder_path=folder_path,
+            graph_path=graph_path,
+            config=sweep_config_xml,
+        )
+
+        return cls(data=data)
 
 
 @rich.repr.auto

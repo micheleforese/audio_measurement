@@ -31,6 +31,7 @@ from audio.procedure import (
     ProcedureSweep,
     ProcedureTask,
     ProcedureText,
+    ProcedurePhaseSweep,
 )
 from audio.sampling import config_set_level, plot_from_csv, sampling_curve
 
@@ -85,6 +86,7 @@ def exec_proc(data: DataProcedure, list_step: List[ProcedureStep]):
         ProcedureMultiPlot: step_procedure_multiplot,
         ProcedureTask: step_procedure_task,
         ProcedureCheck: step_procedure_check,
+        ProcedurePhaseSweep: step_procedure_phase_sweep,
     }
 
     for idx, step in enumerate(list_step, start=1):
@@ -448,9 +450,7 @@ def step_procedure_multiplot(data: DataProcedure, step: ProcedureMultiPlot):
     home_dir_path: Path = data.root
     file_sweep_plot: Path = home_dir_path / step.file_plot
 
-    csv_files: List[Path] = [
-        Path(home_dir_path / dir) for dir in step.folder_sweep
-    ]
+    csv_files: List[Path] = [Path(home_dir_path / dir) for dir in step.folder_sweep]
 
     multiplot(
         csv_files,
@@ -492,3 +492,28 @@ def step_procedure_check(data: DataProcedure, step: ProcedureCheck):
                 return AppAction.EXIT_TASK
 
     return None
+
+
+def step_procedure_phase_sweep(data: DataProcedure, step: ProcedurePhaseSweep):
+    from audio.sweep.phase import phase_sweep
+    from datetime import datetime
+
+    if step.data.folder_path is not None:
+        folder_path = data.root / step.data.folder_path
+    else:
+        time_now = datetime.now().strftime("%Y.%m.%d-%H:%M:%S")
+        folder_path = data.root / f"{time_now} phase_sweep"
+
+    if step.data.graph_path is not None:
+        graph_path = folder_path / step.data.graph_path
+    else:
+        graph_path = folder_path / "graph.pdf"
+
+    name: str = step.data.name if step.data.name is not None else "Phase Sweep"
+
+    phase_sweep(
+        name=name,
+        folder_path=folder_path,
+        graph_path=graph_path,
+        config=step.data.config,
+    )

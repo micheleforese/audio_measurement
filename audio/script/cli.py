@@ -17,7 +17,7 @@ from audio.config.type import Range
 from audio.console import console
 from audio.docker.latex import create_latex_file
 from audio.gui.rigol_admin import rigol_admin
-from audio.math import trim_sin_zero_offset, rms_full_cycle
+from audio.math import rms_full_cycle, trim_sin_zero_offset
 from audio.math.interpolation import INTERPOLATION_KIND, interpolation_model
 from audio.math.rms import RMS
 from audio.model.set_level import SetLevel
@@ -26,7 +26,13 @@ from audio.sampling import config_set_level, plot_from_csv, sampling_curve
 from audio.script.device.ni import read_rms, read_rms_loop, read_rms_v2
 from audio.script.device.rigol import set_amplitude, set_frequency, turn_off, turn_on
 from audio.script.procedure import procedure
-from audio.script.test import phase_analysis, print_devices, testTimer
+from audio.script.test import (
+    bk_precision,
+    instrument,
+    phase_analysis,
+    print_devices,
+    testTimer,
+)
 from audio.utility import get_subfolder
 from audio.utility.timer import Timer
 
@@ -714,6 +720,8 @@ def test():
 test.add_command(testTimer)
 test.add_command(print_devices)
 test.add_command(phase_analysis)
+test.add_command(instrument)
+test.add_command(bk_precision)
 
 
 @test.command()
