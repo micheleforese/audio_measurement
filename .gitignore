@@ -8,10 +8,6 @@
 .vscode/*
 !.vscode/tasks.json
 
-# Configs
-config/*
-!config/config_template.json5
-!config/machines.json5
 
 # Tests
 tests/**/*.csv
