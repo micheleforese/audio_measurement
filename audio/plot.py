@@ -108,7 +108,7 @@ def multiplot(
         description="Sweep Data Plotting...",
     ):
 
-        sweep_data = cache_csv_data.get_csv_file_data(csv_file)
+        sweep_data: SweepData = cache_csv_data.get_csv_file_data(csv_file)
         if sweep_data is None:
             console.log(f"[ERROR] - data Not found at csv_file: {csv_file}")
             continue

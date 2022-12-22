@@ -28,6 +28,7 @@ class PlotConfigOptions(Enum):
     DPI = "dpi"
     COLOR = "color"
     LEGEND = "legend"
+    TITLE = "title"
 
     def __str__(self) -> str:
         return str(self.value)
@@ -48,6 +49,7 @@ class PlotConfigOptionsXPATH(Enum):
     DPI = f"./{PlotConfigOptions.DPI}"
     COLOR = f"./{PlotConfigOptions.COLOR}"
     LEGEND = f"./{PlotConfigOptions.LEGEND}"
+    TITLE = f"./{PlotConfigOptions.TITLE}"
 
     def __str__(self) -> str:
         return str(self.value)
@@ -640,6 +642,7 @@ class PlotConfig:
     dpi: Optional[int] = None
     color: Optional[str] = None
     legend: Optional[str] = None
+    title: Optional[str] = None
 
     @classmethod
     def from_xml(cls, xml: Optional[ET.ElementTree]):
@@ -652,6 +655,7 @@ class PlotConfig:
                 dpi=PlotConfig.get_dpi_from_xml(xml),
                 color=PlotConfig.get_color_from_xml(xml),
                 legend=PlotConfig.get_legend_from_xml(xml),
+                title=PlotConfig.get_title_from_xml(xml),
             )
         else:
             return cls()
@@ -756,6 +760,8 @@ class PlotConfig:
             self.color = other.color
         if self.legend is None:
             self.legend = other.legend
+        if self.title is None:
+            self.title = other.title
 
     def override(self, other: Optional[PlotConfig]):
         if other is None:
@@ -775,6 +781,8 @@ class PlotConfig:
             self.color = other.color
         if other.legend is not None:
             self.legend = other.legend
+        if other.title is not None:
+            self.title = other.title
 
     ##################
     # Options from XML
@@ -871,4 +879,11 @@ class PlotConfig:
         Elegend = xml.find(PlotConfigOptionsXPATH.LEGEND.value)
         if Elegend is not None:
             return Elegend.text
+        return None
+
+    @staticmethod
+    def get_title_from_xml(xml: Optional[ET.ElementTree]):
+        Etitle = xml.find(PlotConfigOptionsXPATH.TITLE.value)
+        if Etitle is not None:
+            return Etitle.text
         return None

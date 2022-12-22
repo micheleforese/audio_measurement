@@ -1,9 +1,9 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import xml.etree.ElementTree as ET
 from enum import Enum
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import rich.repr
 
@@ -283,6 +283,7 @@ class NiDaqConfig:
     voltage_min: Optional[float] = None
     voltage_max: Optional[float] = None
     input_channel: Optional[str] = None
+    input_channels: List[str] = field(default_factory=[])
 
     @classmethod
     def from_xml(cls, xml: Optional[ET.ElementTree]):
@@ -292,6 +293,7 @@ class NiDaqConfig:
                 voltage_min=NiDaqConfig.get_voltage_min_from_xml(xml),
                 voltage_max=NiDaqConfig.get_voltage_max_from_xml(xml),
                 input_channel=NiDaqConfig.get_input_channel_from_xml(xml),
+                input_channels=NiDaqConfig.get_input_channels_from_xml(xml),
             )
         else:
             return cls()
@@ -312,6 +314,9 @@ class NiDaqConfig:
         if self.input_channel is None:
             self.input_channel = other.input_channel
 
+        if self.input_channels is None:
+            self.input_channels = other.input_channels
+
     def override(self, other: Optional[NiDaqConfig]):
         if other is None:
             return
@@ -327,6 +332,9 @@ class NiDaqConfig:
 
         if other.input_channel is not None:
             self.input_channel = other.input_channel
+
+        if other.input_channels is not None:
+            self.input_channels = other.input_channels
 
     @staticmethod
     def get_Fs_max_from_xml(xml: Optional[ET.ElementTree]):
@@ -358,3 +366,15 @@ class NiDaqConfig:
         if Einput_channel is not None:
             return Einput_channel.text
         return None
+
+    @staticmethod
+    def get_input_channels_from_xml(xml: Optional[ET.ElementTree]):
+        channels: List[str] = []
+        Einput_channels = xml.findall(NidaqConfigOptionsXPATH.INPUT_CHANNEL.value)
+        for Echannel in Einput_channels:
+            input_channel = Echannel.text
+
+            if input_channel is not None:
+                channels.append(input_channel)
+
+        return channels

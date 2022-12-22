@@ -219,3 +219,120 @@ def command_line_():
 
     generator.close()
     reader.close()
+
+
+import usbtmc
+from rich.panel import Panel
+import usb
+
+
+class ResourceManager:
+    def search_resources(self):
+        devices: List[usb.core.Device] = usbtmc.list_devices()
+
+        return devices
+
+    def open_resource(self, device: Optional[usb.core.Device] = None):
+        if device is None:
+            devices = self.search_resources()
+            if len(devices) == 1:
+                device = devices[0]
+            else:
+                return None
+
+        return UsbTmcInstrument(usbtmc.Instrument(device))
+
+    def print_devices(self):
+        resources = self.search_resources()
+
+        for idx, resource in enumerate(resources):
+
+            console.print(Panel(resource.__str__(), title=f"Resource index: {idx}"))
+
+
+class UsbTmcInstrument:
+    instr: usbtmc.Instrument
+
+    def __init__(self, instrument: usbtmc.Instrument):
+        self.instr = instrument
+
+    def __del__(self):
+        if self.instr.connected:
+            self.instr.close()
+
+    def open(self):
+        if not self.instr.connected:
+            self.instr.open()
+
+    def close(self):
+        if self.instr.connected:
+            self.instr.close()
+
+    def write(self, command) -> bool:
+        """Execute a command."""
+        try:
+            self.instr.write(command)
+        except Exception as e:
+            console.log(f"{e}")
+            return False
+        return True
+
+    def ask(self, command):
+        """Asks to retrive a value."""
+        try:
+            response = self.instr.ask(command)
+        except Exception as e:
+            console.log(f"{e}")
+            return None
+        return response
+
+    def reset(self):
+        """Resets the Instrument to the default options."""
+        self.instr.write("*RST")
+
+    def clear_status(self):
+        """Clears the status."""
+        self.instr.write("*CLS")
+
+    def query_event_status_register(self) -> Union[list, Any, str]:
+        """Asks for the Standard Event Status Registrer.
+
+        Returns:
+            Union[list, Any, str]: the result of the query.
+        """
+        return self.instr.ask("*ESR?")
+
+    def query_identification(self):
+        """Ask the ID of the instrument."""
+        return self.instr.ask("*IDN?")
+
+    def query_current_state_commands(self):
+        """Ask for the commands to arrive at this configuration."""
+        return self.instr.ask("*LRN?")
+
+    def set_aperture(self, aperture: np.float):
+        """Sets the frequency's Aperture.
+
+        Args:
+            aperture (np.float): This is the Aperture of the Instrument
+        """
+        self.instr.write(f":FREQuency:APERture {aperture}")
+
+    def exec(
+        self,
+        commands: List[str],
+        debug: bool = False,
+    ):
+        for command in commands:
+            if command.find("?") > 0:
+                response = self.ask(command)
+
+                if response == "":
+                    response = "NULL"
+
+                console.print(f"{command}:\t{response}")
+            else:
+                self.write(command)
+
+                if debug:
+                    console.print(command)
