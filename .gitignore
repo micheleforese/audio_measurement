@@ -28,3 +28,6 @@ audio-test/**
 
 # Docs
 docs/site
+
+#TEST
+!audio-test/config/*
