@@ -1,0 +1,240 @@
+<proc name="LA-117">
+
+  <steps>
+    <serial_number>
+      <text>ID Device:</text>
+    </serial_number>
+
+    <default>
+      <sweep>
+        <config>
+          <nidaq>
+            <Fs_max>1000000</Fs_max>
+            <voltage_min>-10</voltage_min>
+            <voltage_max>10</voltage_max>
+            <input_channel>cDAQ9189-1CDBE0AMod5/ai1</input_channel>
+          </nidaq>
+          <sampling>
+            <Fs_multiplier>50</Fs_multiplier>
+            <points_per_decade>50</points_per_decade>
+            <frequency_min>10</frequency_min>
+            <frequency_max>99999</frequency_max>
+            <number_of_samples>200</number_of_samples>
+            <delay_measurements>0</delay_measurements>
+          </sampling>
+          <plot>
+            <interpolation_rate>10</interpolation_rate>
+          </plot>
+        </config>
+      </sweep>
+    </default>
+
+    <file>
+      <key>master</key>
+      <path>master.calibration.dat</path>
+    </file>
+    <file>
+      <key>master_plot</key>
+      <path>master_plot.calibration.png</path>
+    </file>
+
+    <task text="CALIBRATION DEVICE">
+      <check condition="not exists" action="break">
+        <file key="master" />
+      </check>
+
+      <set_level>
+        <file_set_level key="master" />
+        <file_set_level_plot key="master_plot" />
+        <config>
+          <nidaq>
+            <Fs_max>1000000</Fs_max>
+            <voltage_min>-10</voltage_min>
+            <voltage_max>10</voltage_max>
+            <input_channel>cDAQ9189-1CDBE0AMod5/ai1</input_channel>
+          </nidaq>
+          <sampling>
+            <Fs_multiplier>50</Fs_multiplier>
+            <number_of_samples>200</number_of_samples>
+          </sampling>
+        </config>
+      </set_level>
+    </task>
+
+    <task text="BASE SET DEVICE">
+      <text>Collegare L'Output al DUT.</text>
+      <ask>Ready?</ask>
+    </task>
+
+
+    <task text="GAIN 0dB">
+      <check condition="not exists" action="break">
+        <file path="sweep LA-117 G0/sweep LA-117 G0.csv" />
+      </check>
+
+
+      <text>GAIN 0dB.</text>
+      <ask>Ready?</ask>
+
+      <file>
+        <key>set_level_0</key>
+        <path>set_level_0.set_level.dat</path>
+      </file>
+      <file>
+        <key>set_level_0_plot</key>
+        <path>set_level_0_plot.set_level.png</path>
+      </file>
+      <file>
+        <key>gain_0</key>
+        <path>gain_0.dat</path>
+      </file>
+
+      <set_level>
+        <file_set_level key="set_level_0" />
+        <file_set_level_plot key="set_level_0_plot" />
+        <config>
+          <nidaq>
+            <Fs_max>1000000</Fs_max>
+            <voltage_min>-10</voltage_min>
+            <voltage_max>10</voltage_max>
+            <input_channel>cDAQ9189-1CDBE0AMod5/ai1</input_channel>
+          </nidaq>
+          <sampling>
+            <Fs_multiplier>50</Fs_multiplier>
+            <number_of_samples>200</number_of_samples>
+          </sampling>
+        </config>
+      </set_level>
+
+
+      <insertion_gain>
+        <file_calibration key="master" />
+        <file_set_level key="set_level_0" />
+        <file_gain key="gain_0" />
+      </insertion_gain>
+
+      <sweep>
+        <name_folder>sweep LA-117 G0</name_folder>
+        <file_set_level key="set_level_0" />
+        <file_offset key="set_level_0" />
+        <file_insertion_gain key="gain_0" />
+        <config>
+          <plot>
+            <color>#ff0000</color>
+            <legend>LA-117 G0</legend>
+          </plot>
+        </config>
+      </sweep>
+
+    </task>
+
+    <task text="GAIN 15dB">
+      <check condition="not exists" action="break">
+        <file path="sweep LA-117 G15/sweep LA-117 G15.csv" />
+      </check>
+
+      <text>GAIN 15dB.</text>
+      <ask>Ready?</ask>
+
+      <file>
+        <key>set_level_15</key>
+        <path>set_level_15.set_level.dat</path>
+      </file>
+      <file>
+        <key>set_level_15_plot</key>
+        <path>set_level_15_plot.set_level.png</path>
+      </file>
+      <file>
+        <key>gain_15</key>
+        <path>gain_15.dat</path>
+      </file>
+
+      <set_level>
+        <file_set_level key="set_level_15" />
+        <file_set_level_plot key="set_level_15_plot" />
+        <config>
+          <nidaq>
+            <Fs_max>1000000</Fs_max>
+            <voltage_min>-10</voltage_min>
+            <voltage_max>10</voltage_max>
+            <input_channel>cDAQ9189-1CDBE0AMod5/ai1</input_channel>
+          </nidaq>
+          <sampling>
+            <Fs_multiplier>50</Fs_multiplier>
+            <number_of_samples>200</number_of_samples>
+          </sampling>
+        </config>
+      </set_level>
+
+
+      <insertion_gain>
+        <file_calibration key="master" />
+        <file_set_level key="set_level_15" />
+        <file_gain key="gain_15" />
+      </insertion_gain>
+
+      <sweep>
+        <name_folder>sweep LA-117 G15</name_folder>
+        <file_set_level key="set_level_15" />
+        <file_offset key="set_level_15" />
+        <file_insertion_gain key="gain_15" />
+        <config>
+          <plot>
+            <color>#00ff00</color>
+            <legend>LA-117 G15</legend>
+          </plot>
+        </config>
+      </sweep>
+
+    </task>
+
+    <task text="MULTIPLOT">
+
+      <!-- <check condition="not exists" action="break">
+        <file path="multiplot.png" />
+      </check> -->
+
+      <multiplot name="multiplot">
+        <file_plot>multiplot.png</file_plot>
+        <folder_sweep>
+          <var>sweep LA-117 G0</var>
+          <var>sweep LA-117 G15</var>
+        </folder_sweep>
+      </multiplot>
+
+    </task>
+
+    <task text="PHASE">
+
+      <phase_sweep name="First Phase Sweep">
+        <folder_path>LA-117</folder_path>
+        <graph_path>graph.pdf</graph_path>
+        <config>
+          <rigol>
+            <amplitude_peak_to_peak>1</amplitude_peak_to_peak>
+          </rigol>
+          <nidaq>
+            <input_channel>cDAQ9189-1CDBE0AMod5/ai1</input_channel>
+            <input_channel>cDAQ9189-1CDBE0AMod5/ai3</input_channel>
+          </nidaq>
+          <sampling>
+            <frequency_min>10</frequency_min>
+            <frequency_max>99999</frequency_max>
+            <points_per_decade>50</points_per_decade>
+            <number_of_samples>200</number_of_samples>
+            <Fs_multiplier>50</Fs_multiplier>
+            <delay_measurements>0</delay_measurements>
+            <interpolation_rate>20</interpolation_rate>
+          </sampling>
+          <plot>
+            <interpolation_rate>10</interpolation_rate>
+            <title>Plot Title</title>
+          </plot>
+        </config>
+      </phase_sweep>
+
+    </task>
+
+
+  </steps>
+</proc>

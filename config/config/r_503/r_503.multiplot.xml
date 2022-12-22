@@ -1,0 +1,453 @@
+<proc name="r_503">
+
+  <steps>
+    <serial_number>
+      <text>ID Device:</text>
+    </serial_number>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503.png</file_plot>
+      <folder_sweep>
+        <var>[HI] G -12 Forchetta SINISTRA</var>
+        <var>[HI] G -12 Forchetta CENTRALE</var>
+        <var>[HI] G -12 Forchetta DESTRA</var>
+        <var>[HI] G -6 Forchetta SINISTRA</var>
+        <var>[HI] G -6 Forchetta CENTRALE</var>
+        <var>[HI] G -6 Forchetta DESTRA</var>
+        <var>[HI] G 0 Forchetta SINISTRA</var>
+        <var>[HI] G 0 Forchetta CENTRALE</var>
+        <var>[HI] G 0 Forchetta DESTRA</var>
+        <var>[HI] G 6 Forchetta SINISTRA</var>
+        <var>[HI] G 6 Forchetta CENTRALE</var>
+        <var>[HI] G 6 Forchetta DESTRA</var>
+        <var>[HI] G 12 Forchetta SINISTRA</var>
+        <var>[HI] G 12 Forchetta CENTRALE</var>
+        <var>[HI] G 12 Forchetta DESTRA</var>
+
+        <var>[LO] G -12 Forchetta SINISTRA</var>
+        <var>[LO] G -12 Forchetta CENTRALE</var>
+        <var>[LO] G -12 Forchetta DESTRA</var>
+        <var>[LO] G -6 Forchetta SINISTRA</var>
+        <var>[LO] G -6 Forchetta CENTRALE</var>
+        <var>[LO] G -6 Forchetta DESTRA</var>
+        <var>[LO] G 0 Forchetta SINISTRA</var>
+        <var>[LO] G 0 Forchetta CENTRALE</var>
+        <var>[LO] G 0 Forchetta DESTRA</var>
+        <var>[LO] G 6 Forchetta SINISTRA</var>
+        <var>[LO] G 6 Forchetta CENTRALE</var>
+        <var>[LO] G 6 Forchetta DESTRA</var>
+        <var>[LO] G 12 Forchetta SINISTRA</var>
+        <var>[LO] G 12 Forchetta CENTRALE</var>
+        <var>[LO] G 12 Forchetta DESTRA</var>
+      </folder_sweep>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 - Clamped.png</file_plot>
+      <folder_sweep>
+        <var>[HI] G -12 Forchetta SINISTRA</var>
+        <var>[HI] G -12 Forchetta CENTRALE</var>
+        <var>[HI] G -12 Forchetta DESTRA</var>
+        <var>[HI] G -6 Forchetta SINISTRA</var>
+        <var>[HI] G -6 Forchetta CENTRALE</var>
+        <var>[HI] G -6 Forchetta DESTRA</var>
+        <var>[HI] G 0 Forchetta SINISTRA</var>
+        <var>[HI] G 0 Forchetta CENTRALE</var>
+        <var>[HI] G 0 Forchetta DESTRA</var>
+        <var>[HI] G 6 Forchetta SINISTRA</var>
+        <var>[HI] G 6 Forchetta CENTRALE</var>
+        <var>[HI] G 6 Forchetta DESTRA</var>
+        <var>[HI] G 12 Forchetta SINISTRA</var>
+        <var>[HI] G 12 Forchetta CENTRALE</var>
+        <var>[HI] G 12 Forchetta DESTRA</var>
+
+        <var>[LO] G -12 Forchetta SINISTRA</var>
+        <var>[LO] G -12 Forchetta CENTRALE</var>
+        <var>[LO] G -12 Forchetta DESTRA</var>
+        <var>[LO] G -6 Forchetta SINISTRA</var>
+        <var>[LO] G -6 Forchetta CENTRALE</var>
+        <var>[LO] G -6 Forchetta DESTRA</var>
+        <var>[LO] G 0 Forchetta SINISTRA</var>
+        <var>[LO] G 0 Forchetta CENTRALE</var>
+        <var>[LO] G 0 Forchetta DESTRA</var>
+        <var>[LO] G 6 Forchetta SINISTRA</var>
+        <var>[LO] G 6 Forchetta CENTRALE</var>
+        <var>[LO] G 6 Forchetta DESTRA</var>
+        <var>[LO] G 12 Forchetta SINISTRA</var>
+        <var>[LO] G 12 Forchetta CENTRALE</var>
+        <var>[LO] G 12 Forchetta DESTRA</var>
+      </folder_sweep>
+      <config>
+        <plot>
+          <y_limit>
+            <min>-20</min>
+            <max>20</max>
+          </y_limit>
+        </plot>
+      </config>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 HI.png</file_plot>
+      <folder_sweep>
+        <var>[HI] G -12 Forchetta SINISTRA</var>
+        <var>[HI] G -12 Forchetta CENTRALE</var>
+        <var>[HI] G -12 Forchetta DESTRA</var>
+        <var>[HI] G -6 Forchetta SINISTRA</var>
+        <var>[HI] G -6 Forchetta CENTRALE</var>
+        <var>[HI] G -6 Forchetta DESTRA</var>
+        <var>[HI] G 0 Forchetta SINISTRA</var>
+        <var>[HI] G 0 Forchetta CENTRALE</var>
+        <var>[HI] G 0 Forchetta DESTRA</var>
+        <var>[HI] G 6 Forchetta SINISTRA</var>
+        <var>[HI] G 6 Forchetta CENTRALE</var>
+        <var>[HI] G 6 Forchetta DESTRA</var>
+        <var>[HI] G 12 Forchetta SINISTRA</var>
+        <var>[HI] G 12 Forchetta CENTRALE</var>
+        <var>[HI] G 12 Forchetta DESTRA</var>
+      </folder_sweep>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 HI - Clamped.png</file_plot>
+      <folder_sweep>
+        <var>[HI] G -12 Forchetta SINISTRA</var>
+        <var>[HI] G -12 Forchetta CENTRALE</var>
+        <var>[HI] G -12 Forchetta DESTRA</var>
+        <var>[HI] G -6 Forchetta SINISTRA</var>
+        <var>[HI] G -6 Forchetta CENTRALE</var>
+        <var>[HI] G -6 Forchetta DESTRA</var>
+        <var>[HI] G 0 Forchetta SINISTRA</var>
+        <var>[HI] G 0 Forchetta CENTRALE</var>
+        <var>[HI] G 0 Forchetta DESTRA</var>
+        <var>[HI] G 6 Forchetta SINISTRA</var>
+        <var>[HI] G 6 Forchetta CENTRALE</var>
+        <var>[HI] G 6 Forchetta DESTRA</var>
+        <var>[HI] G 12 Forchetta SINISTRA</var>
+        <var>[HI] G 12 Forchetta CENTRALE</var>
+        <var>[HI] G 12 Forchetta DESTRA</var>
+      </folder_sweep>
+      <config>
+        <plot>
+          <y_limit>
+            <min>-20</min>
+            <max>20</max>
+          </y_limit>
+        </plot>
+      </config>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 LO.png</file_plot>
+      <folder_sweep>
+        <var>[LO] G -12 Forchetta SINISTRA</var>
+        <var>[LO] G -12 Forchetta CENTRALE</var>
+        <var>[LO] G -12 Forchetta DESTRA</var>
+        <var>[LO] G -6 Forchetta SINISTRA</var>
+        <var>[LO] G -6 Forchetta CENTRALE</var>
+        <var>[LO] G -6 Forchetta DESTRA</var>
+        <var>[LO] G 0 Forchetta SINISTRA</var>
+        <var>[LO] G 0 Forchetta CENTRALE</var>
+        <var>[LO] G 0 Forchetta DESTRA</var>
+        <var>[LO] G 6 Forchetta SINISTRA</var>
+        <var>[LO] G 6 Forchetta CENTRALE</var>
+        <var>[LO] G 6 Forchetta DESTRA</var>
+        <var>[LO] G 12 Forchetta SINISTRA</var>
+        <var>[LO] G 12 Forchetta CENTRALE</var>
+        <var>[LO] G 12 Forchetta DESTRA</var>
+      </folder_sweep>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 LO - Clamped.png</file_plot>
+      <folder_sweep>
+        <var>[LO] G -12 Forchetta SINISTRA</var>
+        <var>[LO] G -12 Forchetta CENTRALE</var>
+        <var>[LO] G -12 Forchetta DESTRA</var>
+        <var>[LO] G -6 Forchetta SINISTRA</var>
+        <var>[LO] G -6 Forchetta CENTRALE</var>
+        <var>[LO] G -6 Forchetta DESTRA</var>
+        <var>[LO] G 0 Forchetta SINISTRA</var>
+        <var>[LO] G 0 Forchetta CENTRALE</var>
+        <var>[LO] G 0 Forchetta DESTRA</var>
+        <var>[LO] G 6 Forchetta SINISTRA</var>
+        <var>[LO] G 6 Forchetta CENTRALE</var>
+        <var>[LO] G 6 Forchetta DESTRA</var>
+        <var>[LO] G 12 Forchetta SINISTRA</var>
+        <var>[LO] G 12 Forchetta CENTRALE</var>
+        <var>[LO] G 12 Forchetta DESTRA</var>
+      </folder_sweep>
+      <config>
+        <plot>
+          <y_limit>
+            <min>-20</min>
+            <max>20</max>
+          </y_limit>
+        </plot>
+      </config>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 HI G -12.png</file_plot>
+      <folder_sweep>
+        <var>[HI] G -12 Forchetta SINISTRA</var>
+        <var>[HI] G -12 Forchetta CENTRALE</var>
+        <var>[HI] G -12 Forchetta DESTRA</var>
+      </folder_sweep>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 HI G -12 - Clamped.png</file_plot>
+      <folder_sweep>
+        <var>[HI] G -12 Forchetta SINISTRA</var>
+        <var>[HI] G -12 Forchetta CENTRALE</var>
+        <var>[HI] G -12 Forchetta DESTRA</var>
+      </folder_sweep>
+      <config>
+        <plot>
+          <y_limit>
+            <min>-20</min>
+            <max>20</max>
+          </y_limit>
+        </plot>
+      </config>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 HI G -6.png</file_plot>
+      <folder_sweep>
+        <var>[HI] G -6 Forchetta SINISTRA</var>
+        <var>[HI] G -6 Forchetta CENTRALE</var>
+        <var>[HI] G -6 Forchetta DESTRA</var>
+      </folder_sweep>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 HI G -6 - Clamped.png</file_plot>
+      <folder_sweep>
+        <var>[HI] G -6 Forchetta SINISTRA</var>
+        <var>[HI] G -6 Forchetta CENTRALE</var>
+        <var>[HI] G -6 Forchetta DESTRA</var>
+      </folder_sweep>
+      <config>
+        <plot>
+          <y_limit>
+            <min>-20</min>
+            <max>20</max>
+          </y_limit>
+        </plot>
+      </config>
+    </multiplot>
+
+    <!-- @@@@@@@@@@@@@@@@@@@@@@@@@@@@@ -->
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 HI G 0.png</file_plot>
+      <folder_sweep>
+        <var>[HI] G 0 Forchetta SINISTRA</var>
+        <var>[HI] G 0 Forchetta CENTRALE</var>
+        <var>[HI] G 0 Forchetta DESTRA</var>
+      </folder_sweep>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 HI G 0 - Clamped.png</file_plot>
+      <folder_sweep>
+        <var>[HI] G 0 Forchetta SINISTRA</var>
+        <var>[HI] G 0 Forchetta CENTRALE</var>
+        <var>[HI] G 0 Forchetta DESTRA</var>
+      </folder_sweep>
+      <config>
+        <plot>
+          <y_limit>
+            <min>-20</min>
+            <max>20</max>
+          </y_limit>
+        </plot>
+      </config>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 HI G 6.png</file_plot>
+      <folder_sweep>
+        <var>[HI] G 6 Forchetta SINISTRA</var>
+        <var>[HI] G 6 Forchetta CENTRALE</var>
+        <var>[HI] G 6 Forchetta DESTRA</var>
+      </folder_sweep>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 HI G 6 - Clamped.png</file_plot>
+      <folder_sweep>
+        <var>[HI] G 6 Forchetta SINISTRA</var>
+        <var>[HI] G 6 Forchetta CENTRALE</var>
+        <var>[HI] G 6 Forchetta DESTRA</var>
+      </folder_sweep>
+      <config>
+        <plot>
+          <y_limit>
+            <min>-20</min>
+            <max>20</max>
+          </y_limit>
+        </plot>
+      </config>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 HI G 12.png</file_plot>
+      <folder_sweep>
+        <var>[HI] G 12 Forchetta SINISTRA</var>
+        <var>[HI] G 12 Forchetta CENTRALE</var>
+        <var>[HI] G 12 Forchetta DESTRA</var>
+      </folder_sweep>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 HI G 12 - Clamped.png</file_plot>
+      <folder_sweep>
+        <var>[HI] G 12 Forchetta SINISTRA</var>
+        <var>[HI] G 12 Forchetta CENTRALE</var>
+        <var>[HI] G 12 Forchetta DESTRA</var>
+      </folder_sweep>
+      <config>
+        <plot>
+          <y_limit>
+            <min>-20</min>
+            <max>20</max>
+          </y_limit>
+        </plot>
+      </config>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 LO G -12.png</file_plot>
+      <folder_sweep>
+        <var>[LO] G -12 Forchetta SINISTRA</var>
+        <var>[LO] G -12 Forchetta CENTRALE</var>
+        <var>[LO] G -12 Forchetta DESTRA</var>
+      </folder_sweep>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 LO G -12 - Clamped.png</file_plot>
+      <folder_sweep>
+        <var>[LO] G -12 Forchetta SINISTRA</var>
+        <var>[LO] G -12 Forchetta CENTRALE</var>
+        <var>[LO] G -12 Forchetta DESTRA</var>
+      </folder_sweep>
+      <config>
+        <plot>
+          <y_limit>
+            <min>-20</min>
+            <max>20</max>
+          </y_limit>
+        </plot>
+      </config>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 LO G -6.png</file_plot>
+      <folder_sweep>
+        <var>[LO] G -6 Forchetta SINISTRA</var>
+        <var>[LO] G -6 Forchetta CENTRALE</var>
+        <var>[LO] G -6 Forchetta DESTRA</var>
+      </folder_sweep>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 LO G -6 - Clamped.png</file_plot>
+      <folder_sweep>
+        <var>[LO] G -6 Forchetta SINISTRA</var>
+        <var>[LO] G -6 Forchetta CENTRALE</var>
+        <var>[LO] G -6 Forchetta DESTRA</var>
+      </folder_sweep>
+      <config>
+        <plot>
+          <y_limit>
+            <min>-20</min>
+            <max>20</max>
+          </y_limit>
+        </plot>
+      </config>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 LO G 0.png</file_plot>
+      <folder_sweep>
+        <var>[LO] G 0 Forchetta SINISTRA</var>
+        <var>[LO] G 0 Forchetta CENTRALE</var>
+        <var>[LO] G 0 Forchetta DESTRA</var>
+      </folder_sweep>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 LO G 0 - Clamped.png</file_plot>
+      <folder_sweep>
+        <var>[LO] G 0 Forchetta SINISTRA</var>
+        <var>[LO] G 0 Forchetta CENTRALE</var>
+        <var>[LO] G 0 Forchetta DESTRA</var>
+      </folder_sweep>
+      <config>
+        <plot>
+          <y_limit>
+            <min>-20</min>
+            <max>20</max>
+          </y_limit>
+        </plot>
+      </config>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 LO G 6.png</file_plot>
+      <folder_sweep>
+        <var>[LO] G 6 Forchetta SINISTRA</var>
+        <var>[LO] G 6 Forchetta CENTRALE</var>
+        <var>[LO] G 6 Forchetta DESTRA</var>
+      </folder_sweep>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 LO G 6 - Clamped.png</file_plot>
+      <folder_sweep>
+        <var>[LO] G 6 Forchetta SINISTRA</var>
+        <var>[LO] G 6 Forchetta CENTRALE</var>
+        <var>[LO] G 6 Forchetta DESTRA</var>
+      </folder_sweep>
+      <config>
+        <plot>
+          <y_limit>
+            <min>-20</min>
+            <max>20</max>
+          </y_limit>
+        </plot>
+      </config>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 LO G 12.png</file_plot>
+      <folder_sweep>
+        <var>[LO] G 12 Forchetta SINISTRA</var>
+        <var>[LO] G 12 Forchetta CENTRALE</var>
+        <var>[LO] G 12 Forchetta DESTRA</var>
+      </folder_sweep>
+    </multiplot>
+
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 LO G 12 - Clamped.png</file_plot>
+      <folder_sweep>
+        <var>[LO] G 12 Forchetta SINISTRA</var>
+        <var>[LO] G 12 Forchetta CENTRALE</var>
+        <var>[LO] G 12 Forchetta DESTRA</var>
+      </folder_sweep>
+      <config>
+        <plot>
+          <y_limit>
+            <min>-20</min>
+            <max>20</max>
+          </y_limit>
+        </plot>
+      </config>
+    </multiplot>
+
+  </steps>
+</proc>

@@ -1,0 +1,26 @@
+<proc name="la_125_8">
+
+  <steps>
+    <serial_number>
+      <text>ID Device:</text>
+    </serial_number>
+
+    <multiplot name="multiplot">
+      <file_plot>multiplot ch6 Standard.png</file_plot>
+      <folder_sweep>
+        <var>sweep PRE G1</var>
+        <var>sweep PRE G5</var>
+        <var>sweep PRE G9</var>
+      </folder_sweep>
+      <config>
+        <plot>
+          <y_limit>
+            <min>-3.5</min>
+            <max>0.5</max>
+          </y_limit>
+        </plot>
+      </config>
+    </multiplot>
+
+  </steps>
+</proc>

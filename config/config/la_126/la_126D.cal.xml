@@ -1,0 +1,97 @@
+<proc name="la_126D Calibration">
+
+  <steps>
+    <serial_number>
+      <text>ID Device:</text>
+    </serial_number>
+
+    <file>
+      <key>master</key>
+      <path>master.calibration.dat</path>
+    </file>
+
+    <file>
+      <key>master_plot</key>
+      <path>master_plot.calibration.png</path>
+    </file>
+
+    <file>
+      <key>gain_base</key>
+      <path>gain_base.dat</path>
+    </file>
+
+    <!-- Starting Set Level -->
+    <text>Starting Set Level</text>
+    <ask>Confirmed?</ask>
+
+    <set_level>
+      <file_set_level key="master" />
+      <file_set_level_plot key="master_plot" />
+      <config>
+        <nidaq>
+          <Fs_max>1000000</Fs_max>
+          <voltage_min>-10</voltage_min>
+          <voltage_max>10</voltage_max>
+          <input_channel>cDAQ9189-1CDBE0AMod5/ai0</input_channel>
+        </nidaq>
+        <sampling>
+          <Fs_multiplier>50</Fs_multiplier>
+          <number_of_samples>200</number_of_samples>
+        </sampling>
+      </config>
+    </set_level>
+
+    <insertion_gain>
+      <file_calibration key="master" />
+      <file_set_level key="master" />
+      <file_gain key="gain_base" />
+    </insertion_gain>
+
+    <default>
+      <sweep>
+        <file_set_level key="master" />
+        <file_offset key="master" />
+        <file_insertion_gain key="gain_base" />
+        <config>
+          <nidaq>
+            <Fs_max>1000000</Fs_max>
+            <voltage_min>-10</voltage_min>
+            <voltage_max>10</voltage_max>
+            <input_channel>cDAQ9189-1CDBE0AMod5/ai0</input_channel>
+          </nidaq>
+          <sampling>
+            <Fs_multiplier>50</Fs_multiplier>
+            <points_per_decade>50</points_per_decade>
+            <frequency_min>70000</frequency_min>
+            <frequency_max>200000</frequency_max>
+            <number_of_samples>200</number_of_samples>
+            <delay_measurements>0</delay_measurements>
+            <interpolation_rate>20</interpolation_rate>
+          </sampling>
+          <plot>
+            <interpolation_rate>10</interpolation_rate>
+          </plot>
+        </config>
+      </sweep>
+    </default>
+
+    <!-- Starting Calibration Sweep -->
+    <text>Starting Calibration Sweep</text>
+    <ask>Confirmed?</ask>
+    <sweep>
+      <name_folder>Calibration</name_folder>
+      <config>
+        <sampling>
+          <frequency_min>5</frequency_min>
+          <frequency_max>99999</frequency_max>
+          <points_per_decade>20</points_per_decade>
+        </sampling>
+        <plot>
+          <color>#00ff00</color>
+          <legend>Calibration</legend>
+        </plot>
+      </config>
+    </sweep>
+
+  </steps>
+</proc>

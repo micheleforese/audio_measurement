@@ -1,0 +1,173 @@
+<proc name="la_126_ch1">
+
+  <steps>
+    <serial_number>
+      <text>ID Device:</text>
+    </serial_number>
+
+    <!-- GAIN 5 -->
+    <text>
+      Collegare L'Output al DUT.
+      GAIN 5.
+    </text>
+
+    <set_level override="">
+      <dBu>-14</dBu>
+      <file_set_level>
+        <key>set_level_5</key>
+        <name>set_level_5.set_level.dat</name>
+      </file_set_level>
+      <file_set_level_plot>
+        <key>set_level_5_plot</key>
+        <name>set_level_5_plot.set_level.png</name>
+      </file_set_level_plot>
+      <config>
+        <nidaq>
+          <Fs_max>1000000</Fs_max>
+          <voltage_min>-10</voltage_min>
+          <voltage_max>10</voltage_max>
+          <input_channel>cDAQ9189-1CDBE0AMod5/ai0</input_channel>
+        </nidaq>
+        <sampling>
+          <Fs_multiplier>50</Fs_multiplier>
+          <number_of_samples>900</number_of_samples>
+        </sampling>
+      </config>
+    </set_level>
+
+    <insertion_gain>
+      <file_calibration>
+        <key>master</key>
+        <name>master.calibration.dat</name>
+      </file_calibration>
+      <file_set_level>
+        <key>set_level_5</key>
+        <name>set_level_5.set_level.dat</name>
+      </file_set_level>
+      <file_gain>
+        <key>gain_5</key>
+        <name>gain_5.dat</name>
+      </file_gain>
+    </insertion_gain>
+
+    <sweep>
+      <name_folder>sweep 126 G5</name_folder>
+      <file_set_level>
+        <key>set_level_5</key>
+        <name>set_level_5.set_level.dat</name>
+      </file_set_level>
+      <file_offset>
+        <key>set_level_5</key>
+        <name>set_level_5.set_level.dat</name>
+      </file_offset>
+      <file_insertion_gain>
+        <key>gain_5</key>
+        <name>gain_5.dat</name>
+      </file_insertion_gain>
+      <config>
+        <nidaq>
+          <Fs_max>1000000</Fs_max>
+          <voltage_min>-10</voltage_min>
+          <voltage_max>10</voltage_max>
+          <input_channel>cDAQ9189-1CDBE0AMod5/ai0</input_channel>
+        </nidaq>
+        <sampling>
+          <Fs_multiplier>50</Fs_multiplier>
+          <points_per_decade>10</points_per_decade>
+          <frequency_min>5</frequency_min>
+          <frequency_max>300000</frequency_max>
+          <number_of_samples>900</number_of_samples>
+        </sampling>
+        <plot>
+          <interpolation_rate>10</interpolation_rate>
+          <color>#00ffff</color>
+          <legend>126 G5</legend>
+        </plot>
+      </config>
+    </sweep>
+
+
+    <!-- GAIN 10 -->
+    <text>
+      Collegare L'Output al DUT.
+      GAIN 10.
+    </text>
+
+    <set_level>
+      <dBu>-14</dBu>
+      <file_set_level>
+        <key>set_level_10</key>
+        <name>set_level_10.set_level.dat</name>
+      </file_set_level>
+      <file_set_level_plot>
+        <key>set_level_10_plot</key>
+        <name>set_level_10_plot.set_level.png</name>
+      </file_set_level_plot>
+      <config>
+        <nidaq>
+          <Fs_max>1000000</Fs_max>
+          <voltage_min>-10</voltage_min>
+          <voltage_max>10</voltage_max>
+          <input_channel>cDAQ9189-1CDBE0AMod5/ai0</input_channel>
+        </nidaq>
+        <sampling>
+          <Fs_multiplier>50</Fs_multiplier>
+          <number_of_samples>900</number_of_samples>
+        </sampling>
+      </config>
+    </set_level>
+
+    <insertion_gain>
+      <file_calibration>
+        <key>master</key>
+        <name>master.calibration.dat</name>
+      </file_calibration>
+      <file_set_level>
+        <key>set_level_10</key>
+        <name>set_level_10.set_level.dat</name>
+      </file_set_level>
+      <file_gain>
+        <key>gain_10</key>
+        <name>gain_10.dat</name>
+      </file_gain>
+    </insertion_gain>
+
+    <sweep>
+      <name_folder>sweep 126 G10</name_folder>
+      <file_set_level>
+        <key>set_level_10</key>
+        <name>set_level_10.set_level.dat</name>
+      </file_set_level>
+      <file_offset>
+        <key>set_level_10</key>
+        <name>set_level_10.set_level.dat</name>
+      </file_offset>
+      <file_insertion_gain>
+        <key>gain_10</key>
+        <name>gain_10.dat</name>
+      </file_insertion_gain>
+      <config>
+        <nidaq>
+          <Fs_max>1000000</Fs_max>
+          <voltage_min>-10</voltage_min>
+          <voltage_max>10</voltage_max>
+          <input_channel>cDAQ9189-1CDBE0AMod5/ai0</input_channel>
+        </nidaq>
+        <sampling>
+          <Fs_multiplier>50</Fs_multiplier>
+          <points_per_decade>10</points_per_decade>
+          <frequency_min>5</frequency_min>
+          <frequency_max>300000</frequency_max>
+          <number_of_samples>900</number_of_samples>
+        </sampling>
+        <plot>
+          <interpolation_rate>10</interpolation_rate>
+          <color>#0000ff</color>
+          <legend>126 G10</legend>
+        </plot>
+      </config>
+    </sweep>
+
+
+  </steps>
+</proc>

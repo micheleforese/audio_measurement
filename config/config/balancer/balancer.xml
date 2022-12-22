@@ -1,0 +1,297 @@
+<proc name="BALANCER">
+
+  <steps>
+    <serial_number>
+      <text>ID Device:</text>
+    </serial_number>
+
+    <default>
+      <sweep>
+        <config>
+          <nidaq>
+            <Fs_max>1000000</Fs_max>
+            <voltage_min>-10</voltage_min>
+            <voltage_max>10</voltage_max>
+            <input_channel>cDAQ9189-1CDBE0AMod5/ai0</input_channel>
+          </nidaq>
+          <sampling>
+            <Fs_multiplier>50</Fs_multiplier>
+            <points_per_decade>20</points_per_decade>
+            <frequency_min>10</frequency_min>
+            <frequency_max>400000</frequency_max>
+            <number_of_samples>100</number_of_samples>
+            <delay_measurements>0</delay_measurements>
+          </sampling>
+          <plot>
+            <interpolation_rate>10</interpolation_rate>
+          </plot>
+        </config>
+      </sweep>
+    </default>
+
+    <!-- <task text="CALIBRATION DIRECT">
+      <check condition="not exists" action="break">
+        <file path="Calibration direct/Calibration direct.csv" />
+      </check>
+
+      <file>
+        <key>master_direct</key>
+        <path>master_direct.calibration.dat</path>
+      </file>
+      <file>
+        <key>master_direct_plot</key>
+        <path>master_direct_plot.calibration.png</path>
+      </file>
+
+      <file>
+        <key>gain_master_direct</key>
+        <path>gain_master_direct.dat</path>
+      </file>
+
+      <check condition="not exists" action="break">
+        <file key="master_direct" />
+      </check>
+
+      <task text="CALIBRATION DIRECT SET LEVEL">
+
+        <text>Starting Set Level</text>
+        <ask>Confirmed?</ask>
+
+        <set_level>
+          <file_set_level key="master_direct" />
+          <file_set_level_plot key="master_direct_plot" />
+          <config>
+            <nidaq>
+              <Fs_max>1000000</Fs_max>
+              <voltage_min>-10</voltage_min>
+              <voltage_max>10</voltage_max>
+              <input_channel>cDAQ9189-1CDBE0AMod5/ai0</input_channel>
+            </nidaq>
+            <sampling>
+              <Fs_multiplier>50</Fs_multiplier>
+              <number_of_samples>100</number_of_samples>
+            </sampling>
+          </config>
+        </set_level>
+
+        <insertion_gain>
+          <file_calibration key="master_direct" />
+          <file_set_level key="master_direct" />
+          <file_gain key="gain_master_direct" />
+        </insertion_gain>
+      </task>
+
+
+      <task text="CALIBRATION DIRECT SWEEP">
+        <file>
+          <key>calibration_direct_sweep</key>
+          <path>Calibration direct/Calibration direct.csv</path>
+        </file>
+
+        <check condition="not exists" action="break">
+          <file key="calibration_direct_sweep" />
+        </check>
+
+        <text>Starting Calibration DIRECT Sweep</text>
+        <ask>Confirmed?</ask>
+        <sweep>
+          <name_folder>Calibration direct</name_folder>
+          <file_set_level key="master_direct" />
+          <file_offset key="master_direct" />
+          <file_insertion_gain key="gain_master_direct" />
+          <config>
+            <plot>
+              <color>#ff0000</color>
+              <legend>Calibration direct</legend>
+            </plot>
+          </config>
+        </sweep>
+      </task>
+
+    </task> -->
+
+    <file>
+      <key>master_balancer</key>
+      <path>master_balancer.calibration.dat</path>
+    </file>
+    <file>
+      <key>master_balancer_plot</key>
+      <path>master_balancer_plot.calibration.png</path>
+    </file>
+
+    <file>
+      <key>gain_master_balancer</key>
+      <path>gain_master_balancer.dat</path>
+    </file>
+
+    <file>
+      <key>Calibration_balancer_sweep</key>
+      <path>Calibration balancer/Calibration balancer.csv</path>
+    </file>
+
+    <task text="CALIBRATION BALANCER">
+      <check condition="not exists" action="break">
+        <file path="Calibration balancer/Calibration balancer.csv" />
+      </check>
+
+
+      <task text="CALIBRATION BALANCER SET LEVEL">
+
+        <check condition="not exists" action="break">
+          <file key="master_balancer" />
+        </check>
+
+        <text>Starting Set Level</text>
+        <ask>Confirmed?</ask>
+
+        <set_level>
+          <file_set_level key="master_balancer" />
+          <file_set_level_plot key="master_balancer_plot" />
+          <config>
+            <nidaq>
+              <Fs_max>1000000</Fs_max>
+              <voltage_min>-10</voltage_min>
+              <voltage_max>10</voltage_max>
+              <input_channel>cDAQ9189-1CDBE0AMod5/ai0</input_channel>
+            </nidaq>
+            <sampling>
+              <Fs_multiplier>50</Fs_multiplier>
+              <number_of_samples>100</number_of_samples>
+            </sampling>
+          </config>
+        </set_level>
+
+        <insertion_gain>
+          <file_calibration key="master_balancer" />
+          <file_set_level key="master_balancer" />
+          <file_gain key="gain_master_balancer" />
+        </insertion_gain>
+      </task>
+
+
+      <task text="CALIBRATION BALANCER SWEEP">
+        <check condition="not exists" action="break">
+          <file key="Calibration_balancer_sweep" />
+        </check>
+
+        <text>Starting Calibration balancer Sweep</text>
+        <ask>Confirmed?</ask>
+        <sweep>
+          <name_folder>Calibration balancer</name_folder>
+          <file_set_level key="master_balancer" />
+          <file_offset key="master_balancer" />
+          <file_insertion_gain key="gain_master_balancer" />
+          <config>
+            <plot>
+              <color>#00ff00</color>
+              <legend>Calibration balancer</legend>
+            </plot>
+          </config>
+        </sweep>
+      </task>
+
+
+    </task>
+
+    <file>
+      <key>master_pre</key>
+      <path>master_pre.calibration.dat</path>
+    </file>
+    <file>
+      <key>master_pre_plot</key>
+      <path>master_pre_plot.calibration.png</path>
+    </file>
+
+    <file>
+      <key>gain_master_pre</key>
+      <path>gain_master_pre.dat</path>
+    </file>
+
+    <file>
+      <key>Calibration_pre_sweep</key>
+      <path>Calibration pre/Calibration pre.csv</path>
+    </file>
+
+    <task text="CALIBRATION PRE">
+      <check condition="not exists" action="break">
+        <file path="Calibration pre/Calibration pre.csv" />
+      </check>
+
+
+      <task text="CALIBRATION PRE SET LEVEL">
+        <check condition="not exists" action="break">
+          <file key="master_pre" />
+        </check>
+
+        <text>Starting Set Level</text>
+        <ask>Confirmed?</ask>
+
+        <set_level>
+          <file_set_level key="master_pre" />
+          <file_set_level_plot key="master_pre_plot" />
+          <config>
+            <nidaq>
+              <Fs_max>1000000</Fs_max>
+              <voltage_min>-10</voltage_min>
+              <voltage_max>10</voltage_max>
+              <input_channel>cDAQ9189-1CDBE0AMod5/ai0</input_channel>
+            </nidaq>
+            <sampling>
+              <Fs_multiplier>50</Fs_multiplier>
+              <number_of_samples>100</number_of_samples>
+            </sampling>
+          </config>
+        </set_level>
+
+        <insertion_gain>
+          <file_calibration key="master_pre" />
+          <file_set_level key="master_pre" />
+          <file_gain key="gain_master_pre" />
+        </insertion_gain>
+      </task>
+
+
+      <task text="CALIBRATION BALANCER SWEEP">
+        <check condition="not exists" action="break">
+          <file key="Calibration_pre_sweep" />
+        </check>
+
+        <text>Starting Calibration pre Sweep</text>
+        <ask>Confirmed?</ask>
+        <sweep>
+          <name_folder>Calibration pre</name_folder>
+          <file_set_level key="master_pre" />
+          <file_offset key="master_pre" />
+          <file_offset_sweep key="Calibration_balancer_sweep" />
+          <file_insertion_gain key="gain_master_pre" />
+          <config>
+            <plot>
+              <color>#0000ff</color>
+              <legend>Calibration pre</legend>
+            </plot>
+          </config>
+        </sweep>
+      </task>
+
+
+    </task>
+
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/calibration.DEBUG.png</file_plot>
+      <folder_sweep>
+        <var>Calibration balancer</var>
+        <var balanced="">Calibration pre</var>
+        <var>Calibration pre</var>
+      </folder_sweep>
+    </multiplot>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/calibration.png</file_plot>
+      <folder_sweep>
+        <var balanced="">Calibration pre</var>
+      </folder_sweep>
+    </multiplot>
+
+  </steps>
+</proc>

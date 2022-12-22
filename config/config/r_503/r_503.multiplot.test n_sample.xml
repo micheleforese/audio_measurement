@@ -1,0 +1,21 @@
+<proc name="r_503">
+
+  <steps>
+    <serial_number>
+      <text>ID Device:</text>
+    </serial_number>
+
+    <multiplot name="multiplot">
+      <file_plot>graphs/multiplot r_503 LO - N Sample.png</file_plot>
+      <folder_sweep>
+        <!-- <var>[LO] G 3 Forchetta DESTRA - N 900</var>-->
+        <var>[LO] G 3 Forchetta DESTRA - N 500</var>
+        <var>[LO] G 3 Forchetta DESTRA - N 200</var>
+        <!-- <var>[LO] G 3 Forchetta DESTRA - N 150</var> -->
+        <var>[LO] G 3 Forchetta DESTRA - N 100</var>
+        <var>[LO] G 3 Forchetta DESTRA - N 50</var>
+      </folder_sweep>
+    </multiplot>
+
+  </steps>
+</proc>
