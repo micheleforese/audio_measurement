@@ -152,8 +152,6 @@ def phase_analysis():
                 trim=False,
             )
             result_1: RMSResult = RMS.rms_v2(
-        nidaq.task_close()
-
                 voltages_sampling_1,
                 interpolation_rate=interpolation_rate,
                 trim=False,
