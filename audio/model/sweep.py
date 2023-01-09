@@ -135,7 +135,7 @@ class SweepData:
 
             file.write(self._meta_info("amplitude", round(self.amplitude, 5)))
             if self.config is not None:
-                config_yaml = self.config.to_yaml()
+                config_yaml = self.config.to_yaml_string()
                 yaml_str = self._yaml_string_to_yaml_comment(config_yaml)
                 console.print(yaml_str)
                 file.write(yaml_str)

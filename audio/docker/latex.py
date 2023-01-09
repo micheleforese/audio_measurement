@@ -5,8 +5,8 @@ from typing import List, Optional
 from rich.console import Group
 from rich.live import Live
 from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
-import audio.ui.terminal as ui_t
 from audio.console import console
 from audio.docker import Docker_CLI, User, Volume
 from audio.docker.utility import exec_command
@@ -43,7 +43,16 @@ def create_latex_file(
     debug: bool = False,
 ):
 
-    live_group = Group(Panel(ui_t.progress_list_task))
+    progress_list_task = Progress(
+        SpinnerColumn(),
+        "•",
+        TextColumn(
+            "[bold blue]{task.description}[/] - [bold green]{task.fields[task]}[/]",
+        ),
+        transient=True,
+    )
+
+    live_group = Group(Panel(progress_list_task))
 
     live = Live(
         live_group,
@@ -52,10 +61,8 @@ def create_latex_file(
     )
     live.start()
 
-    task_latex = ui_t.progress_list_task.add_task(
-        "Create Latex pdf", task="Configuration"
-    )
-    ui_t.progress_list_task.start_task(task_latex)
+    task_latex = progress_list_task.add_task("Create Latex pdf", task="Configuration")
+    progress_list_task.start_task(task_latex)
 
     if debug:
         console.print('[PATH - image_file] - "{}"'.format(image_file.absolute()))
@@ -151,7 +158,7 @@ def create_latex_file(
 
     # out_directory = "build"
 
-    ui_t.progress_list_task.update(task_latex, task="Docker Image Running")
+    progress_list_task.update(task_latex, task="Docker Image Running")
 
     docker_image = "micheleforese/latex:full"
 
@@ -213,6 +220,6 @@ def create_latex_file(
         )
     )
 
-    ui_t.progress_list_task.remove_task(task_latex)
+    progress_list_task.remove_task(task_latex)
 
     live.stop()

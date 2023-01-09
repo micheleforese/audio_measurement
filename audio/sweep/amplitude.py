@@ -1,5 +1,6 @@
 import copy
 import time
+from datetime import timedelta
 from enum import Enum, auto
 from math import log10, sqrt
 from pathlib import Path
@@ -28,7 +29,6 @@ from rich.prompt import Confirm, FloatPrompt, Prompt
 from rich.table import Column, Table
 from usbtmc import Instrument
 
-import audio.ui.terminal as ui_t
 from audio.config.plot import PlotConfig
 from audio.config.sweep import SweepConfig
 from audio.config.type import Range
@@ -46,32 +46,12 @@ from audio.model.sampling import VoltageSampling
 from audio.model.set_level import SetLevel
 from audio.model.sweep import SweepData
 from audio.plot import multiplot
-from audio.procedure import (
-    DataProcedure,
-    Procedure,
-    ProcedureAsk,
-    ProcedureCheck,
-    ProcedureCheckCondition,
-    ProcedureDefault,
-    ProcedureFile,
-    ProcedureInsertionGain,
-    ProcedureMultiPlot,
-    ProcedurePhaseSweep,
-    ProcedurePrint,
-    ProcedureSerialNumber,
-    ProcedureSetLevel,
-    ProcedureStep,
-    ProcedureSweep,
-    ProcedureTask,
-    ProcedureText,
-)
 from audio.sampling import config_set_level, plot_from_csv, sampling_curve
 from audio.usb.usbtmc import Instrument, UsbTmc
 from audio.utility import trim_value
 from audio.utility.interrupt import InterruptHandler
 from audio.utility.scpi import SCPI, Bandwidth, Switch
 from audio.utility.timer import Timer, Timer_Message
-from datetime import timedelta
 
 
 class AmplitudeSweepTable:

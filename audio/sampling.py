@@ -22,19 +22,18 @@ from rich.progress import (
 )
 from rich.table import Column, Table
 from usbtmc import Instrument
-from audio.device.cDAQ import ni9223
-from audio.model.sampling import VoltageSampling
-from audio.math.voltage import calculate_gain_dB
-import audio.ui.terminal as ui_t
+
 from audio.config.plot import PlotConfig
 from audio.config.sweep import SweepConfig
 from audio.console import console
+from audio.device.cDAQ import ni9223
 from audio.math import dBV, percentage_error, transfer_function
 from audio.math.algorithm import LogarithmicScale
 from audio.math.interpolation import INTERPOLATION_KIND, logx_interpolation_model
 from audio.math.pid import PID_Controller, Timed_Value
 from audio.math.rms import RMS, RMSResult
-from audio.math.voltage import VdBu_to_Vrms, Vpp_to_Vrms
+from audio.math.voltage import VdBu_to_Vrms, Vpp_to_Vrms, calculate_gain_dB
+from audio.model.sampling import VoltageSampling
 from audio.model.sweep import SweepData
 from audio.usb.usbtmc import UsbTmc
 from audio.utility import trim_value
@@ -424,7 +423,16 @@ def plot_from_csv(
     debug: bool = False,
 ):
 
-    live_group = Group(Panel(ui_t.progress_list_task))
+    progress_list_task = Progress(
+        SpinnerColumn(),
+        "•",
+        TextColumn(
+            "[bold blue]{task.description}[/] - [bold green]{task.fields[task]}[/]",
+        ),
+        transient=True,
+    )
+
+    live_group = Group(Panel(progress_list_task))
 
     live = Live(
         live_group,
@@ -433,13 +441,13 @@ def plot_from_csv(
     )
     live.start()
 
-    task_plotting = ui_t.progress_list_task.add_task("Plotting", task="Plotting")
-    ui_t.progress_list_task.start_task(task_plotting)
+    task_plotting = progress_list_task.add_task("Plotting", task="Plotting")
+    progress_list_task.start_task(task_plotting)
 
     x_frequency: List[float] = []
     y_dBV: List[float] = []
 
-    ui_t.progress_list_task.update(task_plotting, task="Read Measurements")
+    progress_list_task.update(task_plotting, task="Read Measurements")
 
     sweep_data = SweepData.from_csv_file(measurements_file_path)
 
@@ -459,7 +467,7 @@ def plot_from_csv(
     x_frequency = list(sweep_data.frequency.values)
     y_dBV = list(sweep_data.dBV.values)
 
-    ui_t.progress_list_task.update(task_plotting, task="Apply Offset")
+    progress_list_task.update(task_plotting, task="Apply Offset")
 
     sweep_data.config.override(new_config=plot_config)
 
@@ -472,7 +480,7 @@ def plot_from_csv(
             )
         )
 
-    ui_t.progress_list_task.update(task_plotting, task="Interpolate")
+    progress_list_task.update(task_plotting, task="Interpolate")
 
     plot: Tuple[Figure, Axes] = plt.subplots(
         figsize=(16 * 2, 9 * 2), dpi=cfg.dpi if cfg.dpi else 300
@@ -496,7 +504,7 @@ def plot_from_csv(
     xy_sampled = [x_frequency, y_dBV, "o"]
     xy_interpolated = [x_interpolated, y_interpolated, "-"]
 
-    ui_t.progress_list_task.update(task_plotting, task="Plotting Graph")
+    progress_list_task.update(task_plotting, task="Plotting Graph")
 
     axes.semilogx(
         *xy_sampled,
@@ -578,7 +586,7 @@ def plot_from_csv(
         )
     )
 
-    ui_t.progress_list_task.remove_task(task_plotting)
+    progress_list_task.remove_task(task_plotting)
 
     live.stop()
 

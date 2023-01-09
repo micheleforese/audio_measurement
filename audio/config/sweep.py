@@ -1,35 +1,25 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from enum import Enum, auto
-import enum
 
-from pathlib import Path
 import xml.etree.ElementTree as ET
-from typing import Dict, Optional
+from copy import deepcopy
+from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path
+from typing import Optional
 
 import rich
 
-from audio.config import json5_string_to_dict, json5_to_dict
-from audio.config.nidaq import NiDaqConfig, NiDaqConfigOptions, NiDaqConfigXML
-from audio.config.plot import PlotConfig, PlotConfigOptions, PlotConfigXML
-from audio.config.rigol import RigolConfig, RigolConfigOptions, RigolConfigXML
-from audio.config.sampling import (
-    SamplingConfig,
-    SamplingConfigOptions,
-    SamplingConfigXML,
-)
+from audio.config import Config
+from audio.config.nidaq import NiDaqConfig, NiDaqConfigOptions
+from audio.config.plot import PlotConfig, PlotConfigOptions
+from audio.config.rigol import RigolConfig, RigolConfigOptions
+from audio.config.sampling import SamplingConfig, SamplingConfigOptions
 from audio.console import console
-from audio.type import Dictionary
-from rich.syntax import Syntax
-
-
-class FileType(enum.Enum):
-    JSON5 = auto()
-    XML = auto()
+from audio.decoder.xml import DecoderXML
 
 
 class SweepConfigOptions(Enum):
-    ROOT = "sweep-config"
+    ROOT = "config"
     RIGOL = f"{RigolConfigOptions.ROOT.value}"
     NIDAQ = f"{NiDaqConfigOptions.ROOT.value}"
     SAMPLING = f"{SamplingConfigOptions.ROOT.value}"
@@ -51,7 +41,7 @@ class SweepConfigOptionsXPATH(Enum):
 
 @dataclass
 @rich.repr.auto
-class SweepConfig:
+class SweepConfig(Config, DecoderXML):
 
     rigol: Optional[RigolConfig] = None
     nidaq: Optional[NiDaqConfig] = None
@@ -59,39 +49,43 @@ class SweepConfig:
     plot: Optional[PlotConfig] = None
 
     @classmethod
-    def from_xml_file(cls, file_path: Path):
-        if not file_path.exists() or not file_path.is_file():
+    def from_xml_file(cls, file: Path):
+        if not file.exists() or not file.is_file():
             return None
 
-        return cls.from_xml_string(file_path.read_text(encoding="utf-8"))
+        return cls.from_xml_string(file.read_text(encoding="utf-8"))
 
     @classmethod
     def from_xml_string(cls, data: str):
         tree = ET.ElementTree(ET.fromstring(data))
-        return cls.from_xml(tree)
+        root = tree.getroot()
+        return cls.from_xml_object(root)
 
     @classmethod
-    def from_xml(cls, xml: Optional[ET.ElementTree]):
-        if xml is not None:
-            Erigol = SweepConfig.get_rigol_from_xml(xml)
-            Enidaq = SweepConfig.get_nidaq_from_xml(xml)
-            Esampling = SweepConfig.get_sampling_from_xml(xml)
-            Eplot = SweepConfig.get_plot_from_xml(xml)
-
-            rigol_config = RigolConfig.from_xml(Erigol)
-            nidaq_config = NiDaqConfig.from_xml(Enidaq)
-            sampling_config = SamplingConfig.from_xml(Esampling)
-            plot_config = PlotConfig.from_xml(Eplot)
-
-            return cls(
-                rigol=rigol_config,
-                nidaq=nidaq_config,
-                sampling=sampling_config,
-                plot=plot_config,
-            )
-
-        else:
+    def from_xml_object(cls, xml: Optional[ET.Element]):
+        if xml is None or not cls.xml_is_valid(xml):
             return None
+
+        Erigol = SweepConfig.get_rigol_from_xml(xml)
+        Enidaq = SweepConfig.get_nidaq_from_xml(xml)
+        Esampling = SweepConfig.get_sampling_from_xml(xml)
+        Eplot = SweepConfig.get_plot_from_xml(xml)
+
+        rigol_config = RigolConfig.from_xml_object(Erigol)
+        nidaq_config = NiDaqConfig.from_xml_object(Enidaq)
+        sampling_config = SamplingConfig.from_xml_object(Esampling)
+        plot_config = PlotConfig.from_xml_object(Eplot)
+
+        return cls(
+            rigol=rigol_config,
+            nidaq=nidaq_config,
+            sampling=sampling_config,
+            plot=plot_config,
+        )
+
+    @staticmethod
+    def xml_is_valid(xml: ET.Element) -> bool:
+        return xml.tag == SweepConfigOptions.ROOT.value
 
     def merge(self, other: Optional[SweepConfig]):
         if other is None:
@@ -99,25 +93,47 @@ class SweepConfig:
 
         if self.rigol is not None:
             self.rigol.merge(other.rigol)
+        else:
+            self.rigol = deepcopy(other.rigol)
+
         if self.nidaq is not None:
             self.nidaq.merge(other.nidaq)
+        else:
+            self.nidaq = deepcopy(other.nidaq)
+
         if self.sampling is not None:
             self.sampling.merge(other.sampling)
+        else:
+            self.sampling = deepcopy(other.sampling)
+
         if self.plot is not None:
             self.plot.merge(other.plot)
+        else:
+            self.plot = deepcopy(other.plot)
 
     def override(self, other: Optional[SweepConfig]):
         if other is None:
             return
 
-        if other.rigol is not None:
+        if self.rigol is not None:
             self.rigol.override(other.rigol)
-        if other.nidaq is not None:
+        else:
+            self.rigol = deepcopy(other.rigol)
+
+        if self.nidaq is not None:
             self.nidaq.override(other.nidaq)
-        if other.sampling is not None:
+        else:
+            self.nidaq = deepcopy(other.nidaq)
+
+        if self.sampling is not None:
             self.sampling.override(other.sampling)
-        if other.plot is not None:
+        else:
+            self.sampling = deepcopy(other.sampling)
+
+        if self.plot is not None:
             self.plot.override(other.plot)
+        else:
+            self.plot = deepcopy(other.plot)
 
     def print(self):
         console.print(self)

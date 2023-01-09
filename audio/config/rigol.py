@@ -1,13 +1,16 @@
 from __future__ import annotations
-from dataclasses import dataclass
 
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 from typing import Dict, Optional
 
 import rich
 
+from audio.config import Config
 from audio.console import console
+from audio.decoder.xml import DecoderXML
 
 
 class RigolConfigOptions(Enum):
@@ -25,147 +28,10 @@ class RigolConfigOptionsXPATH(Enum):
         return str(self.value)
 
 
-@rich.repr.auto
-class RigolConfigXML:
-    TREE_SKELETON: str = """
-    <{root}>
-        <{amplitude_peak_to_peak}></{amplitude_peak_to_peak}>
-    </{root}>
-    """.format(
-        root=RigolConfigOptions.ROOT.value,
-        amplitude_peak_to_peak=RigolConfigOptions.AMPLITAMPLITUDE_PEAK_TO_PEAK.value,
-    )
-
-    _tree: ET.ElementTree
-
-    def __init__(self) -> None:
-        self._tree = ET.ElementTree(ET.fromstring(self.TREE_SKELETON))
-
-    def set_tree(self, tree: ET.ElementTree):
-        self._tree = tree
-
-    @classmethod
-    def from_tree(cls, tree: ET.ElementTree):
-        # TODO: Check tree for validity
-        rigolConfigXML = RigolConfigXML()
-        rigolConfigXML.set_tree(tree)
-
-        return rigolConfigXML
-
-    @classmethod
-    def from_dict(cls, dictionary: Optional[Dict]):
-        amplitude_peak_to_peak: Optional[float] = None
-
-        if dictionary is not None:
-            amplitude_peak_to_peak = dictionary.get(
-                RigolConfigOptions.AMPLITAMPLITUDE_PEAK_TO_PEAK.value, None
-            )
-
-            if amplitude_peak_to_peak:
-                amplitude_peak_to_peak = float(amplitude_peak_to_peak)
-
-        return cls.from_values(
-            amplitude_peak_to_peak=amplitude_peak_to_peak,
-        )
-
-    @classmethod
-    def from_xml(cls, xml: Optional[ET.ElementTree]):
-        if xml is not None:
-            rigol_config_xml = RigolConfigXML.from_values(
-                amplitude_peak_to_peak=RigolConfigXML.get_amplitude_peak_to_peak_from_xml(
-                    xml
-                )
-            )
-            return rigol_config_xml
-        else:
-            return RigolConfigXML()
-
-    @staticmethod
-    def _get_property_from_xml(xml: Optional[ET.ElementTree], XPath: str):
-        if xml is not None:
-            prop = xml.find(XPath)
-
-            if prop is not None:
-                return prop.text
-
-    @staticmethod
-    def get_amplitude_peak_to_peak_from_xml(xml: Optional[ET.ElementTree]):
-        amplitude_peak_to_peak = RigolConfigXML._get_property_from_xml(
-            xml, RigolConfigOptionsXPATH.AMPLITUDE_PEAK_TO_PEAK.value
-        )
-        if amplitude_peak_to_peak is not None:
-            return float(amplitude_peak_to_peak)
-
-        return None
-
-    @classmethod
-    def from_values(
-        cls,
-        amplitude_peak_to_peak: Optional[float] = None,
-    ):
-        tree = ET.ElementTree(ET.fromstring(cls.TREE_SKELETON))
-
-        if amplitude_peak_to_peak:
-            tree.find(RigolConfigOptionsXPATH.AMPLITUDE_PEAK_TO_PEAK.value).text = str(
-                amplitude_peak_to_peak
-            )
-
-        return cls.from_tree(tree)
-
-    def get_node(self):
-        return self._tree.getroot()
-
-    def print(self):
-        root = self._tree.getroot()
-        ET.indent(root)
-        console.print(ET.tostring(root, encoding="unicode"))
-
-    @property
-    def amplitude_peak_to_peak(self):
-        amplitude_peak_to_peak = self._tree.find(
-            RigolConfigOptionsXPATH.AMPLITUDE_PEAK_TO_PEAK.value
-        ).text
-
-        if amplitude_peak_to_peak is not None:
-            amplitude_peak_to_peak = float(amplitude_peak_to_peak)
-
-        return amplitude_peak_to_peak
-
-    def override(
-        self,
-        amplitude_peak_to_peak: Optional[float] = None,
-        new_config: Optional[RigolConfigXML] = None,
-    ):
-        if new_config is not None:
-            self._set_amplitude_peak_to_peak(new_config.amplitude_peak_to_peak)
-
-        if amplitude_peak_to_peak is not None:
-            self._set_amplitude_peak_to_peak(amplitude_peak_to_peak)
-
-    def _set_amplitude_peak_to_peak(self, amplitude_peak_to_peak: Optional[float]):
-        try:
-            self._tree.find(
-                RigolConfigOptionsXPATH.AMPLITUDE_PEAK_TO_PEAK.value
-            ).text = str(amplitude_peak_to_peak)
-        except Exception:
-            self.print()
-
-
 @dataclass
 @rich.repr.auto
-class RigolConfig:
+class RigolConfig(Config, DecoderXML):
     amplitude_peak_to_peak: Optional[float] = None
-
-    @classmethod
-    def from_xml(cls, xml: Optional[ET.ElementTree]):
-        if xml is not None:
-            return cls(
-                amplitude_peak_to_peak=RigolConfig.get_amplitude_peak_to_peak_from_xml(
-                    xml
-                )
-            )
-        else:
-            return cls()
 
     def merge(self, other: Optional[RigolConfig]):
         if other is None:
@@ -181,8 +47,36 @@ class RigolConfig:
         if other.amplitude_peak_to_peak is not None:
             self.amplitude_peak_to_peak = other.amplitude_peak_to_peak
 
+    def print(self):
+        console.print(self)
+
+    @classmethod
+    def from_xml_file(cls, file: Path):
+        if not file.exists() or not file.is_file():
+            return None
+
+        return cls.from_xml_string(file.read_text(encoding="utf-8"))
+
+    @classmethod
+    def from_xml_string(cls, data: str):
+        tree = ET.ElementTree(ET.fromstring(data))
+        return cls.from_xml_object(tree)
+
+    @classmethod
+    def from_xml_object(cls, xml: Optional[ET.ElementTree]):
+        if xml is None or not cls.xml_is_valid(xml):
+            return None
+
+        return cls(
+            amplitude_peak_to_peak=RigolConfig._get_amplitude_peak_to_peak_from_xml(xml)
+        )
+
     @staticmethod
-    def get_amplitude_peak_to_peak_from_xml(xml: Optional[ET.ElementTree]):
+    def xml_is_valid(xml: ET.Element) -> bool:
+        return xml.tag == RigolConfigOptions.ROOT.value
+
+    @staticmethod
+    def _get_amplitude_peak_to_peak_from_xml(xml: Optional[ET.ElementTree]):
         Eamplitude_peak_to_peak = xml.find(
             RigolConfigOptionsXPATH.AMPLITUDE_PEAK_TO_PEAK.value
         )

@@ -17,30 +17,6 @@ from audio.config.type import Range
 from audio.console import console
 from audio.math.algorithm import LogarithmicScale
 from audio.math.rms import RMS, RMSResult, VoltageSampling
-from audio.model.file import File
-from audio.model.insertion_gain import InsertionGain
-from audio.model.set_level import SetLevel
-from audio.model.sweep import SweepData
-from audio.plot import multiplot
-from audio.procedure import (
-    DataProcedure,
-    Procedure,
-    ProcedureAsk,
-    ProcedureCheck,
-    ProcedureCheckCondition,
-    ProcedureDefault,
-    ProcedureFile,
-    ProcedureInsertionGain,
-    ProcedureMultiPlot,
-    ProcedurePhaseSweep,
-    ProcedurePrint,
-    ProcedureSerialNumber,
-    ProcedureSetLevel,
-    ProcedureStep,
-    ProcedureSweep,
-    ProcedureTask,
-    ProcedureText,
-)
 from audio.sampling import config_set_level, plot_from_csv, sampling_curve
 from audio.usb.usbtmc import Instrument, UsbTmc
 from audio.utility import trim_value
@@ -49,28 +25,6 @@ from audio.utility.scpi import SCPI, Bandwidth, Switch
 
 
 def phase_sweep(name: str, folder_path: Path, graph_path: Path, config: SweepConfig):
-    # freq_min: float = float(
-    #     Prompt.ask("Frequency Min (Hz) [10]", show_default=True, default=10)
-    # )
-    # freq_max: float = float(
-    #     Prompt.ask("Frequency Max (Hz) [200_000]", show_default=True, default=200_000)
-    # )
-    # frequency_range = Range[float](freq_min, freq_max)
-    # amplitude: float = float(
-    #     Prompt.ask("Amplitude (Vpp) [1]", show_default=True, default=1.0)
-    # )
-    # points_per_decade: int = int(
-    #     Prompt.ask("Points per decade [10]", show_default=True, default=10)
-    # )
-    # n_sample: int = int(
-    #     Prompt.ask("Sample per point [200]", show_default=True, default=200)
-    # )
-    # Fs_multiplier: int = int(
-    #     Prompt.ask("Fs multiplier [50]", show_default=True, default=50)
-    # )
-    # interpolation_rate: int = int(
-    #     Prompt.ask("interpolation rate [20]", show_default=True, default=20)
-    # )
 
     with InterruptHandler() as h:
         # Asks for the 2 instruments
