@@ -18,19 +18,30 @@ from audio.console import console
 from audio.math.algorithm import LogarithmicScale
 from audio.math.rms import RMS, RMSResult, VoltageSampling
 from audio.sampling import config_set_level, plot_from_csv, sampling_curve
-from audio.usb.usbtmc import Instrument, UsbTmc
+from audio.usb.usbtmc import Instrument, ResourceManager, UsbTmc
 from audio.utility import trim_value
 from audio.utility.interrupt import InterruptHandler
 from audio.utility.scpi import SCPI, Bandwidth, Switch
 
 
-def phase_sweep(name: str, folder_path: Path, graph_path: Path, config: SweepConfig):
+def phase_sweep(
+    name: str,
+    folder_path: Path,
+    graph_path: Path,
+    config: SweepConfig,
+):
 
     with InterruptHandler() as h:
         # Asks for the 2 instruments
-        list_devices: List[Instrument] = UsbTmc.search_devices()
+        try:
+            rm = ResourceManager()
+            list_devices = rm.search_resources()
+            if len(list_devices) < 1:
+                raise Exception("UsbTmc devices not found.")
+            generator = rm.open_resource(list_devices[0])
 
-        generator: UsbTmc = UsbTmc(list_devices[0])
+        except Exception as e:
+            console.print(f"{e}")
 
         # Open the Instruments interfaces
         # Auto Close with the destructor

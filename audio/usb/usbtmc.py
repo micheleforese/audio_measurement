@@ -116,21 +116,6 @@ class UsbTmc:
                 if debug:
                     console.print(command)
 
-    # def exec_commands(instr: UsbTmc, commands: List[str], debug: bool = False):
-    #     for command in commands:
-    #         if command.find("?") > 0:
-    #             response = instr.ask(command)
-
-    #             if response == "":
-    #                 response = "NULL"
-
-    #             console.print(f"{command}:\t{response}")
-    #         else:
-    #             instr.write(command)
-
-    #             if debug:
-    #                 console.print(command)
-
     @staticmethod
     def search_devices() -> List[Instrument]:
 
@@ -221,9 +206,9 @@ def command_line_():
     reader.close()
 
 
+import usb
 import usbtmc
 from rich.panel import Panel
-import usb
 
 
 class ResourceManager:

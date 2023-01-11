@@ -1,19 +1,9 @@
-import copy
-import time
 from datetime import timedelta
-from enum import Enum, auto
-from math import log10, sqrt
 from pathlib import Path
 from time import sleep
-from typing import Callable, Dict, List, Optional, Tuple, Type
+from typing import List, Optional
 
-import click
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-import numpy as np
 import pandas as pd
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
 from rich.console import Group
 from rich.live import Live
 from rich.panel import Panel
@@ -25,31 +15,18 @@ from rich.progress import (
     TextColumn,
     TimeElapsedColumn,
 )
-from rich.prompt import Confirm, FloatPrompt, Prompt
 from rich.table import Column, Table
-from usbtmc import Instrument
 
-from audio.config.plot import PlotConfig
 from audio.config.sweep import SweepConfig
-from audio.config.type import Range
 from audio.console import console
 from audio.device.cDAQ import ni9223
-from audio.math import dBV, percentage_error, transfer_function
 from audio.math.algorithm import LogarithmicScale
-from audio.math.interpolation import INTERPOLATION_KIND, logx_interpolation_model
-from audio.math.pid import PID_Controller, Timed_Value
-from audio.math.rms import RMS, RMSResult, VoltageSampling
-from audio.math.voltage import VdBu_to_Vrms, Vpp_to_Vrms, calculate_gain_dB
-from audio.model.file import File
-from audio.model.insertion_gain import InsertionGain
+from audio.math.rms import RMS, RMSResult
+from audio.math.voltage import Vpp_to_Vrms
 from audio.model.sampling import VoltageSampling
-from audio.model.set_level import SetLevel
 from audio.model.sweep import SweepData
-from audio.plot import multiplot
-from audio.sampling import config_set_level, plot_from_csv, sampling_curve
-from audio.usb.usbtmc import Instrument, UsbTmc
+from audio.usb.usbtmc import ResourceManager, UsbTmc
 from audio.utility import trim_value
-from audio.utility.interrupt import InterruptHandler
 from audio.utility.scpi import SCPI, Bandwidth, Switch
 from audio.utility.timer import Timer, Timer_Message
 
@@ -173,22 +150,22 @@ def amplitude_sweep(
 
     # Asks for the 2 instruments
     try:
-        list_devices: List[Instrument] = UsbTmc.search_devices()
+        rm = ResourceManager()
+        list_devices = rm.search_resources()
 
         if len(list_devices) < 1:
             raise Exception("UsbTmc devices not found.")
 
         if debug:
             UsbTmc.print_devices_list(list_devices)
-
-        generator: UsbTmc = UsbTmc(list_devices[0])
+        generator = rm.open_resource(list_devices[0])
 
     except Exception as e:
         console.print(f"{e}")
 
     progress_list_task.update(task_sampling, task="Setting Devices")
 
-    if not generator.instr.instrument.connected:
+    if not generator.instr.connected:
         generator.open()
 
     if config.rigol.amplitude_peak_to_peak > 12:
@@ -330,7 +307,11 @@ def amplitude_sweep(
             frequency,
             Fs,
         )
-        result: RMSResult = RMS.rms_v2(voltages_sampling)
+        result: RMSResult = RMS.rms_v2(
+            voltages_sampling,
+            trim=True,
+            interpolation_rate=10,
+        )
         voltages_sampling.save(save_file_path)
 
         message: Timer_Message = time.stop()

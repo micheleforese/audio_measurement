@@ -5,7 +5,7 @@ import click
 import matplotlib.ticker as ticker
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from rich.prompt import Confirm, Prompt, FloatPrompt
+from rich.prompt import Confirm, FloatPrompt, Prompt
 
 from audio.config.type import Range
 from audio.console import console
@@ -16,22 +16,10 @@ from audio.usb.usbtmc import Instrument, UsbTmc
 from audio.utility import trim_value
 from audio.utility.interrupt import InterruptHandler
 from audio.utility.scpi import SCPI, Bandwidth, Switch
-from audio.utility.timer import timeit
 
 
 def say_hi():
     console.print("HI!!")
-
-
-@click.command(help="Test for Timer class")
-def testTimer():
-
-    decorator = timeit()
-    timed_say_hi = decorator(say_hi)
-
-    timed_say_hi()
-
-    timeit()(say_hi)()
 
 
 @click.command()
@@ -262,8 +250,8 @@ def phase_analysis():
 @click.command()
 def instrument():
 
-    import usbtmc
     import usb
+    import usbtmc
     from rich import inspect
 
     from audio.usb.usbtmc import ResourceManager
@@ -298,10 +286,11 @@ def instrument():
 @click.command()
 def bk_precision():
     console.log("BK PRECISION")
+    import pyvisa
     from rich import inspect
     from rich.panel import Panel
-    import pyvisa
-    from audio.utility.scpi import SCPI_v2, Function
+
+    from audio.utility.scpi import Function, SCPI_v2
 
     scpi = SCPI_v2()
 

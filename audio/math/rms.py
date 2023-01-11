@@ -178,8 +178,8 @@ class RMS:
         voltages_sampling: VoltageSampling,
         rms_mode: RMS_MODE = RMS_MODE.FFT,
         time_report: bool = False,
-        trim: bool = True,
-        interpolation_rate: float = 10,
+        trim: bool = False,
+        interpolation_rate: float = 1,
     ):
         result = RMSResult()
         timer = Timer()
