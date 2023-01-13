@@ -27,3 +27,6 @@ docs/site
 
 #TEST
 !audio-test/config/**
+
+# Database
+data/**
