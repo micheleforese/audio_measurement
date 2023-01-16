@@ -1,0 +1,67 @@
+digraph schema {
+  node[shape=none]
+
+  test [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+      <TR><TD BGCOLOR="gray" COLSPAN="2"><B>test</B></TD></TR>
+      <TR><TD PORT="id"><I>id</I></TD><TD>INTEGER</TD></TR>
+      <TR><TD PORT="name">name</TD><TD>TEXT</TD></TR>
+      <TR><TD PORT="date">date</TD><TD>TEXT</TD></TR>
+      <TR><TD PORT="comment">comment</TD><TD>TEXT</TD></TR>
+    </TABLE>>];
+  sweep [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+      <TR><TD BGCOLOR="gray" COLSPAN="2"><B>sweep</B></TD></TR>
+      <TR><TD PORT="test_id">test_id</TD><TD>INTEGER</TD></TR>
+      <TR><TD PORT="id"><I>id</I></TD><TD>INTEGER</TD></TR>
+      <TR><TD PORT="name">name</TD><TD>TEXT</TD></TR>
+      <TR><TD PORT="date">date</TD><TD>TEXT</TD></TR>
+      <TR><TD PORT="comment">comment</TD><TD>TEXT</TD></TR>
+    </TABLE>>];
+  frequency [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+      <TR><TD BGCOLOR="gray" COLSPAN="2"><B>frequency</B></TD></TR>
+      <TR><TD PORT="sweep_id">sweep_id</TD><TD>INTEGER</TD></TR>
+      <TR><TD PORT="id">id</TD><TD>INTEGER</TD></TR>
+      <TR><TD PORT="frequency">frequency</TD><TD>DOUBLE</TD></TR>
+      <TR><TD PORT="Fs">Fs</TD><TD>DOUBLE</TD></TR>
+    </TABLE>>];
+  sweepVoltage [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+      <TR><TD BGCOLOR="gray" COLSPAN="2"><B>sweepVoltage</B></TD></TR>
+      <TR><TD PORT="sweep_id">sweep_id</TD><TD>INTEGER</TD></TR>
+      <TR><TD PORT="channel_id">channel_id</TD><TD>INTEGER</TD></TR>
+      <TR><TD PORT="frequency_id">frequency_id</TD><TD>INTEGER</TD></TR>
+      <TR><TD PORT="id">id</TD><TD>INTEGER</TD></TR>
+      <TR><TD PORT="voltage">voltage</TD><TD>DOUBLE</TD></TR>
+    </TABLE>>];
+  sweepConfig [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+      <TR><TD BGCOLOR="gray" COLSPAN="2"><B>sweepConfig</B></TD></TR>
+      <TR><TD PORT="sweep_id">sweep_id</TD><TD>INTEGER</TD></TR>
+      <TR><TD PORT="frequency_min">frequency_min</TD><TD>DOUBLE</TD></TR>
+      <TR><TD PORT="frequency_max">frequency_max</TD><TD>DOUBLE</TD></TR>
+      <TR><TD PORT="points_per_decade">points_per_decade</TD><TD>DOUBLE</TD></TR>
+      <TR><TD PORT="number_of_samples">number_of_samples</TD><TD>INT</TD></TR>
+      <TR><TD PORT="Fs_multiplier">Fs_multiplier</TD><TD>DOUBLE</TD></TR>
+      <TR><TD PORT="delay_measurements">delay_measurements</TD><TD>DOUBLE</TD></TR>
+      <TR><TD PORT="rms">rms</TD><TD>DOUBLE</TD></TR>
+      <TR><TD PORT="interpolation_rate">interpolation_rate</TD><TD>DOUBLE</TD></TR>
+    </TABLE>>];
+  channel [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+      <TR><TD BGCOLOR="gray" COLSPAN="2"><B>channel</B></TD></TR>
+      <TR><TD PORT="sweep_id">sweep_id</TD><TD>INTEGER</TD></TR>
+      <TR><TD PORT="id">id</TD><TD>INTEGER</TD></TR>
+      <TR><TD PORT="name">name</TD><TD>TEXT</TD></TR>
+      <TR><TD PORT="comment">comment</TD><TD>TEXT</TD></TR>
+    </TABLE>>];
+
+  sweep:test_id -> test:id;
+  frequency:sweep_id -> sweep:id;
+  sweepVoltage:channel_id -> channel:id;
+  sweepVoltage:frequency_id -> frequency:id;
+  sweepVoltage:sweep_id -> sweep:id;
+  sweepConfig:sweep_id -> sweep:id;
+  channel:sweep_id -> sweep:id;
+}

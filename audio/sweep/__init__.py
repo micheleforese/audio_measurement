@@ -1,6 +1,6 @@
 import copy
 import time
-from datetime import timedelta
+from datetime import datetime, timedelta
 from enum import Enum, auto
 from math import log10, sqrt
 from pathlib import Path
@@ -108,9 +108,6 @@ def sweep_amplitude_phase(
 
     db = Database(HOME / "database.db")
 
-    measurements_path: Path = HOME / "sweep"
-    measurements_path.mkdir(parents=True, exist_ok=True)
-
     # Asks for the 2 instruments
     try:
         rm = ResourceManager()
@@ -197,6 +194,27 @@ def sweep_amplitude_phase(
 
     timer = Timer()
 
+    test_id = db.insert_test(
+        "Sweep Amplitude Phase",
+        datetime.now(),
+        "Double sweep for Amplitude and Phase",
+    )
+    sweep_input_id = db.insert_sweep(
+        test_id,
+        "Sweep Input",
+        datetime.now(),
+        "Sweep 1/2 Input",
+    )
+    sweep_output_id = db.insert_sweep(
+        test_id,
+        "Sweep Output",
+        datetime.now(),
+        "Sweep 2/2 Output",
+    )
+
+    db.insert_frequencies(sweep_input_id, log_scale.f_list)
+    db.insert_frequencies(sweep_output_id, log_scale.f_list)
+
     for frequency in track(
         log_scale.f_list,
         total=len(log_scale.f_list),
@@ -229,15 +247,6 @@ def sweep_amplitude_phase(
         oversampling_ratio_list.append(oversampling_ratio)
         n_periods_list.append(n_periods)
         n_samples_list.append(config.sampling.number_of_samples)
-
-        # BEGIN -- CSV FILE
-        sweep_frequency_path = measurements_path / "{}".format(
-            round(frequency, 5)
-        ).replace(".", "_", 1)
-        sweep_frequency_path.mkdir(parents=True, exist_ok=True)
-
-        save_file_path = sweep_frequency_path / "sample.csv"
-        # END -- CSV FILE
 
         # GET MEASUREMENTS
 
