@@ -18,14 +18,16 @@ from audio.utility.timer import Timer
 
 def test_database():
 
-    HOME = Path(__file__).parent
-
-    file_database = HOME / "data.db"
-    os.remove(file_database)
-    db = Database(file_database)
+    db = Database()
     db.create_database()
 
     test_id = db.insert_test("Test 1", datetime.now(), comment="Test di esempio")
+    console.log(test_id)
+
+    data = db.get_test(test_id)
+    console.log(data)
+
+    return
 
     # SWEEP
     sweep_id = db.insert_sweep(

@@ -13,7 +13,7 @@ services:
     restart: always
     command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
-      # MYSQL_DATABASE: 'db'
+      MYSQL_DATABASE: 'audio'
       # So you don't have to use root, but you can if you like
       MYSQL_USER: 'audio'
       # You can use whatever password you like

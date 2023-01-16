@@ -2,172 +2,111 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from sqlite3 import Connection
-from typing import List, Optional
+from typing import Any, List, Optional, Tuple
 
 from audio.console import console
 
 
 @dataclass
-class DbChannel:
-    sweep_id: int
+class DbTest:
     id: int
     name: str
+    date: datetime
     comment: Optional[str] = None
 
 
 @dataclass
 class DbSweep:
-    sweep_id: int
     id: int
+    test_id: int
     name: str
     date: datetime
-    comment: Optional[str]
-
-
-@dataclass
-class DbViewSweep(DbSweep):
-    frequency_min: float
-    frequency_max: float
-    points_per_decade: float
-    number_of_samples: int
-    Fs_multiplier: float
-    delay_measurements: float
-    rms: float
-    interpolation_rate: float
+    comment: Optional[str] = None
 
 
 @dataclass
 class DbFrequency:
+    id: int
+    sweep_id: int
+    idx: int
     frequency: float
     Fs: float
+    rms: float
+    rms_interpolation_rate: float
+
+
+@dataclass
+class DbChannel:
+    id: int
+    sweep_id: int
+    idx: int
+    name: str
+    comment: Optional[str] = None
+
+
+@dataclass
+class DbSweepConfig:
+    sweep_id: int
+    frequency_min: float
+    frequency_max: float
+    points_per_decade: float
+    number_of_samples: float
+    Fs_multiplier: float
+    delay_measurements: float
+
+
+@dataclass
+class DbSweepVoltage:
+    id: int
+    frequency_id: int
+    channel_id: int
+    voltages: List[float]
+
+
+import mysql.connector
+import mysqlx
+from mysql.connector.connection import MySQLConnection
+from mysqlx import Session
 
 
 class Database:
     connection: Connection
     _DATE_TIME_FORMAT: str = r"%Y-%m-%d %H:%M:%S.%f"
 
-    def __init__(self, db_path: Path) -> None:
-        self.connection = Connection(db_path)
+    def __init__(self) -> None:
+        try:
+            self.connection = MySQLConnection(
+                host="localhost",
+                port=3306,
+                user="root",
+                password="acmesystems",
+                database="audio",
+            )
+        except mysql.connector.Error as err:
+            console.log(err)
 
     def create_database(self):
+        file_create_database = Path(__file__).parent / "create_database.sql"
 
         cur = self.connection.cursor()
-        cur.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS test(
-                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                date TEXT NOT NULL,
-                comment TEXT
-            );
 
-            CREATE TABLE IF NOT EXISTS sweep(
-                test_id INTEGER NOT NULL,
-                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                date TEXT NOT NULL,
-                comment TEXT,
-                FOREIGN KEY(test_id) REFERENCES test(id)
-            );
+        cur.execute(file_create_database.read_text(), multi=True)
 
-            CREATE TABLE IF NOT EXISTS frequency(
-                sweep_id INTEGER,
-                id INTEGER NOT NULL,
-                frequency DOUBLE NOT NULL,
-                Fs DOUBLE NOT NULL,
-                FOREIGN KEY(sweep_id) REFERENCES sweep(id)
-            );
+    def insert_test(self, name: str, date: datetime, comment: Optional[str] = None):
+        data = (name, date, comment)
+        console.log(data)
 
-            CREATE TABLE IF NOT EXISTS sweepVoltage(
-                sweep_id INTEGER NOT NULL,
-                channel_id INTEGER NOT NULL,
-                frequency_id INTEGER NOT NULL,
-                id INTEGER NOT NULL,
-                voltage DOUBLE NOT NULL,
-                FOREIGN KEY(sweep_id) REFERENCES sweep(id),
-                FOREIGN KEY(frequency_id) REFERENCES frequency(id),
-                FOREIGN KEY(channel_id) REFERENCES channel(id)
-            );
-
-            CREATE TABLE IF NOT EXISTS sweepConfig(
-                sweep_id INTEGER NOT NULL,
-                frequency_min DOUBLE,
-                frequency_max DOUBLE,
-                points_per_decade DOUBLE,
-                number_of_samples INT,
-                Fs_multiplier DOUBLE,
-                delay_measurements DOUBLE,
-                rms DOUBLE,
-                interpolation_rate DOUBLE,
-                FOREIGN KEY(sweep_id) REFERENCES sweep(id)
-            );
-
-            CREATE TABLE IF NOT EXISTS channel(
-                sweep_id INTEGER NOT NULL,
-                id INTEGER NOT NULL,
-                name TEXT NOT NULL,
-                comment TEXT,
-                FOREIGN KEY(sweep_id) REFERENCES sweep(id)
-            );
-            """
-        )
-        cur.close()
-        self.connection.commit()
-
-    def insert_channel(
-        self, sweep_id: int, channel_id: int, name: str, comment: Optional[str] = None
-    ):
         cur = self.connection.cursor()
-        data = (sweep_id, channel_id, name, comment)
-        cur.execute(
-            "INSERT INTO channel(sweep_id, id, name, comment) VALUES (?,?,?,?)", data
-        )
-        cur.close()
+        cur.execute("INSERT INTO test(name, date, comment) VALUES (%s,%s,%s)", data)
         self.connection.commit()
         return cur.lastrowid
 
-    def get_channels(self):
+    def get_test(self, test_id: int):
         cur = self.connection.cursor()
-        data = cur.execute("SELECT * FROM channel").fetchall()
-        channels = [DbChannel(ch[0], ch[1], ch[2], ch[3]) for ch in data]
-        return channels
+        cur.execute(f"SELECT * FROM audio.test WHERE id = {test_id};")
+        data = cur.fetchone()
 
-    def insert_frequency(
-        self, sweep_id: int, frequency_id: int, frequency: float, Fs: float
-    ):
-        cur = self.connection.cursor()
-        data = (sweep_id, frequency_id, frequency, Fs)
-        cur.execute(
-            f"""INSERT INTO frequency(sweep_id, id, frequency, Fs) VALUES ({",".join(["?"] * len(data))})""",
-            data,
-        )
-        cur.close()
-        self.connection.commit()
-        return cur.lastrowid
-
-    def insert_frequencies(
-        self, sweep_id: int, frequencies: List[float], Fs: List[float]
-    ):
-        cur = self.connection.cursor()
-        data = [
-            (sweep_id, freq_id, freq_value, Fs)
-            for freq_id, (freq_value, Fs) in enumerate(zip(frequencies, Fs))
-        ]
-        cur.executemany(
-            f"""INSERT INTO frequency(sweep_id, id, frequency, Fs) VALUES ({",".join(["?"] * len(data[0]))})""",
-            data,
-        )
-        cur.close()
-        self.connection.commit()
-
-    def get_frequencies(self, sweep_id: int):
-        cur = self.connection.cursor()
-        data = cur.execute(
-            f"SELECT frequency, Fs FROM frequency WHERE sweep_id = {sweep_id} ORDER BY id ASC"
-        ).fetchall()
-
-        # channels = [DbChannel(ch[0], ch[1], ch[2], ch[3]) for ch in data]
-        return [DbFrequency(freq[0], freq[1]) for freq in data]
+        return data
 
     def insert_sweep(
         self, test_id: int, name: str, date: datetime, comment: Optional[str] = None
@@ -180,100 +119,185 @@ class Database:
             comment,
         )
         cur.execute(
-            "INSERT INTO sweep(test_id, name, date, comment) VALUES (?,?,?,?)",
+            "INSERT INTO sweep(test_id, name, date, comment) VALUES (%s,%s,%s,%s)",
             data,
         )
-        cur.close()
         self.connection.commit()
         return cur.lastrowid
 
-    def get_sweeps(self):
+    def get_all_sweeps(self):
         cur = self.connection.cursor()
-        data = cur.execute(
-            """
-            SELECT * FROM sweep
-            """
-        ).fetchall()
-        sweep = [
-            DbSweep(
-                sweep_id=sweep[0],
-                id=sweep[1],
-                name=sweep[2],
-                date=datetime.strptime(sweep[3], self._DATE_TIME_FORMAT),
-                comment=sweep[4],
-            )
-            for sweep in data
+        cur.execute(f"SELECT * FROM sweep")
+        data = cur.fetchall()
+
+        sweeps = [
+            DbSweep(id=_id, test_id=test_id, name=name, date=date, comment=comment)
+            for _id, test_id, name, date, comment in data
         ]
+        return sweeps
+
+    def get_sweeps(self, test_id: int):
+        cur = self.connection.cursor()
+        cur.execute(f"SELECT * FROM sweep WHERE test_id = {test_id}")
+        data = cur.fetchall()
+
+        sweeps = [
+            DbSweep(id=_id, test_id=test_id, name=name, date=date, comment=comment)
+            for _id, test_id, name, date, comment in data
+        ]
+        return sweeps
+
+    def get_sweep(self, sweep_id: int):
+        cur = self.connection.cursor()
+        cur.execute(f"SELECT * FROM sweep WHERE sweep_id = {sweep_id}")
+        data = cur.fetchone()
+        _id, test_id, name, date, comment = data
+        sweep = DbSweep(id=_id, test_id=test_id, name=name, date=date, comment=comment)
         return sweep
 
-    def view_sweeps(self):
-        cur = self.connection.cursor()
-        data = cur.execute(
-            """
-            SELECT
-                sweep.test_id,
-                sweep.id,
-                sweep.name,
-                sweep.date,
-                sweep.comment,
-                sweepConfig.frequency_min,
-                sweepConfig.frequency_max,
-                sweepConfig.points_per_decade,
-                sweepConfig.number_of_samples,
-                sweepConfig.Fs_multiplier,
-                sweepConfig.delay_measurements,
-                sweepConfig.rms,
-                sweepConfig.interpolation_rate
-            FROM sweep
-            LEFT JOIN sweepConfig ON sweepConfig.sweep_id = sweep.id
-            """
-        ).fetchall()
-        sweep = [
-            DbViewSweep(
-                sweep_id=sweep[0],
-                id=sweep[1],
-                name=sweep[2],
-                date=datetime.strptime(sweep[3], self._DATE_TIME_FORMAT),
-                comment=sweep[4],
-                frequency_min=sweep[5],
-                frequency_max=sweep[6],
-                points_per_decade=sweep[7],
-                number_of_samples=sweep[8],
-                Fs_multiplier=sweep[9],
-                delay_measurements=sweep[10],
-                rms=sweep[11],
-                interpolation_rate=sweep[12],
-            )
-            for sweep in data
-        ]
-        return sweep
-
-    def insert_test(self, name: str, date: datetime, comment: Optional[str] = None):
+    def insert_frequency(
+        self,
+        sweep_id: int,
+        idx: int,
+        frequency: float,
+        Fs: float,
+        rms: float,
+        rms_interpolation_rate: float,
+    ):
         cur = self.connection.cursor()
         data = (
-            name,
-            date.strftime(self._DATE_TIME_FORMAT),
-            comment,
+            id,
+            sweep_id,
+            idx,
+            frequency,
+            Fs,
+            rms,
+            rms_interpolation_rate,
         )
         cur.execute(
-            "INSERT INTO test(name, date, comment) VALUES (?,?,?)",
+            f"""
+            INSERT INTO frequency(
+                sweep_id,
+                idx,
+                frequency,
+                Fs,
+                rms,
+                rms_interpolation_rate,
+            )
+            VALUES ({",".join(["%s"] * len(data))})
+            """,
             data,
         )
-        cur.close()
         self.connection.commit()
         return cur.lastrowid
+
+    def get_frequencies_from_sweep_id(self, sweep_id: int):
+        cur = self.connection.cursor()
+        data = cur.execute(
+            f"""
+            SELECT
+                id,
+                sweep_id,
+                idx,
+                frequency,
+                Fs,
+                rms,
+                rms_interpolation_rate
+            FROM frequency
+            WHERE sweep_id = {sweep_id} ORDER BY idx ASC
+            """
+        )
+
+        data = cur.fetchall()
+
+        frequency_data = [
+            DbFrequency(
+                id=id,
+                sweep_id=sweep_id,
+                idx=idx,
+                frequency=frequency,
+                Fs=Fs,
+                rms=rms,
+                rms_interpolation_rate=rms_interpolation_rate,
+            )
+            for id, sweep_id, idx, frequency, Fs, rms, rms_interpolation_rate in data
+        ]
+
+        return frequency_data
+
+    def get_frequencies_from_id(self, frequency_id: int):
+        cur = self.connection.cursor()
+        data = cur.execute(
+            f"""
+            SELECT
+                id,
+                sweep_id,
+                idx,
+                frequency,
+                Fs,
+                rms,
+                rms_interpolation_rate
+            FROM frequency
+            WHERE id = {frequency_id} ORDER BY idx ASC
+            """
+        )
+
+        data = cur.fetchone()
+        _id, sweep_id, idx, frequency, Fs, rms, rms_interpolation_rate = data
+        frequency_data = DbFrequency(
+            id=_id,
+            sweep_id=sweep_id,
+            idx=idx,
+            frequency=frequency,
+            Fs=Fs,
+            rms=rms,
+            rms_interpolation_rate=rms_interpolation_rate,
+        )
+
+        return frequency_data
+
+    def insert_channel(
+        self, sweep_id: int, idx: int, name: str, comment: Optional[str] = None
+    ):
+        cur = self.connection.cursor()
+        data = (sweep_id, idx, name, comment)
+        cur.execute(
+            f"INSERT INTO channel(sweep_id, idx, name, comment) VALUES ({','.join(['%s'] * len(data))})",
+            data,
+        )
+        self.connection.commit()
+        return cur.lastrowid
+
+    def get_channels_from_sweep_id(self, sweep_id: int):
+        cur = self.connection.cursor()
+        data = cur.execute(
+            f"SELECT * FROM channel WHERE sweep_id = {sweep_id}"
+        ).fetchall()
+
+        channels_data = [
+            DbChannel(id=_id, sweep_id=sweep_id, idx=idx, name=name, comment=comment)
+            for _id, sweep_id, idx, name, comment in data
+        ]
+        return channels_data
+
+    def get_channel_from_id(self, channel_id: int):
+        cur = self.connection.cursor()
+        cur.execute(f"SELECT * FROM channel WHERE id = {channel_id}")
+        data = cur.fetchone()
+
+        _id, sweep_id, idx, name, comment = data
+
+        return DbChannel(id=_id, sweep_id=sweep_id, idx=idx, name=name, comment=comment)
 
     def insert_sweep_config(
         self,
         sweep_id: int,
-        frequency_min: float,
-        frequency_max: float,
-        points_per_decade: float,
-        number_of_samples: int,
-        Fs_multiplier: float,
-        delay_measurements: float,
-        rms: float,
-        interpolation_rate: float,
+        frequency_min: Optional[float] = None,
+        frequency_max: Optional[float] = None,
+        points_per_decade: Optional[float] = None,
+        number_of_samples: Optional[int] = None,
+        Fs_multiplier: Optional[float] = None,
+        delay_measurements: Optional[float] = None,
     ):
         cur = self.connection.cursor()
         data = (
@@ -284,26 +308,51 @@ class Database:
             number_of_samples,
             Fs_multiplier,
             delay_measurements,
-            rms,
-            interpolation_rate,
         )
         cur.execute(
-            f"""INSERT INTO sweepConfig(
+            f"""
+            INSERT INTO sweepConfig(
                 sweep_id,
                 frequency_min,
                 frequency_max,
                 points_per_decade,
                 number_of_samples,
                 Fs_multiplier,
-                delay_measurements,
-                rms,
-                interpolation_rate
+                delay_measurements
             ) VALUES ({",".join(["?"] * len(data))})
             """,
             data,
         )
-        cur.close()
         self.connection.commit()
+
+    def get_sweep_config(self, sweep_id: int):
+        cur = self.connection.cursor()
+        cur.execute(
+            f"""
+            SELECT * FROM sweepConfig WHERE sweep_id = {sweep_id}
+            """
+        )
+        data = cur.fetchone()
+
+        (
+            sweep_id,
+            frequency_min,
+            frequency_max,
+            points_per_decade,
+            number_of_samples,
+            Fs_multiplier,
+            delay_measurements,
+        ) = data
+
+        return DbSweepConfig(
+            sweep_id=sweep_id,
+            frequency_min=frequency_min,
+            frequency_max=frequency_max,
+            points_per_decade=points_per_decade,
+            number_of_samples=number_of_samples,
+            Fs_multiplier=Fs_multiplier,
+            delay_measurements=delay_measurements,
+        )
 
     def insert_sweep_voltage(
         self,
@@ -376,3 +425,45 @@ class Database:
         ).fetchall()
 
         return data
+
+    def view_sweeps(self):
+        cur = self.connection.cursor()
+        data = cur.execute(
+            """
+            SELECT
+                sweep.test_id,
+                sweep.id,
+                sweep.name,
+                sweep.date,
+                sweep.comment,
+                sweepConfig.frequency_min,
+                sweepConfig.frequency_max,
+                sweepConfig.points_per_decade,
+                sweepConfig.number_of_samples,
+                sweepConfig.Fs_multiplier,
+                sweepConfig.delay_measurements,
+                sweepConfig.rms,
+                sweepConfig.interpolation_rate
+            FROM sweep
+            LEFT JOIN sweepConfig ON sweepConfig.sweep_id = sweep.id
+            """
+        ).fetchall()
+        sweep = [
+            DbViewSweep(
+                sweep_id=sweep[0],
+                id=sweep[1],
+                name=sweep[2],
+                date=datetime.strptime(sweep[3], self._DATE_TIME_FORMAT),
+                comment=sweep[4],
+                frequency_min=sweep[5],
+                frequency_max=sweep[6],
+                points_per_decade=sweep[7],
+                number_of_samples=sweep[8],
+                Fs_multiplier=sweep[9],
+                delay_measurements=sweep[10],
+                rms=sweep[11],
+                interpolation_rate=sweep[12],
+            )
+            for sweep in data
+        ]
+        return sweep
