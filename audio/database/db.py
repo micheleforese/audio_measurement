@@ -80,7 +80,6 @@ class Database:
                 port=3306,
                 user="root",
                 password="acmesystems",
-                database="audio",
             )
         except mysql.connector.Error as err:
             console.log(err)
@@ -89,15 +88,26 @@ class Database:
         file_create_database = Path(__file__).parent / "create_database.sql"
 
         cur = self.connection.cursor()
+        try:
+            cur.execute(file_create_database.read_text(), multi=True)
+        except mysql.connector.errors.Error as err:
+            console.log(err)
+        self.connection.commit()
 
-        cur.execute(file_create_database.read_text(), multi=True)
+    def drop_database(self):
+        cur = self.connection.cursor()
+        cur.execute("DROP DATABASE IF EXISTS audio")
+        cur.execute("CREATE DATABASE audio")
+        self.connection.commit()
 
     def insert_test(self, name: str, date: datetime, comment: Optional[str] = None):
         data = (name, date, comment)
         console.log(data)
 
         cur = self.connection.cursor()
-        cur.execute("INSERT INTO test(name, date, comment) VALUES (%s,%s,%s)", data)
+        cur.execute(
+            "INSERT INTO audio.test(name, date, comment) VALUES (%s,%s,%s)", data
+        )
         self.connection.commit()
         return cur.lastrowid
 
@@ -119,7 +129,7 @@ class Database:
             comment,
         )
         cur.execute(
-            "INSERT INTO sweep(test_id, name, date, comment) VALUES (%s,%s,%s,%s)",
+            "INSERT INTO audio.sweep(test_id, name, date, comment) VALUES (%s,%s,%s,%s)",
             data,
         )
         self.connection.commit()
@@ -127,7 +137,7 @@ class Database:
 
     def get_all_sweeps(self):
         cur = self.connection.cursor()
-        cur.execute(f"SELECT * FROM sweep")
+        cur.execute(f"SELECT * FROM audio.sweep")
         data = cur.fetchall()
 
         sweeps = [
@@ -138,7 +148,7 @@ class Database:
 
     def get_sweeps(self, test_id: int):
         cur = self.connection.cursor()
-        cur.execute(f"SELECT * FROM sweep WHERE test_id = {test_id}")
+        cur.execute(f"SELECT * FROM audio.sweep WHERE test_id = {test_id}")
         data = cur.fetchall()
 
         sweeps = [
@@ -149,7 +159,7 @@ class Database:
 
     def get_sweep(self, sweep_id: int):
         cur = self.connection.cursor()
-        cur.execute(f"SELECT * FROM sweep WHERE sweep_id = {sweep_id}")
+        cur.execute(f"SELECT * FROM audio.sweep WHERE sweep_id = {sweep_id}")
         data = cur.fetchone()
         _id, test_id, name, date, comment = data
         sweep = DbSweep(id=_id, test_id=test_id, name=name, date=date, comment=comment)
@@ -161,28 +171,21 @@ class Database:
         idx: int,
         frequency: float,
         Fs: float,
-        rms: float,
-        rms_interpolation_rate: float,
     ):
         cur = self.connection.cursor()
         data = (
-            id,
             sweep_id,
             idx,
             frequency,
             Fs,
-            rms,
-            rms_interpolation_rate,
         )
         cur.execute(
             f"""
-            INSERT INTO frequency(
+            INSERT INTO audio.frequency(
                 sweep_id,
                 idx,
                 frequency,
                 Fs,
-                rms,
-                rms_interpolation_rate,
             )
             VALUES ({",".join(["%s"] * len(data))})
             """,
@@ -203,7 +206,7 @@ class Database:
                 Fs,
                 rms,
                 rms_interpolation_rate
-            FROM frequency
+            FROM audio.frequency
             WHERE sweep_id = {sweep_id} ORDER BY idx ASC
             """
         )
@@ -237,7 +240,7 @@ class Database:
                 Fs,
                 rms,
                 rms_interpolation_rate
-            FROM frequency
+            FROM audio.frequency
             WHERE id = {frequency_id} ORDER BY idx ASC
             """
         )
@@ -262,7 +265,7 @@ class Database:
         cur = self.connection.cursor()
         data = (sweep_id, idx, name, comment)
         cur.execute(
-            f"INSERT INTO channel(sweep_id, idx, name, comment) VALUES ({','.join(['%s'] * len(data))})",
+            f"INSERT INTO audio.channel(sweep_id, idx, name, comment) VALUES ({','.join(['%s'] * len(data))})",
             data,
         )
         self.connection.commit()
@@ -271,7 +274,7 @@ class Database:
     def get_channels_from_sweep_id(self, sweep_id: int):
         cur = self.connection.cursor()
         data = cur.execute(
-            f"SELECT * FROM channel WHERE sweep_id = {sweep_id}"
+            f"SELECT * FROM audio.channel WHERE sweep_id = {sweep_id}"
         ).fetchall()
 
         channels_data = [
@@ -282,7 +285,7 @@ class Database:
 
     def get_channel_from_id(self, channel_id: int):
         cur = self.connection.cursor()
-        cur.execute(f"SELECT * FROM channel WHERE id = {channel_id}")
+        cur.execute(f"SELECT * FROM audio.channel WHERE id = {channel_id}")
         data = cur.fetchone()
 
         _id, sweep_id, idx, name, comment = data
@@ -311,7 +314,7 @@ class Database:
         )
         cur.execute(
             f"""
-            INSERT INTO sweepConfig(
+            INSERT INTO audio.sweepConfig(
                 sweep_id,
                 frequency_min,
                 frequency_max,
@@ -329,7 +332,7 @@ class Database:
         cur = self.connection.cursor()
         cur.execute(
             f"""
-            SELECT * FROM sweepConfig WHERE sweep_id = {sweep_id}
+            SELECT * FROM audio.sweepConfig WHERE sweep_id = {sweep_id}
             """
         )
         data = cur.fetchone()
@@ -354,116 +357,80 @@ class Database:
             delay_measurements=delay_measurements,
         )
 
-    def insert_sweep_voltage(
-        self,
-        sweep_id: int,
-        channel_id: int,
-        frequency_id: int,
-        voltage_id: int,
-        voltage: float,
-    ):
-        cur = self.connection.cursor()
-        data = (sweep_id, channel_id, frequency_id, voltage_id, voltage)
-        cur.execute(
-            f"""
-            INSERT INTO frequency(
-                sweep_id,
-                channel_id,
-                frequency_id,
-                id,
-                frequency,
-                Fs
-            )
-            VALUES ({",".join(["?"] * len(data))})""",
-            data,
-        )
-        cur.close()
-        self.connection.commit()
-
     def insert_sweep_voltages(
         self,
-        sweep_id: int,
-        channel_id: int,
         frequency_id: int,
+        channel_id: int,
         voltages: List[float],
     ):
         cur = self.connection.cursor()
-        data = [
-            (sweep_id, channel_id, frequency_id, volt_id, volt_value)
-            for volt_id, volt_value in enumerate(voltages)
-        ]
-        cur.executemany(
-            f"""
-            INSERT INTO sweepVoltage(
-                sweep_id,
-                channel_id,
+        voltages_string = [str(v) for v in voltages]
+        voltages_string = "\n".join(voltages_string)
+        data = (
+            frequency_id,
+            channel_id,
+            voltages_string.encode(),
+        )
+
+        cur.execute(
+            """
+            INSERT INTO audio.sweepVoltage(
                 frequency_id,
-                id,
-                voltage
+                channel_id,
+                voltages
             )
-            VALUES ({",".join(["?"] * len(data[0]))})
+            VALUES (%s, %s, %s)
             """,
             data,
         )
         cur.close()
         self.connection.commit()
+        return cur.lastrowid
+
+    def get_sweep_voltages_from_id(
+        self,
+        sweep_voltages_id: int,
+    ):
+        cur = self.connection.cursor()
+        cur.execute(
+            f"""
+            SELECT *
+            FROM audio.sweepVoltage
+            WHERE id = {sweep_voltages_id}
+            ORDER BY id ASC
+            """
+        )
+        data: Tuple[int, int, int, bytes] = cur.fetchone()
+        _id, _frequency_id, _channel_id, _voltages = data
+        _voltages = [float(line) for line in _voltages.decode().splitlines()]
+        sweep_voltages_data = DbSweepVoltage(
+            id=_id,
+            frequency_id=_frequency_id,
+            channel_id=_channel_id,
+            voltages=_voltages,
+        )
+        return sweep_voltages_data
 
     def get_sweep_voltages(
         self,
-        sweep_id: int,
-        channel_id: int,
         frequency_id: int,
+        channel_id: int,
     ):
         cur = self.connection.cursor()
-        data = cur.execute(
+        data: Tuple[int, int, int, bytes] = cur.execute(
             f"""
-            SELECT voltage
-            FROM sweepVoltage
-            WHERE sweep_id = {sweep_id} 
-            ORDER BY id ASC
+            SELECT *
+            FROM audio.sweepVoltage
+            WHERE frequency_id = {frequency_id} AND channel_id = {channel_id}
             """
-        ).fetchall()
+        ).fetchone()
 
-        return data
+        _id, _frequency_id, _channel_id, _voltages = data
+        sweep_voltages_data = DbSweepVoltage(
+            id=_id,
+            frequency_id=_frequency_id,
+            channel_id=_channel_id,
+            voltages=_voltages.decode(),
+        )
 
-    def view_sweeps(self):
-        cur = self.connection.cursor()
-        data = cur.execute(
-            """
-            SELECT
-                sweep.test_id,
-                sweep.id,
-                sweep.name,
-                sweep.date,
-                sweep.comment,
-                sweepConfig.frequency_min,
-                sweepConfig.frequency_max,
-                sweepConfig.points_per_decade,
-                sweepConfig.number_of_samples,
-                sweepConfig.Fs_multiplier,
-                sweepConfig.delay_measurements,
-                sweepConfig.rms,
-                sweepConfig.interpolation_rate
-            FROM sweep
-            LEFT JOIN sweepConfig ON sweepConfig.sweep_id = sweep.id
-            """
-        ).fetchall()
-        sweep = [
-            DbViewSweep(
-                sweep_id=sweep[0],
-                id=sweep[1],
-                name=sweep[2],
-                date=datetime.strptime(sweep[3], self._DATE_TIME_FORMAT),
-                comment=sweep[4],
-                frequency_min=sweep[5],
-                frequency_max=sweep[6],
-                points_per_decade=sweep[7],
-                number_of_samples=sweep[8],
-                Fs_multiplier=sweep[9],
-                delay_measurements=sweep[10],
-                rms=sweep[11],
-                interpolation_rate=sweep[12],
-            )
-            for sweep in data
-        ]
-        return sweep
+        return sweep_voltages_data

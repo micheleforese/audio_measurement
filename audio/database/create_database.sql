@@ -1,3 +1,4 @@
+-- Active: 1673880468417@@127.0.0.1@3306@audio
 CREATE DATABASE IF NOT EXISTS audio;
 
 CREATE TABLE IF NOT EXISTS audio.test(
@@ -24,8 +25,6 @@ CREATE TABLE IF NOT EXISTS audio.frequency(
   idx INT NOT NULL,
   frequency DOUBLE NOT NULL,
   Fs DOUBLE NOT NULL,
-  rms DOUBLE NOT NULL,
-  rms_interpolation_rate DOUBLE NOT NULL,
   PRIMARY KEY (id),
   FOREIGN KEY (sweep_id) REFERENCES audio.sweep (id)
 );
@@ -52,11 +51,12 @@ CREATE TABLE IF NOT EXISTS audio.sweepVoltage(
 
 CREATE TABLE IF NOT EXISTS audio.sweepConfig(
   sweep_id INT NOT NULL,
+  amplitude DOUBLE NOT NULL,
   frequency_min DOUBLE,
   frequency_max DOUBLE,
   points_per_decade DOUBLE,
   number_of_samples INT,
   Fs_multiplier DOUBLE,
   delay_measurements DOUBLE,
-  FOREIGN KEY (sweep_id) REFERENCES sweep (id)
+  FOREIGN KEY (sweep_id) REFERENCES audio.sweep (id)
 );

@@ -13,7 +13,6 @@ from audio.database.db import Database
 from audio.math.algorithm import LogarithmicScale
 from audio.math.rms import RMS
 from audio.model.sampling import VoltageSampling
-from audio.utility.timer import Timer
 
 
 def test_database():
@@ -21,11 +20,48 @@ def test_database():
     db = Database()
     db.create_database()
 
-    test_id = db.insert_test("Test 1", datetime.now(), comment="Test di esempio")
+    test_id = db.insert_test(
+        "Test 1",
+        datetime.now(),
+        comment="Test di esempio",
+    )
     console.log(test_id)
 
     data = db.get_test(test_id)
     console.log(data)
+
+    sweep_id = db.insert_sweep(
+        test_id,
+        "Sweep 1",
+        datetime.now(),
+        comment="Test Database - Sweep",
+    )
+
+    frequency_id = db.insert_frequency(sweep_id, 0, 20, 200)
+
+    channel_id = db.insert_channel(sweep_id, 0, "ch/1", "Test Database - CHannel")
+
+    def generate_sine_wave(
+        freq: float, amplitude: float, sample_rate: float, number_of_sample: int
+    ):
+        duration = number_of_sample / sample_rate
+        time_sampling = 1 / sample_rate
+        x = np.arange(
+            0.0,
+            duration,
+            time_sampling,
+        )
+
+        # 2pi because np.sin takes radians
+        y = amplitude * np.sin((2 * np.pi) * freq * x)
+        return (x, y)
+
+    _, voltages = generate_sine_wave(20, 2, 20 * 10, 800)
+    sweep_voltages_id = db.insert_sweep_voltages(frequency_id, channel_id, voltages)
+
+    voltages = db.get_sweep_voltages_from_id(sweep_voltages_id)
+
+    console.log(voltages)
 
     return
 

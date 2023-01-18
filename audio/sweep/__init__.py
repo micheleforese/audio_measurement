@@ -1,59 +1,26 @@
-import copy
-import time
 from datetime import datetime, timedelta
-from enum import Enum, auto
-from math import log10, sqrt
 from pathlib import Path
 from time import sleep
-from typing import Callable, Dict, List, Optional, Tuple, Type
+from typing import List, Optional
 
-import click
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-import numpy as np
 import pandas as pd
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
-from rich.console import Group
-from rich.live import Live
 from rich.panel import Panel
-from rich.progress import (
-    BarColumn,
-    MofNCompleteColumn,
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    TimeElapsedColumn,
-    track,
-)
-from rich.prompt import Confirm, FloatPrompt, Prompt
+from rich.progress import track
 from rich.table import Column, Table
-from usbtmc import Instrument
 
-from audio.config.plot import PlotConfig
 from audio.config.sweep import SweepConfig
-from audio.config.type import Range
 from audio.console import console
 from audio.database.db import Database
 from audio.device.cDAQ import ni9223
-from audio.math import dBV, percentage_error, transfer_function
 from audio.math.algorithm import LogarithmicScale
-from audio.math.interpolation import INTERPOLATION_KIND, logx_interpolation_model
-from audio.math.pid import PID_Controller, Timed_Value
 from audio.math.rms import RMS, RMSResult, VoltageSampling
-from audio.math.voltage import VdBu_to_Vrms, Vpp_to_Vrms, calculate_gain_dB
-from audio.model.file import File
-from audio.model.insertion_gain import InsertionGain
+from audio.math.voltage import Vpp_to_Vrms, calculate_gain_dB
 from audio.model.sampling import VoltageSampling
-from audio.model.set_level import SetLevel
 from audio.model.sweep import SweepData
-from audio.plot import multiplot
-from audio.sampling import config_set_level, plot_from_csv, sampling_curve
-from audio.usb.usbtmc import Instrument, ResourceManager, UsbTmc
+from audio.usb.usbtmc import ResourceManager
 from audio.utility import trim_value
-from audio.utility.interrupt import InterruptHandler
 from audio.utility.scpi import SCPI, Bandwidth, SCPI_v2, Switch
-from audio.utility.timer import Timer, Timer_Message
+from audio.utility.timer import Timer
 
 
 class SweepAmplitudePhaseTable:
@@ -106,7 +73,7 @@ def sweep_amplitude_phase(
     HOME: Path = sweep_home_path
     HOME.mkdir(parents=True, exist_ok=True)
 
-    db = Database(HOME / "database.db")
+    db = Database()
 
     # Asks for the 2 instruments
     try:
@@ -183,9 +150,17 @@ def sweep_amplitude_phase(
                     config.sampling.number_of_samples_max,
                 )
             )
+
     nidaq = ni9223(
         config.sampling.number_of_samples,
         input_channel=config.nidaq.input_channels,
+    )
+
+    channel_input_id = db.insert_channel(
+        sweep_id, 0, config.nidaq.input_channels[0], comment="Input"
+    )
+    channel_output_id = db.insert_channel(
+        sweep_id, 1, config.nidaq.input_channels[1], comment="Output"
     )
 
     nidaq.create_task("Sweep Amplitude-Phase")
@@ -199,28 +174,28 @@ def sweep_amplitude_phase(
         datetime.now(),
         "Double sweep for Amplitude and Phase",
     )
-    sweep_input_id = db.insert_sweep(
+    sweep_id = db.insert_sweep(
         test_id,
-        "Sweep Input",
+        "Sweep Amplitude and Phase",
         datetime.now(),
-        "Sweep 1/2 Input",
-    )
-    sweep_output_id = db.insert_sweep(
-        test_id,
-        "Sweep Output",
-        datetime.now(),
-        "Sweep 2/2 Output",
+        "Sweep Input/Output",
     )
 
-    db.insert_frequencies(sweep_input_id, log_scale.f_list)
-    db.insert_frequencies(sweep_output_id, log_scale.f_list)
+    db.insert_sweep_config(
+        sweep_id,
+        config.sampling.frequency_min,
+        config.sampling.frequency_max,
+        config.sampling.points_per_decade,
+        config.sampling.number_of_samples,
+        config.sampling.Fs_multiplier,
+        config.sampling.delay_measurements,
+    )
 
-    for frequency in track(
-        log_scale.f_list,
+    for idx, frequency in track(
+        enumerate(log_scale.f_list),
         total=len(log_scale.f_list),
         console=console,
     ):
-        timer.start()
 
         # Sets the Frequency
         generator.write(
@@ -249,13 +224,24 @@ def sweep_amplitude_phase(
         n_samples_list.append(config.sampling.number_of_samples)
 
         # GET MEASUREMENTS
-
         nidaq.set_sampling_clock_timing(Fs)
         nidaq.task_start()
         timer.start()
         voltages = nidaq.read_multi_voltages()
         sampling_time = timer.stop()
         nidaq.task_stop()
+
+        frequency_id = db.insert_frequency(sweep_id, idx, frequency, Fs)
+        db.insert_sweep_voltages(
+            frequency_id,
+            channel_input_id,
+            voltages[0],
+        )
+        db.insert_sweep_voltages(
+            frequency_id,
+            channel_output_id,
+            voltages[1],
+        )
 
         timer.start()
         voltages_sampling_0 = VoltageSampling.from_list(voltages[0], frequency, Fs)
