@@ -12,9 +12,9 @@ from rich.repr import auto as rich_repr
 
 from audio.config.sweep import SweepConfig
 from audio.console import console
+from audio.decoder.xml import DecoderXML
 from audio.model.file import CacheFile, File
 from audio.plot import CacheCsvData
-from audio.decoder.xml import DecoderXML
 
 
 class ProcedureStep(ABC):
@@ -308,13 +308,9 @@ class ProcedureSetLevel(ProcedureStep, DecoderXML):
 @rich_repr
 class ProcedureSweep(ProcedureStep, DecoderXML):
 
-    name_folder: Optional[str] = None
-    file_set_level: Optional[File] = None
-    file_offset: Optional[File] = None
-    file_offset_sweep: Optional[File] = None
-    file_insertion_gain: Optional[File] = None
+    name: Optional[str] = None
+    comment: Optional[str] = None
     config: Optional[SweepConfig] = None
-    override: bool = False
 
     @classmethod
     def from_xml_file(cls, file: Path):
@@ -331,74 +327,16 @@ class ProcedureSweep(ProcedureStep, DecoderXML):
         if xml is None or not cls.xml_is_valid(xml):
             return None
 
-        name_folder: str
-
-        file_set_level: Optional[File] = None
-        file_offset: Optional[File] = None
-        file_offset_sweep: Optional[File] = None
-        file_insertion_gain: Optional[File] = None
-        override: bool = False
-
         config: Optional[SweepConfig] = None
 
-        Ename_folder = xml.find("./name_folder")
-        if Ename_folder is None:
-            return None
-        name_folder = Ename_folder.text
-
-        Efile_set_level = xml.find("./file_set_level")
-        if Efile_set_level is not None:
-            file_set_level = File(
-                key=Efile_set_level.get("key"), path=Efile_set_level.get("path")
-            )
-
-            if file_set_level.is_null():
-                return None
-
-        Efile_offset = xml.find("./file_offset")
-        if Efile_offset is not None:
-            file_offset = File(
-                key=Efile_offset.get("key"), path=Efile_offset.get("path")
-            )
-
-            if file_offset.is_null():
-                return None
-
-        Efile_offset_sweep = xml.find("./file_offset_sweep")
-        if Efile_offset_sweep is not None:
-            file_offset_sweep = File(
-                key=Efile_offset_sweep.get("key"), path=Efile_offset_sweep.get("path")
-            )
-
-            if file_offset_sweep.is_null():
-                return None
-
-        Efile_insertion_gain = xml.find("./file_insertion_gain")
-        if Efile_insertion_gain is not None:
-            file_insertion_gain = File(
-                key=Efile_insertion_gain.get("key"),
-                path=Efile_insertion_gain.get("path"),
-            )
-
-            if file_insertion_gain.is_null():
-                return None
+        name = xml.get("name")
+        comment = xml.get("comment")
 
         Econfig = xml.find("./config")
         if Econfig is not None:
             config = SweepConfig.from_xml_object(ET.ElementTree(Econfig))
 
-        override_elem = xml.get("override", None)
-        override = override_elem is not None
-
-        return cls(
-            name_folder=name_folder,
-            file_set_level=file_set_level,
-            file_offset=file_offset,
-            file_offset_sweep=file_offset_sweep,
-            file_insertion_gain=file_insertion_gain,
-            config=config,
-            override=override,
-        )
+        return cls(name=name, comment=comment, config=config)
 
     @staticmethod
     def xml_is_valid(xml: ET.Element):

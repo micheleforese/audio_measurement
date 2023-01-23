@@ -47,12 +47,13 @@ class DbChannel:
 @dataclass
 class DbSweepConfig:
     sweep_id: int
-    frequency_min: float
-    frequency_max: float
-    points_per_decade: float
-    number_of_samples: float
-    Fs_multiplier: float
-    delay_measurements: float
+    amplitude: Optional[float]
+    frequency_min: Optional[float]
+    frequency_max: Optional[float]
+    points_per_decade: Optional[float]
+    number_of_samples: Optional[float]
+    Fs_multiplier: Optional[float]
+    delay_measurements: Optional[float]
 
 
 @dataclass
@@ -117,6 +118,21 @@ class Database:
         data = cur.fetchone()
 
         return data
+
+    def insert_test_config(self, test_id: int, config: str):
+        cur = self.connection.cursor()
+        data = (test_id, config.encode())
+        cur.execute(
+            f"""
+            INSERT INTO audio.testConfig(
+                test_id,
+                config
+            )
+            VALUES ({",".join(["%s"] * len(data))})
+            """,
+            data,
+        )
+        self.connection.commit()
 
     def insert_sweep(
         self, test_id: int, name: str, date: datetime, comment: Optional[str] = None
@@ -295,6 +311,7 @@ class Database:
     def insert_sweep_config(
         self,
         sweep_id: int,
+        amplitude: Optional[float] = None,
         frequency_min: Optional[float] = None,
         frequency_max: Optional[float] = None,
         points_per_decade: Optional[float] = None,
@@ -305,6 +322,7 @@ class Database:
         cur = self.connection.cursor()
         data = (
             sweep_id,
+            amplitude,
             frequency_min,
             frequency_max,
             points_per_decade,
@@ -316,6 +334,7 @@ class Database:
             f"""
             INSERT INTO audio.sweepConfig(
                 sweep_id,
+                amplitude,
                 frequency_min,
                 frequency_max,
                 points_per_decade,
@@ -339,6 +358,7 @@ class Database:
 
         (
             sweep_id,
+            amplitude,
             frequency_min,
             frequency_max,
             points_per_decade,
@@ -349,6 +369,7 @@ class Database:
 
         return DbSweepConfig(
             sweep_id=sweep_id,
+            amplitude=amplitude,
             frequency_min=frequency_min,
             frequency_max=frequency_max,
             points_per_decade=points_per_decade,

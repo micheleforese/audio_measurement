@@ -80,7 +80,7 @@ def phase_sweep(
         nidaq = ni9223(config.sampling.number_of_samples)
 
         nidaq.create_task("Test")
-        channels = config.nidaq.input_channels
+        channels = config.nidaq.channels
         nidaq.add_ai_channel(channels)
 
         phase_offset_list: List[float] = []

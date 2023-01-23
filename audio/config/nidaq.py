@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import List, Optional
 
 import rich.repr
-from audio.config import Config
 
+from audio.config import Config
 from audio.console import console
 from audio.decoder.xml import DecoderXML
 
@@ -17,7 +18,7 @@ class NiDaqConfigOptions(Enum):
     FS_MAX = "Fs_max"
     VOLTAGE_MIN = "voltage_min"
     VOLTAGE_MAX = "voltage_max"
-    INPUT_CHANNEL = "input_channel"
+    CHANNEL = "channel"
 
     def __str__(self) -> str:
         return str(self.value)
@@ -27,10 +28,16 @@ class NidaqConfigOptionsXPATH(Enum):
     FS_MAX = f"./{NiDaqConfigOptions.FS_MAX}"
     VOLTAGE_MIN = f"./{NiDaqConfigOptions.VOLTAGE_MIN}"
     VOLTAGE_MAX = f"./{NiDaqConfigOptions.VOLTAGE_MAX}"
-    INPUT_CHANNEL = f"./{NiDaqConfigOptions.INPUT_CHANNEL}"
+    CHANNEL = f"./{NiDaqConfigOptions.CHANNEL}"
 
     def __str__(self) -> str:
         return str(self.value)
+
+
+@dataclass
+class Channel:
+    name: str
+    comment: Optional[str] = None
 
 
 @rich.repr.auto
@@ -38,7 +45,7 @@ class NiDaqConfig(Config, DecoderXML):
     Fs_max: Optional[float]
     voltage_min: Optional[float]
     voltage_max: Optional[float]
-    input_channels: List[str]
+    channels: List[Channel]
 
     def __init__(
         self,
@@ -46,12 +53,12 @@ class NiDaqConfig(Config, DecoderXML):
         Fs_max: Optional[float] = None,
         voltage_min: Optional[float] = None,
         voltage_max: Optional[float] = None,
-        input_channels: List[str] = [],
+        channels: List[Channel],
     ) -> None:
         self.Fs_max = Fs_max
         self.voltage_min = voltage_min
         self.voltage_max = voltage_max
-        self.input_channels = input_channels
+        self.channels = channels
 
     def merge(self, other: Optional[NiDaqConfig]):
         if other is None:
@@ -66,8 +73,8 @@ class NiDaqConfig(Config, DecoderXML):
         if self.voltage_max is None:
             self.voltage_max = other.voltage_max
 
-        if len(self.input_channels) == 0:
-            self.input_channels = other.input_channels
+        if len(self.channels) == 0:
+            self.channels = other.channels
 
     def override(self, other: Optional[NiDaqConfig]):
         if other is None:
@@ -82,8 +89,8 @@ class NiDaqConfig(Config, DecoderXML):
         if other.voltage_max is not None:
             self.voltage_max = other.voltage_max
 
-        if len(self.input_channels) > 0:
-            self.input_channels = other.input_channels
+        if len(self.channels) > 0:
+            self.channels = other.channels
 
     def print(self):
         console.print(self)
@@ -109,7 +116,7 @@ class NiDaqConfig(Config, DecoderXML):
             Fs_max=NiDaqConfig._get_Fs_max_from_xml(xml),
             voltage_min=NiDaqConfig._get_voltage_min_from_xml(xml),
             voltage_max=NiDaqConfig._get_voltage_max_from_xml(xml),
-            input_channels=NiDaqConfig._get_input_channels_from_xml(xml),
+            channels=NiDaqConfig._get_channels_from_xml(xml),
         )
 
     @staticmethod
@@ -141,13 +148,14 @@ class NiDaqConfig(Config, DecoderXML):
         return None
 
     @staticmethod
-    def _get_input_channels_from_xml(xml: Optional[ET.ElementTree]):
-        channels: List[str] = []
-        Einput_channels = xml.findall(NidaqConfigOptionsXPATH.INPUT_CHANNEL.value)
+    def _get_channels_from_xml(xml: Optional[ET.ElementTree]):
+        channels: List[Channel] = []
+        Einput_channels = xml.findall(NidaqConfigOptionsXPATH.CHANNEL.value)
         for Echannel in Einput_channels:
-            input_channel = Echannel.text
+            channel_name = Echannel.text
+            channel_comment = Echannel.get("comment")
 
-            if input_channel is not None:
-                channels.append(input_channel)
+            if channel_name is not None:
+                channels.append(Channel(name=channel_name, comment=channel_comment))
 
         return channels

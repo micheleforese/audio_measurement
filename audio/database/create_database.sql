@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS audio.sweepVoltage(
 
 CREATE TABLE IF NOT EXISTS audio.sweepConfig(
   sweep_id INT NOT NULL,
-  amplitude DOUBLE NOT NULL,
+  amplitude DOUBLE,
   frequency_min DOUBLE,
   frequency_max DOUBLE,
   points_per_decade DOUBLE,
@@ -59,4 +59,10 @@ CREATE TABLE IF NOT EXISTS audio.sweepConfig(
   Fs_multiplier DOUBLE,
   delay_measurements DOUBLE,
   FOREIGN KEY (sweep_id) REFERENCES audio.sweep (id)
+);
+
+CREATE TABLE IF NOT EXISTS audio.testConfig(
+  test_id INT NOT NULL,
+  config BLOB NOT NULL,
+  FOREIGN KEY (test_id) REFERENCES audio.test (id)
 );
