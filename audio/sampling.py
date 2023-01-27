@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from math import sqrt
 from pathlib import Path
 from time import sleep
@@ -12,14 +13,8 @@ from matplotlib.figure import Figure
 from rich.console import Group
 from rich.live import Live
 from rich.panel import Panel
-from rich.progress import (
-    BarColumn,
-    MofNCompleteColumn,
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    TimeElapsedColumn,
-)
+from rich.progress import (BarColumn, MofNCompleteColumn, Progress,
+                           SpinnerColumn, TextColumn, TimeElapsedColumn)
 from rich.table import Column, Table
 from usbtmc import Instrument
 
@@ -29,13 +24,14 @@ from audio.console import console
 from audio.device.cDAQ import ni9223
 from audio.math import dBV, percentage_error, transfer_function
 from audio.math.algorithm import LogarithmicScale
-from audio.math.interpolation import INTERPOLATION_KIND, logx_interpolation_model
+from audio.math.interpolation import (INTERPOLATION_KIND,
+                                      logx_interpolation_model)
 from audio.math.pid import PID_Controller, Timed_Value
 from audio.math.rms import RMS, RMSResult
 from audio.math.voltage import VdBu_to_Vrms, Vpp_to_Vrms, calculate_gain_dB
 from audio.model.sampling import VoltageSampling
 from audio.model.sweep import SweepData
-from audio.usb.usbtmc import UsbTmc
+from audio.usb.usbtmc import ResourceManager, UsbTmc
 from audio.utility import trim_value
 from audio.utility.scpi import SCPI, Bandwidth, Switch
 from audio.utility.timer import Timer, Timer_Message
@@ -883,6 +879,374 @@ def config_set_level(
 
     sp = np.full(iteration, target_Vrms)
 
+    plt.figure(1, figsize=(16, 9))
+
+    plt.subplot(2, 2, 1)
+    plt.plot(
+        sp,
+        "k-",
+        linewidth=0.5,
+        label="Setpoint (SP)",
+    )
+    plt.plot(
+        pid.process_variable_list,
+        "r:",
+        linewidth=1,
+        label="Process Variable (PV)",
+    )
+    plt.grid(True)
+    plt.legend(["Set Point (SP)", "Process Variable (PV)"], loc="best")
+
+    plt.subplot(2, 2, 2)
+    plt.plot(
+        pid.term.proportional,
+        color="g",
+        linestyle="-",
+        linewidth=2,
+        label=r"Proportional = $K_c \; e(t)$",
+    )
+    plt.plot(
+        pid.term.integral,
+        color="b",
+        linestyle="-",
+        linewidth=2,
+        label=r"Integral = $\frac{K_c}{\tau_I} \int_{i=0}^{n_t} e(t) \; dt $",
+    )
+    plt.plot(
+        pid.term.derivative,
+        color="r",
+        linestyle="--",
+        linewidth=2,
+        label=r"Derivative = $-K_c \tau_D \frac{d(PV)}{dt}$",
+    )
+    plt.grid(True)
+    plt.legend(loc="best")
+
+    plt.subplot(2, 2, 3)
+    plt.plot(
+        [error.value for error in pid.error_list],
+        color="m",
+        linestyle="--",
+        linewidth=2,
+        label="Error (e=SP-PV)",
+    )
+    plt.grid(True)
+    plt.legend(loc="best")
+
+    plt.subplot(2, 2, 4)
+    plt.plot(
+        pid.process_output_list,
+        color="b",
+        linestyle="--",
+        linewidth=2,
+        label="Controller Output (OP)",
+    )
+    plt.grid(True)
+    plt.legend(loc="best")
+
+    plt.savefig(plot_file_path)
+
+
+@dataclass
+class DataSetLevel:
+    volts: float
+    dB: float
+
+    def __str__(self):
+        return f"[DataSetLevel]: volts: {self.volts}, dB: {self.dB}"
+
+    def __rich_repr__(self):
+        yield "volts", self.volts
+        yield "dB", self.dB
+
+
+def config_set_level_v2(
+    dBu: float,
+    config: SweepConfig,
+):
+    data_set_level: Optional[DataSetLevel] = None
+
+    voltage_amplitude_start: float = 0.1
+    voltage_amplitude = voltage_amplitude_start
+    frequency = 1000
+    Fs = trim_value(
+        frequency * config.sampling.Fs_multiplier, max_value=config.nidaq.Fs_max
+    )
+    diff_voltage = 0.001
+    target_Vrms = VdBu_to_Vrms(dBu)
+
+    table = Table(
+        Column("Iteration", justify="right"),
+        Column(f"{dBu:.1f} dBu [Vrms]", justify="right"),
+        Column("Vpp [Vpp]", justify="right"),
+        Column("Rms Value [V]", justify="right"),
+        Column("Diff Vpp [V]", justify="right"),
+        Column("Gain [dB]", justify="right"),
+        Column("Proportional Term [V]", justify="right"),
+        Column("Integral Term [V]", justify="right"),
+        Column("Differential Term [V]", justify="right"),
+        Column("Error [%]", justify="right"),
+        title="[blue]Configuration.",
+    )
+
+    progress_list_task = Progress(
+        SpinnerColumn(),
+        "•",
+        TextColumn(
+            "[bold blue]{task.description}[/] - [bold green]{task.fields[task]}[/]",
+        ),
+        transient=True,
+    )
+
+    progress_sweep = Progress(
+        SpinnerColumn(),
+        "•",
+        TextColumn(
+            "[bold blue]{task.description}",
+            justify="right",
+        ),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        "•",
+        TimeElapsedColumn(),
+        "•",
+        MofNCompleteColumn(),
+        TextColumn(
+            " - Frequency: [bold green]{task.fields[frequency]} - RMS: {task.fields[rms]}"
+        ),
+        console=console,
+        transient=True,
+    )
+
+    progress_task = Progress(
+        SpinnerColumn(),
+        "•",
+        TextColumn(
+            "[bold blue]{task.description}",
+        ),
+        transient=True,
+    )
+
+    live_group = Group(
+        table,
+        Panel(
+            Group(
+                progress_list_task,
+                progress_sweep,
+                progress_task,
+            )
+        ),
+    )
+
+    live = Live(
+        live_group,
+        transient=False,
+        console=console,
+        vertical_overflow="visible",
+    )
+    live.start()
+
+    task_sampling = progress_list_task.add_task(
+        "CONFIGURING", start=False, task="Retrieving Devices"
+    )
+    progress_list_task.start_task(task_sampling)
+
+    # Asks for the 2 instruments
+    rm = ResourceManager()
+    devices = rm.search_resources()
+    generator = rm.open_resource(device=devices[0])
+
+    progress_list_task.update(task_sampling, task="Setting Devices")
+
+    # Open the Instruments interfaces
+    # Auto Close with the destructor
+    generator.open()
+
+    # Sets the Configuration for the Voltmeter
+    # Frequency: 1000
+    generator_configs: list = [
+        SCPI.clear(),
+        SCPI.set_output(1, Switch.OFF),
+        SCPI.set_function_voltage_ac(),
+        SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
+        SCPI.set_source_voltage_amplitude(1, voltage_amplitude),
+        SCPI.set_source_frequency(1, frequency),
+    ]
+
+    SCPI.exec_commands(generator, generator_configs)
+
+    sleep(2)
+
+    generator_ac_curves: List[str] = [
+        SCPI.set_output(1, Switch.ON),
+    ]
+
+    SCPI.exec_commands(generator, generator_ac_curves)
+
+    progress_list_task.update(task_sampling, task="Searching for Voltage offset")
+
+    Vpp_found: bool = False
+    iteration: int = 0
+    pid = PID_Controller(
+        set_point=target_Vrms,
+        controller_gain=1.5,
+        tauI=1,
+        tauD=0.5,
+        controller_output_zero=voltage_amplitude_start,
+    )
+
+    gain_dB_list: List[float] = []
+
+    k_tot = 0.2745
+    gain_apparato: Optional[float] = None
+
+    level_offset: Optional[float] = None
+
+    nidaq = ni9223(
+        config.sampling.number_of_samples,
+        Fs,
+        input_channel=config.nidaq.channels,
+    )
+
+    nidaq.create_task()
+    nidaq.add_ai_channel(config.nidaq.channels)
+    nidaq.set_sampling_clock_timing(Fs)
+
+    while not Vpp_found:
+
+        # GET MEASUREMENTS
+        nidaq.task_start()
+        voltages = nidaq.read_single_voltages()
+        nidaq.task_stop()
+        voltages_sampling = VoltageSampling.from_list(voltages, frequency, Fs)
+        result: RMSResult = RMS.rms_v2(
+            voltages_sampling,
+        )
+
+        if result.rms is not None:
+
+            if not gain_apparato:
+                gain_apparato = result.rms / voltage_amplitude_start
+                pid.controller_gain = k_tot / gain_apparato
+
+            pid.add_process_variable(result.rms)
+
+            error: float = target_Vrms - result.rms
+
+            pid.add_error(Timed_Value(error))
+
+            error_percentage: float = percentage_error(
+                exact=target_Vrms, approx=result.rms
+            )
+
+            gain_dB: float = calculate_gain_dB(
+                result.rms, Vpp_to_Vrms(voltage_amplitude)
+            )
+
+            gain_dB_list.append(gain_dB)
+
+            table.add_row(
+                f"{iteration}",
+                f"{target_Vrms:.8f}",
+                f"{voltage_amplitude:.8f}",
+                f"{result.rms:.8f}",
+                "[{}]{:+.8f}[/]".format(
+                    "red" if error > diff_voltage else "green",
+                    error,
+                ),
+                "[{}]{:+.8f}[/]".format(
+                    "red" if gain_dB < 0 else "green",
+                    gain_dB,
+                ),
+                f"{pid.term.proportional[-1]:+.8f}",
+                f"{pid.term.integral[-1]:+.8f}",
+                f"{pid.term.derivative[-1]:+.8f}",
+                "[{}]{:+.5%}[/]".format(
+                    "red" if error > diff_voltage else "green",
+                    error_percentage,
+                ),
+            )
+
+            if pid.check_limit_diff(error, diff_voltage):
+                Vpp_found = True
+                level_offset = voltage_amplitude
+
+                table_result = Table(
+                    "Gain Apparato",
+                    "Kc",
+                    "tauI",
+                    "tauD",
+                    "steps",
+                )
+
+                table_result.add_row(
+                    f"{result.rms / voltage_amplitude:.8f}",
+                    f"{pid.controller_gain}",
+                    f"{pid.tauI}",
+                    f"{pid.tauD}",
+                    f"{iteration}",
+                )
+
+                console.print(Panel(table_result))
+
+                data_set_level = DataSetLevel(volts=level_offset, dB=gain_dB)
+
+            else:
+
+                pid.term.add_proportional(pid.proportional_term)
+                pid.term.add_integral(pid.integral_term)
+                pid.term.add_derivative(pid.derivative_term)
+
+                output_variable: float = pid.output_process
+
+                pid.add_process_output(output_variable)
+
+                voltage_amplitude = output_variable
+
+                # Apply new Amplitude
+
+                if voltage_amplitude > 11:
+                    voltage_amplitude = 11
+                    console.print("[ERROR] - Voltage Input > 11.", style="error")
+
+                generator_configs: list = [
+                    SCPI.set_source_voltage_amplitude(1, voltage_amplitude)
+                ]
+
+                SCPI.exec_commands(generator, generator_configs)
+
+                sleep(0.4)
+
+                iteration += 1
+        else:
+            console.print("[SAMPLING] - Error retrieving rms_value.")
+
+    nidaq.task_close()
+    live.stop()
+
+    generator_ac_curves: List[str] = [
+        SCPI.set_output(1, Switch.OFF),
+    ]
+
+    from rich.prompt import Confirm
+
+    response = Confirm.ask("Continue?")
+
+    SCPI.exec_commands(generator, generator_ac_curves)
+    generator.close()
+
+
+    sp = np.full(iteration, target_Vrms)
+    # plot_config_set_level_v2(sp, pid, plot_file_path)
+
+    return data_set_level
+
+
+def plot_config_set_level_v2(
+    sp: np.ndarray,
+    pid: PID_Controller,
+    plot_file_path: Path,
+):
     plt.figure(1, figsize=(16, 9))
 
     plt.subplot(2, 2, 1)

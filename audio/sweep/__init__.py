@@ -64,7 +64,6 @@ class SweepAmplitudePhaseTable:
 
 def sweep_amplitude_phase(
     config: SweepConfig,
-    sweep_home_path: Path,
 ):
     DEFAULT = {"delay": 0.2}
 
@@ -278,25 +277,19 @@ def sweep(
 
     nidaq = ni9223(
         config.sampling.number_of_samples,
-        input_channel=config.nidaq.channels,
+        input_channel=[ch.name for ch in config.nidaq.channels],
     )
-    config.nidaq.Fs_max = nidaq.device.ai_max_multi_chan_rate
 
     Fs = trim_value(
         frequency * config.sampling.Fs_multiplier,
         max_value=config.nidaq.Fs_max,
     )
-    nidaq.create_task("Sweep Amplitude-Phase")
-    nidaq.add_ai_channel(config.nidaq.channels)
+    nidaq.create_task("Sweep")
+    nidaq.add_ai_channel([ch.name for ch in config.nidaq.channels])
     nidaq.set_sampling_clock_timing(Fs)
 
     timer = Timer()
 
-    test_id = db.insert_test(
-        "Sweep Amplitude Phase",
-        datetime.now(),
-        "Double sweep for Amplitude and Phase",
-    )
     sweep_id = db.insert_sweep(
         test_id,
         "Sweep Amplitude and Phase",
@@ -305,6 +298,7 @@ def sweep(
     )
     db.insert_sweep_config(
         sweep_id,
+        config.rigol.amplitude_peak_to_peak,
         config.sampling.frequency_min,
         config.sampling.frequency_max,
         config.sampling.points_per_decade,
@@ -315,11 +309,14 @@ def sweep(
 
     channel_ids: List[int] = []
 
+    if config.nidaq.channels is None:
+        return None
+
     for idx, channel in enumerate(config.nidaq.channels):
         _id = db.insert_channel(
-            sweep_id,
-            idx,
-            channel.name,
+            sweep_id=sweep_id,
+            idx=idx,
+            name=channel.name,
             comment=channel.comment,
         )
         channel_ids.append(_id)
@@ -368,9 +365,13 @@ def sweep(
             )
             sweep_voltages_ids.append(_id)
 
+        console.log(f"[ACQUISITION]: freq: {frequency}, Fs: {Fs} time: {sampling_time}")
+
     generator.exec(
         [
             SCPI.set_output(1, Switch.OFF),
             SCPI.clear(),
         ],
     )
+
+    return sweep_id

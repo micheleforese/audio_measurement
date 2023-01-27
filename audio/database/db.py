@@ -5,6 +5,8 @@ from sqlite3 import Connection
 from typing import Any, List, Optional, Tuple
 
 from audio.console import console
+from audio.math.rms import RMS
+from audio.model.sampling import VoltageSampling
 
 
 @dataclass
@@ -31,8 +33,6 @@ class DbFrequency:
     idx: int
     frequency: float
     Fs: float
-    rms: float
-    rms_interpolation_rate: float
 
 
 @dataclass
@@ -65,9 +65,7 @@ class DbSweepVoltage:
 
 
 import mysql.connector
-import mysqlx
 from mysql.connector.connection import MySQLConnection
-from mysqlx import Session
 
 
 class Database:
@@ -192,8 +190,8 @@ class Database:
         data = (
             sweep_id,
             idx,
-            frequency,
-            Fs,
+            float(frequency),
+            float(Fs),
         )
         cur.execute(
             f"""
@@ -201,7 +199,7 @@ class Database:
                 sweep_id,
                 idx,
                 frequency,
-                Fs,
+                Fs
             )
             VALUES ({",".join(["%s"] * len(data))})
             """,
@@ -219,9 +217,7 @@ class Database:
                 sweep_id,
                 idx,
                 frequency,
-                Fs,
-                rms,
-                rms_interpolation_rate
+                Fs
             FROM audio.frequency
             WHERE sweep_id = {sweep_id} ORDER BY idx ASC
             """
@@ -236,10 +232,8 @@ class Database:
                 idx=idx,
                 frequency=frequency,
                 Fs=Fs,
-                rms=rms,
-                rms_interpolation_rate=rms_interpolation_rate,
             )
-            for id, sweep_id, idx, frequency, Fs, rms, rms_interpolation_rate in data
+            for id, sweep_id, idx, frequency, Fs in data
         ]
 
         return frequency_data
@@ -289,9 +283,9 @@ class Database:
 
     def get_channels_from_sweep_id(self, sweep_id: int):
         cur = self.connection.cursor()
-        data = cur.execute(
-            f"SELECT * FROM audio.channel WHERE sweep_id = {sweep_id}"
-        ).fetchall()
+        cur.execute(f"SELECT * FROM audio.channel WHERE sweep_id = {sweep_id}")
+
+        data = cur.fetchall()
 
         channels_data = [
             DbChannel(id=_id, sweep_id=sweep_id, idx=idx, name=name, comment=comment)
@@ -322,13 +316,13 @@ class Database:
         cur = self.connection.cursor()
         data = (
             sweep_id,
-            amplitude,
-            frequency_min,
-            frequency_max,
-            points_per_decade,
+            float(amplitude),
+            float(frequency_min),
+            float(frequency_max),
+            float(points_per_decade),
             number_of_samples,
-            Fs_multiplier,
-            delay_measurements,
+            float(Fs_multiplier),
+            float(delay_measurements),
         )
         cur.execute(
             f"""
@@ -341,7 +335,7 @@ class Database:
                 number_of_samples,
                 Fs_multiplier,
                 delay_measurements
-            ) VALUES ({",".join(["?"] * len(data))})
+            ) VALUES ({",".join(["%s"] * len(data))})
             """,
             data,
         )
@@ -438,20 +432,21 @@ class Database:
         channel_id: int,
     ):
         cur = self.connection.cursor()
-        data: Tuple[int, int, int, bytes] = cur.execute(
+        cur.execute(
             f"""
             SELECT *
             FROM audio.sweepVoltage
             WHERE frequency_id = {frequency_id} AND channel_id = {channel_id}
             """
-        ).fetchone()
+        )
+        data: Tuple[int, int, int, bytes] = cur.fetchone()
 
         _id, _frequency_id, _channel_id, _voltages = data
         sweep_voltages_data = DbSweepVoltage(
             id=_id,
             frequency_id=_frequency_id,
             channel_id=_channel_id,
-            voltages=_voltages.decode(),
+            voltages=[float(volt) for volt in _voltages.decode().splitlines()],
         )
 
         return sweep_voltages_data

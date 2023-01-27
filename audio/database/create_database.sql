@@ -66,3 +66,11 @@ CREATE TABLE IF NOT EXISTS audio.testConfig(
   config BLOB NOT NULL,
   FOREIGN KEY (test_id) REFERENCES audio.test (id)
 );
+
+-- CREATE TABLE IF NOT EXISTS audio.media(
+--   id INT NOT NULL AUTO_INCREMENT,
+--   test_id INT NOT NULL,
+--   name VARCHAR(255) NOT NULL,
+--   comment VARCHAR(500),
+--   PRIMARY KEY (id),
+-- );

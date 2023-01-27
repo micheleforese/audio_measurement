@@ -237,13 +237,16 @@ class ProcedureDefault(ProcedureStep, DecoderXML):
 @dataclass
 @rich_repr
 class ProcedureSetLevel(ProcedureStep, DecoderXML):
+    name: str
+    comment: Optional[str] = None
     dBu: Optional[float] = None
-    file_set_level_key: Optional[str] = None
-    file_set_level_name: Optional[str] = None
-    file_plot_key: Optional[str] = None
-    file_plot_name: Optional[str] = None
+    dBu_modifier: bool = False
     config: Optional[SweepConfig] = None
-    override: bool = False
+    # file_set_level_key: Optional[str] = None
+    # file_set_level_name: Optional[str] = None
+    # file_plot_key: Optional[str] = None
+    # file_plot_name: Optional[str] = None
+    # override: bool = False
 
     @classmethod
     def from_xml_file(cls, file: Path):
@@ -261,42 +264,53 @@ class ProcedureSetLevel(ProcedureStep, DecoderXML):
             return None
 
         dBu: Optional[float] = None
-        file_set_level_key: Optional[str] = None
-        file_set_level_name: Optional[str] = None
-        file_plot_key: Optional[str] = None
-        file_plot_name: Optional[str] = None
-        override: bool = False
+        dBu_modifier: bool = False
         sweep_config_xml: Optional[SweepConfig] = None
+        # file_set_level_key: Optional[str] = None
+        # file_set_level_name: Optional[str] = None
+        # file_plot_key: Optional[str] = None
+        # file_plot_name: Optional[str] = None
+        # override: bool = False
+
+        name = xml.get("name")
+        comment = xml.get("comment")
 
         EdBu = xml.find("./dBu")
         if EdBu is not None:
             dBu = float(EdBu.text)
 
-        Efile_set_level = xml.find("./file_set_level")
-        if Efile_set_level is not None:
-            file_set_level_key = Efile_set_level.get("key")
-            file_set_level_name = Efile_set_level.get("path")
+            modifier: Optional[str] = EdBu.get("modifier")
+            if modifier is not None and modifier == "yes":
+                dBu_modifier = True
 
-        Efile_plot = xml.find("./file_set_level_plot")
-        if Efile_plot is not None:
-            file_plot_key = Efile_plot.get("key")
-            file_plot_name = Efile_plot.get("path")
+        # Efile_set_level = xml.find("./file_set_level")
+        # if Efile_set_level is not None:
+        #     file_set_level_key = Efile_set_level.get("key")
+        #     file_set_level_name = Efile_set_level.get("path")
 
-        override_elem = xml.get("override")
-        override = override_elem is not None
+        # Efile_plot = xml.find("./file_set_level_plot")
+        # if Efile_plot is not None:
+        #     file_plot_key = Efile_plot.get("key")
+        #     file_plot_name = Efile_plot.get("path")
+
+        # override_elem = xml.get("override")
+        # override = override_elem is not None
 
         config = xml.find("./config")
         if config is not None:
             sweep_config_xml = SweepConfig.from_xml_object(ET.ElementTree(config))
 
         return cls(
+            name=name,
+            comment=comment,
             dBu=dBu,
-            file_set_level_key=file_set_level_key,
-            file_set_level_name=file_set_level_name,
-            file_plot_key=file_plot_key,
-            file_plot_name=file_plot_name,
+            dBu_modifier=dBu_modifier,
             config=sweep_config_xml,
-            override=override,
+            # file_set_level_key=file_set_level_key,
+            # file_set_level_name=file_set_level_name,
+            # file_plot_key=file_plot_key,
+            # file_plot_name=file_plot_name,
+            # override=override,
         )
 
     @staticmethod
@@ -509,91 +523,6 @@ class ProcedureTask(ProcedureStep, DecoderXML):
         return xml.tag == "task"
 
 
-class ProcedureCheckCondition(Enum):
-    NOT_EXISTS = "not exists"
-
-    @staticmethod
-    def from_str(label: Optional[str]) -> Optional[ProcedureCheckCondition]:
-        if label is None:
-            return None
-
-        if label == ProcedureCheckCondition.NOT_EXISTS.value:
-            return ProcedureCheckCondition.NOT_EXISTS
-        else:
-            return None
-
-
-class ProcedureCheckAction(Enum):
-    BREAK_TASK = "break"
-
-    @staticmethod
-    def from_str(
-        label: Optional[str],
-    ) -> Optional[ProcedureCheckAction]:
-
-        if label is None:
-            return None
-
-        if label == ProcedureCheckAction.BREAK_TASK.value:
-            return ProcedureCheckAction.BREAK_TASK
-        else:
-            return None
-
-
-@rich_repr
-class ProcedureCheck(ProcedureStep, DecoderXML):
-
-    condition: ProcedureCheckCondition
-    action: ProcedureCheckAction
-    file: Optional[File]
-
-    def __init__(
-        self,
-        condition: ProcedureCheckCondition = ProcedureCheckCondition.NOT_EXISTS,
-        action: ProcedureCheckAction = ProcedureCheckAction.BREAK_TASK,
-        file: Optional[File] = None,
-    ) -> None:
-        self.condition = condition
-        self.action = action
-        self.file = file
-
-    @classmethod
-    def from_xml_file(cls, file: Path):
-        return cls.from_xml_string(file.read_text())
-
-    @classmethod
-    def from_xml_string(cls, data: str):
-        tree = ET.ElementTree(ET.fromstring(data))
-        xml = tree.getroot()
-        return cls.from_xml_object(xml)
-
-    @classmethod
-    def from_xml_object(cls, xml: Optional[ET.Element]):
-        if xml is None or not cls.xml_is_valid(xml):
-            return None
-
-        condition: Optional[ProcedureCheckCondition] = None
-        action: Optional[ProcedureCheckAction] = None
-        file: Optional[File] = None
-
-        condition = ProcedureCheckCondition.from_str(xml.find(".").get("condition"))
-        action = ProcedureCheckAction.from_str(xml.find(".").get("action"))
-
-        Efile = xml.find("./file")
-        if Efile is not None:
-            file = File(key=Efile.get("key"), path=Efile.get("path"))
-
-        return cls(
-            condition=condition,
-            action=action,
-            file=file,
-        )
-
-    @staticmethod
-    def xml_is_valid(xml: ET.Element):
-        return xml.tag == "check"
-
-
 @rich_repr
 class ProcedurePrint(ProcedureStep, DecoderXML):
 
@@ -763,3 +692,197 @@ class ProcedurePhaseSweep(ProcedureStep, DecoderXML):
     @staticmethod
     def xml_is_valid(xml: ET.Element):
         return xml.tag == "phase_sweep"
+
+
+class ProcedureCalculation(ProcedureStep, DecoderXML):
+
+    steps: List[ProcedureStep]
+
+    def __init__(
+        self,
+        steps: List[ProcedureStep] = [],
+    ) -> None:
+        self.steps = steps
+
+    @classmethod
+    def from_xml_file(cls, file: Path):
+        return cls.from_xml_string(file.read_text())
+
+    @classmethod
+    def from_xml_string(cls, data: str):
+        tree = ET.ElementTree(ET.fromstring(data))
+        xml = tree.getroot()
+        return cls.from_xml_object(xml)
+
+    @classmethod
+    def from_xml_object(cls, xml: Optional[ET.Element]):
+        if xml is None or not cls.xml_is_valid(xml):
+            return None
+
+        step_nodes: List[ET.Element] = xml.findall("./*")
+
+        steps: List[ProcedureStep] = []
+
+        for idx, step in enumerate(step_nodes):
+            proc_type = step.tag
+
+            console.print(proc_type)
+            procedure = ProcedureStep.proc_type_to_procedure(step)
+            if procedure is not None:
+                steps.append(procedure)
+            else:
+                console.print(f"procedure idx {idx} is NULL")
+
+        return cls(steps=steps)
+
+    @staticmethod
+    def xml_is_valid(xml: ET.Element):
+        return xml.tag == "calculation"
+
+
+class ProcedureCalculation_dBInsertionGain(ProcedureStep, DecoderXML):
+    name: str
+    comment: Optional[str]
+    data: Optional[List] = None
+
+    def __init__(
+        self,
+        data: Optional[List] = None,
+    ) -> None:
+        self.data = data
+
+    @classmethod
+    def from_xml_file(cls, file: Path):
+        return cls.from_xml_string(file.read_text())
+
+    @classmethod
+    def from_xml_string(cls, data: str):
+        tree = ET.ElementTree(ET.fromstring(data))
+        xml = tree.getroot()
+        return cls.from_xml_object(xml)
+
+    @classmethod
+    def from_xml_object(cls, xml: Optional[ET.Element]):
+        if xml is None or not cls.xml_is_valid(xml):
+            return None
+
+        name = xml.get("name")
+        comment = xml.get("comment")
+
+        list_sweep_voltage: List[ProcedureCalculation_sweepVoltageDb] = []
+
+        Elist_data_sweep_voltages = xml.findall("./*")
+        if len(Elist_data_sweep_voltages) > 0:
+            for elem in Elist_data_sweep_voltages:
+                sweepVoltageDb = ProcedureCalculation_sweepVoltageDb.from_xml_object(
+                    elem
+                )
+
+        return cls(steps=steps)
+
+    @staticmethod
+    def xml_is_valid(xml: ET.Element):
+        return xml.tag == "dB_insertion_gain"
+
+
+class ProcedureCalculation_sweepVoltageDb(ProcedureStep, DecoderXML):
+    key: str
+    idx: int
+
+    def __init__(
+        self,
+        key: str,
+        idx: int,
+    ) -> None:
+        self.key = key
+        self.idx = idx
+
+    @classmethod
+    def from_xml_file(cls, file: Path):
+        return cls.from_xml_string(file.read_text())
+
+    @classmethod
+    def from_xml_string(cls, data: str):
+        tree = ET.ElementTree(ET.fromstring(data))
+        xml = tree.getroot()
+        return cls.from_xml_object(xml)
+
+    @classmethod
+    def from_xml_object(cls, xml: Optional[ET.Element]):
+        if xml is None or not cls.xml_is_valid(xml):
+            return None
+
+        key = xml.get("key")
+        idx = xml.get("idx")
+
+        return cls(key=key, idx=idx)
+
+    @staticmethod
+    def xml_is_valid(xml: ET.Element):
+        return xml.tag == "sweepVoltageDb"
+
+
+class ProcedureCalculation_sweepVoltageLocal(ProcedureStep, DecoderXML):
+    key: str
+
+    def __init__(
+        self,
+        key: str,
+    ) -> None:
+        self.key = key
+
+    @classmethod
+    def from_xml_file(cls, file: Path):
+        return cls.from_xml_string(file.read_text())
+
+    @classmethod
+    def from_xml_string(cls, data: str):
+        tree = ET.ElementTree(ET.fromstring(data))
+        xml = tree.getroot()
+        return cls.from_xml_object(xml)
+
+    @classmethod
+    def from_xml_object(cls, xml: Optional[ET.Element]):
+        if xml is None or not cls.xml_is_valid(xml):
+            return None
+
+        key = xml.get("key")
+
+        return cls(key=key)
+
+    @staticmethod
+    def xml_is_valid(xml: ET.Element):
+        return xml.tag == "sweepVoltageLocal"
+
+
+class ProcedurePlot(ProcedureStep, DecoderXML):
+    key: str
+
+    def __init__(
+        self,
+        key: str,
+    ) -> None:
+        self.key = key
+
+    @classmethod
+    def from_xml_file(cls, file: Path):
+        return cls.from_xml_string(file.read_text())
+
+    @classmethod
+    def from_xml_string(cls, data: str):
+        tree = ET.ElementTree(ET.fromstring(data))
+        xml = tree.getroot()
+        return cls.from_xml_object(xml)
+
+    @classmethod
+    def from_xml_object(cls, xml: Optional[ET.Element]):
+        if xml is None or not cls.xml_is_valid(xml):
+            return None
+
+        key = xml.get("key")
+
+        return cls(key=key)
+
+    @staticmethod
+    def xml_is_valid(xml: ET.Element):
+        return xml.tag == "plot"

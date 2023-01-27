@@ -1,4 +1,4 @@
-<proc name="LA-125">
+<procedure name="LA-125" comment="Test per la macchina LA-125">
 
   <steps>
 
@@ -17,86 +17,18 @@
             <number_of_samples>200</number_of_samples>
             <delay_measurements>0</delay_measurements>
           </sampling>
+          <nidaq>
+            <channel comment="Ref">cDAQ9189-1CDBE0AMod5/ai1</channel>
+            <channel comment="DUT">cDAQ9189-1CDBE0AMod5/ai3</channel>
+          </nidaq>
         </config>
       </sweep>
     </default>
 
-    <sweep name="sweep1" comment="ch_idx 0 Input, ch_idx 1 Output">
-      <config>
-        <nidaq>
-          <channel comment="Input">cDAQ9189-1CDBE0AMod5/ai1</channel>
-          <channel comment="Output">cDAQ9189-1CDBE0AMod5/ai3</channel>
-        </nidaq>
-      </config>
-    </sweep>
 
-    <calculation>
-
-    </calculation>
-
-    <file>
-      <key>master</key>
-      <path>master.calibration.dat</path>
-    </file>
-    <file>
-      <key>master_plot</key>
-      <path>master_plot.calibration.png</path>
-    </file>
-
-    <task text="CALIBRATION DEVICE">
-      <check condition="not exists" action="break">
-        <file key="master" />
-      </check>
-
-      <set_level>
-        <file_set_level key="master" />
-        <file_set_level_plot key="master_plot" />
-        <config>
-          <nidaq>
-            <Fs_max>1000000</Fs_max>
-            <voltage_min>-10</voltage_min>
-            <voltage_max>10</voltage_max>
-            <channel>cDAQ9189-1CDBE0AMod5/ai1</channel>
-          </nidaq>
-          <sampling>
-            <Fs_multiplier>50</Fs_multiplier>
-            <number_of_samples>200</number_of_samples>
-          </sampling>
-        </config>
-      </set_level>
-    </task>
-
-    <task text="BASE SET DEVICE">
-      <text>Collegare L'Output al DUT.</text>
-      <ask>Ready?</ask>
-    </task>
-
-
-    <task text="GAIN 0dB">
-      <check condition="not exists" action="break">
-        <file path="sweep PRE 125-2 G0/sweep PRE 125-2 G0.csv" />
-      </check>
-
-
-      <text>GAIN 0dB.</text>
-      <ask>Ready?</ask>
-
-      <file>
-        <key>set_level_0</key>
-        <path>set_level_0.set_level.dat</path>
-      </file>
-      <file>
-        <key>set_level_0_plot</key>
-        <path>set_level_0_plot.set_level.png</path>
-      </file>
-      <file>
-        <key>gain_0</key>
-        <path>gain_0.dat</path>
-      </file>
-
-      <set_level>
-        <file_set_level key="set_level_0" />
-        <file_set_level_plot key="set_level_0_plot" />
+    <task name="PRE_G1">
+      <set_level name="master" comment="">
+        <dBu modifier="yes">4</dBu>
         <config>
           <nidaq>
             <Fs_max>1000000</Fs_max>
@@ -112,237 +44,100 @@
       </set_level>
 
 
-      <insertion_gain>
-        <file_calibration key="master" />
-        <file_set_level key="set_level_0" />
-        <file_gain key="gain_0" />
-      </insertion_gain>
-
-      <sweep>
-        <name_folder>sweep PRE 125-2 G0</name_folder>
-        <file_set_level key="set_level_0" />
-        <file_offset key="set_level_0" />
-        <file_insertion_gain key="gain_0" />
-        <config>
-          <nidaq>
-            <Fs_max>1000000</Fs_max>
-            <voltage_min>-10</voltage_min>
-            <voltage_max>10</voltage_max>
-            <channel>cDAQ9189-1CDBE0AMod5/ai1</channel>
-          </nidaq>
-          <sampling>
-            <Fs_multiplier>50</Fs_multiplier>
-            <points_per_decade>50</points_per_decade>
-            <frequency_min>10</frequency_min>
-            <frequency_max>99999</frequency_max>
-            <number_of_samples>200</number_of_samples>
-            <delay_measurements>0</delay_measurements>
-          </sampling>
-          <plot>
-            <color>#ff0000</color>
-            <legend>PRE 125-2 G0</legend>
-          </plot>
-        </config>
-      </sweep>
-
-    </task>
-
-    <task text="GAIN 15dB">
-      <check condition="not exists" action="break">
-        <file path="sweep PRE 125-2 G15/sweep PRE 125-2 G15.csv" />
-      </check>
-
-      <text>GAIN 15dB.</text>
-      <ask>Ready?</ask>
-
-      <file>
-        <key>set_level_15</key>
-        <path>set_level_15.set_level.dat</path>
-      </file>
-      <file>
-        <key>set_level_15_plot</key>
-        <path>set_level_15_plot.set_level.png</path>
-      </file>
-      <file>
-        <key>gain_15</key>
-        <path>gain_15.dat</path>
-      </file>
-
-      <set_level>
-        <file_set_level key="set_level_15" />
-        <file_set_level_plot key="set_level_15_plot" />
-        <config>
-          <nidaq>
-            <Fs_max>1000000</Fs_max>
-            <voltage_min>-10</voltage_min>
-            <voltage_max>10</voltage_max>
-            <channel>cDAQ9189-1CDBE0AMod5/ai1</channel>
-          </nidaq>
-          <sampling>
-            <Fs_multiplier>50</Fs_multiplier>
-            <number_of_samples>200</number_of_samples>
-          </sampling>
-        </config>
-      </set_level>
-
-
-      <insertion_gain>
-        <file_calibration key="master" />
-        <file_set_level key="set_level_15" />
-        <file_gain key="gain_15" />
-      </insertion_gain>
-
-      <sweep>
-        <name_folder>sweep PRE 125-2 G15</name_folder>
-        <file_set_level key="set_level_15" />
-        <file_offset key="set_level_15" />
-        <file_insertion_gain key="gain_15" />
-        <config>
-          <nidaq>
-            <Fs_max>1000000</Fs_max>
-            <voltage_min>-10</voltage_min>
-            <voltage_max>10</voltage_max>
-            <channel>cDAQ9189-1CDBE0AMod5/ai1</channel>
-          </nidaq>
-          <sampling>
-            <Fs_multiplier>50</Fs_multiplier>
-            <points_per_decade>50</points_per_decade>
-            <frequency_min>10</frequency_min>
-            <frequency_max>99999</frequency_max>
-            <number_of_samples>200</number_of_samples>
-            <delay_measurements>0</delay_measurements>
-          </sampling>
-          <plot>
-            <color>#00ff00</color>
-            <legend>PRE G15</legend>
-          </plot>
-        </config>
-      </sweep>
-
-    </task>
-
-    <task text="GAIN 30dB">
-      <check condition="not exists" action="break">
-        <file path="sweep PRE 125-2 G30/sweep PRE 125-2 G30.csv" />
-      </check>
-
-      <text>GAIN 30dB.</text>
-      <ask>Ready?</ask>
-
-      <file>
-        <key>set_level_30</key>
-        <path>set_level_30.set_level.dat</path>
-      </file>
-      <file>
-        <key>set_level_30_plot</key>
-        <path>set_level_30_plot.set_level.png</path>
-      </file>
-      <file>
-        <key>gain_30</key>
-        <path>gain_30.dat</path>
-      </file>
-
-      <set_level>
-        <file_set_level key="set_level_30" />
-        <file_set_level_plot key="set_level_30_plot" />
-        <config>
-          <nidaq>
-            <Fs_max>1000000</Fs_max>
-            <voltage_min>-10</voltage_min>
-            <voltage_max>10</voltage_max>
-            <channel>cDAQ9189-1CDBE0AMod5/ai1</channel>
-          </nidaq>
-          <sampling>
-            <Fs_multiplier>50</Fs_multiplier>
-            <number_of_samples>200</number_of_samples>
-          </sampling>
-        </config>
-      </set_level>
-
-
-      <insertion_gain>
-        <file_calibration key="master" />
-        <file_set_level key="set_level_30" />
-        <file_gain key="gain_30" />
-      </insertion_gain>
-
-      <sweep>
-        <name_folder>sweep PRE 125-2 G30</name_folder>
-        <file_set_level key="set_level_30" />
-        <file_offset key="set_level_30" />
-        <file_insertion_gain key="gain_30" />
-        <config>
-          <nidaq>
-            <Fs_max>1000000</Fs_max>
-            <voltage_min>-10</voltage_min>
-            <voltage_max>10</voltage_max>
-            <channel>cDAQ9189-1CDBE0AMod5/ai1</channel>
-          </nidaq>
-          <sampling>
-            <Fs_multiplier>50</Fs_multiplier>
-            <points_per_decade>50</points_per_decade>
-            <frequency_min>10</frequency_min>
-            <frequency_max>99999</frequency_max>
-            <number_of_samples>200</number_of_samples>
-            <delay_measurements>0</delay_measurements>
-          </sampling>
-          <plot>
-            <color>#0000ff</color>
-            <legend>PRE G30</legend>
-          </plot>
-        </config>
-      </sweep>
-
-    </task>
-
-    <task text="MULTIPLOT">
-
-      <!-- <check condition="not exists" action="break">
-        <file path="multiplot.png" />
-      </check> -->
-
-      <multiplot name="multiplot">
-        <file_plot>multiplot.png</file_plot>
-        <folder_sweep>
-          <var>sweep PRE 125-2 G0</var>
-          <var>sweep PRE 125-2 G15</var>
-          <var>sweep PRE 125-2 G30</var>
-        </folder_sweep>
-      </multiplot>
-
-    </task>
-
-    <task text="PHASE">
-
-      <phase_sweep name="First Phase Sweep">
-        <folder_path>LA-125_2ch</folder_path>
-        <graph_path>graph.pdf</graph_path>
+      <sweep name="PRE_G1" comment="Flat, NO 48V">
         <config>
           <rigol>
-            <amplitude_peak_to_peak>1</amplitude_peak_to_peak>
+            <amplitude key="master" />
           </rigol>
+        </config>
+      </sweep>
+
+      <calculation>
+        <dB_insertion_gain name="referenced_dut_gain" comment="DUT - Ref Gain in Db">
+          <sweepVoltageDb key="PRE_G1" idx="1" />
+          <sweepVoltageDb key="PRE_G1" idx="0" />
+        </dB_insertion_gain>
+
+        <insertion_phase name="referenced_dut_phase" comment="DUT - Ref Phase in degrees">
+          <sweepVoltageDb key="PRE_G1" idx="1" />
+          <sweepVoltageDb key="PRE_G1" idx="0" />
+        </insertion_phase>
+
+        <plot kind="gain-phase">
+          <data>
+            <sweepVoltageLocal key="referenced_dut_gain" />
+            <sweepVoltageLocal key="referenced_dut_phase" />
+          </data>
+          <config>
+            <plot>
+              <legend>
+                <Db sweep_name="PRE_G1">{sweep.name} {sweep.comment}</Db>
+              </legend>
+              <title>
+                <Db test_name="LA-125">{test.name} {test.comment} {test.date}</Db>
+              </title>
+            </plot>
+          </config>
+        </plot>
+      </calculation>
+    </task>
+
+    <task name="PRE_G5">
+      <set_level name="master" comment="">
+        <dBu modifier="yes">4</dBu>
+        <config>
           <nidaq>
+            <Fs_max>1000000</Fs_max>
+            <voltage_min>-10</voltage_min>
+            <voltage_max>10</voltage_max>
             <channel>cDAQ9189-1CDBE0AMod5/ai1</channel>
-            <channel>cDAQ9189-1CDBE0AMod5/ai3</channel>
           </nidaq>
           <sampling>
-            <frequency_min>10</frequency_min>
-            <frequency_max>99999</frequency_max>
-            <points_per_decade>50</points_per_decade>
-            <number_of_samples>200</number_of_samples>
             <Fs_multiplier>50</Fs_multiplier>
-            <delay_measurements>0</delay_measurements>
-            <interpolation_rate>20</interpolation_rate>
+            <number_of_samples>200</number_of_samples>
           </sampling>
-          <plot>
-            <interpolation_rate>10</interpolation_rate>
-            <title>Plot Title</title>
-          </plot>
         </config>
-      </phase_sweep>
+      </set_level>
 
+
+      <sweep name="PRE_G5" comment="Flat, NO 48V">
+        <config>
+          <rigol>
+            <amplitude key="master" />
+          </rigol>
+        </config>
+      </sweep>
+
+      <calculation>
+        <dB_insertion_gain name="referenced_dut_gain" comment="DUT - Ref Gain in Db">
+          <sweepVoltageDb key="PRE_G5" idx="1" />
+          <sweepVoltageDb key="PRE_G5" idx="0" />
+        </dB_insertion_gain>
+
+        <insertion_phase name="referenced_dut_phase" comment="DUT - Ref Phase in degrees">
+          <sweepVoltageDb key="PRE_G5" idx="1" />
+          <sweepVoltageDb key="PRE_G5" idx="0" />
+        </insertion_phase>
+
+        <plot kind="gain-phase">
+          <data>
+            <sweepVoltageLocal key="referenced_dut_gain" />
+            <sweepVoltageLocal key="referenced_dut_phase" />
+          </data>
+          <config>
+            <plot>
+              <legend>
+                <Db sweep_name="PRE_G5">{sweep.name} {sweep.comment}</Db>
+              </legend>
+              <title>
+                <Db test_name="LA-125">{test.name} {test.comment} {test.date}</Db>
+              </title>
+            </plot>
+          </config>
+        </plot>
+      </calculation>
     </task>
 
 
   </steps>
-</proc>
+</procedure>

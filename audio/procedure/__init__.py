@@ -8,9 +8,9 @@ from typing import Dict, List, Optional, Type, Union
 import rich
 
 from audio.console import console
+from audio.decoder.xml import DecoderXML
 from audio.model.file import CacheFile
 from audio.plot import CacheCsvData
-from audio.decoder.xml import DecoderXML
 from audio.procedure.step import DefaultSweepConfig, ProcedureStep
 
 
@@ -18,14 +18,17 @@ from audio.procedure.step import DefaultSweepConfig, ProcedureStep
 class Procedure(DecoderXML):
 
     name: str
+    comment: Optional[str]
     steps: List[ProcedureStep]
 
     def __init__(
         self,
         name: str,
+        comment: Optional[str],
         steps: List[ProcedureStep] = [],
     ) -> None:
         self.name = name
+        self.comment = comment
         self.steps = steps
 
     def print(self) -> str:
@@ -56,21 +59,21 @@ class Procedure(DecoderXML):
 
         procedure = xml
         name = procedure.get("name")
+        comment = procedure.get("comment")
         step_nodes: List[ET.Element] = procedure.findall("./steps/*")
 
         steps: List[ProcedureStep] = []
 
         for idx, step in enumerate(step_nodes):
-            proc_type = step.tag
 
-            console.print(proc_type)
             procedure = ProcedureStep.proc_type_to_procedure(step)
             if procedure is not None:
                 steps.append(procedure)
             else:
                 console.print(f"procedure idx {idx} is NULL")
+                exit()
 
-        return cls(name, steps)
+        return cls(name, comment, steps)
 
     @staticmethod
     def xml_is_valid(xml: ET.Element):

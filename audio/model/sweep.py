@@ -4,8 +4,8 @@ from typing import Any, Dict, Optional
 import pandas as pd
 import yaml
 from pandas import DataFrame, Series
-from audio.config.plot import PlotConfig, PlotConfigXML
 
+from audio.config.plot import PlotConfig
 from audio.console import console
 
 
