@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import List
 
 import matplotlib.pyplot as plt
@@ -105,4 +106,9 @@ def test_calculation():
         [rms.rms for rms in rms_ref],
     )
 
-    plt.show()
+    directory = Path("~/Desktop/imgs")
+    directory.mkdir(parents=True, exist_ok=True)
+
+    file = directory / f"{datetime().now().strftime('%Y-%m-%dT%H-%M-%SZ')}.jpeg"
+
+    plt.savefig(file)
