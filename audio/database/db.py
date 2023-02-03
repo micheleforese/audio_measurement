@@ -97,6 +97,7 @@ class Database:
         cur = self.connection.cursor()
         cur.execute("DROP DATABASE IF EXISTS audio")
         cur.execute("CREATE DATABASE audio")
+        # ciao
         self.connection.commit()
 
     def insert_test(self, name: str, date: datetime, comment: Optional[str] = None):

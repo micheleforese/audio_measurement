@@ -11,7 +11,6 @@ from matplotlib.figure import Figure
 from rich.panel import Panel
 from rich.prompt import Confirm
 
-from audio.config.plot import PlotConfigXML
 from audio.config.sweep import SweepConfig
 from audio.config.type import Range
 from audio.console import console
@@ -26,13 +25,7 @@ from audio.sampling import config_set_level, plot_from_csv, sampling_curve
 from audio.script.device.ni import read_rms, read_rms_loop, read_rms_v2
 from audio.script.device.rigol import set_amplitude, set_frequency, turn_off, turn_on
 from audio.script.procedure import procedure
-from audio.script.test import (
-    bk_precision,
-    instrument,
-    phase_analysis,
-    print_devices,
-    testTimer,
-)
+from audio.script.test import bk_precision, instrument, phase_analysis, print_devices
 from audio.utility import get_subfolder
 from audio.utility.timer import Timer
 
@@ -717,7 +710,6 @@ def test():
     pass
 
 
-test.add_command(testTimer)
 test.add_command(print_devices)
 test.add_command(phase_analysis)
 test.add_command(instrument)

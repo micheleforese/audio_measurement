@@ -1,7 +1,7 @@
 import copy
 from enum import Enum, auto
-from pathlib import Path
 from math import log10
+from pathlib import Path
 from typing import Callable, Dict, List, Optional, Type
 
 import click
@@ -14,16 +14,14 @@ from audio.model.file import File
 from audio.model.insertion_gain import InsertionGain
 from audio.model.set_level import SetLevel
 from audio.plot import multiplot
-from audio.procedure import (
-    DataProcedure,
-    Procedure,
+from audio.procedure import DataProcedure, Procedure
+from audio.procedure.step import (
     ProcedureAsk,
-    ProcedureCheck,
-    ProcedureCheckCondition,
     ProcedureDefault,
     ProcedureFile,
     ProcedureInsertionGain,
     ProcedureMultiPlot,
+    ProcedurePhaseSweep,
     ProcedurePrint,
     ProcedureSerialNumber,
     ProcedureSetLevel,
@@ -31,7 +29,6 @@ from audio.procedure import (
     ProcedureSweep,
     ProcedureTask,
     ProcedureText,
-    ProcedurePhaseSweep,
 )
 from audio.sampling import config_set_level, plot_from_csv, sampling_curve
 
@@ -55,7 +52,7 @@ def procedure(
             Panel(f"[ERROR] - Procedure file: {procedure_name} does not exists.")
         )
 
-    proc = Procedure.from_xml_file(file_path=procedure_name)
+    proc = Procedure.from_xml_file(file=procedure_name)
     procedure_data = DataProcedure(proc.name, home)
 
     console.print(f"Start Procedure: [blue]{procedure_data.name}", justify="center")
@@ -85,7 +82,6 @@ def exec_proc(data: DataProcedure, list_step: List[ProcedureStep]):
         ProcedureSweep: step_procedure_sweep,
         ProcedureMultiPlot: step_procedure_multiplot,
         ProcedureTask: step_procedure_task,
-        ProcedureCheck: step_procedure_check,
         ProcedurePhaseSweep: step_procedure_phase_sweep,
     }
 
@@ -469,34 +465,10 @@ def step_procedure_task(data: DataProcedure, step: ProcedureTask):
     return None
 
 
-def step_procedure_check(data: DataProcedure, step: ProcedureCheck):
-
-    condition = step.condition
-
-    if condition == ProcedureCheckCondition.NOT_EXISTS:
-        file = step.file
-        file_path: Optional[Path] = None
-
-        if file.key is not None:
-            file_path = data.cache_file.get(file.key)
-        elif file.path is not None:
-            file_path = data.root / file.path
-
-        if file_path is not None:
-            exists: bool = file_path.exists() and file_path.is_file()
-
-            if exists:
-                console.print(
-                    f"[CHECK - [yellow]EXIT_TASK[/]] - File {file_path} already exists."
-                )
-                return AppAction.EXIT_TASK
-
-    return None
-
-
 def step_procedure_phase_sweep(data: DataProcedure, step: ProcedurePhaseSweep):
-    from audio.sweep.phase import phase_sweep
     from datetime import datetime
+
+    from audio.sweep.phase import phase_sweep
 
     if step.data.folder_path is not None:
         folder_path = data.root / step.data.folder_path

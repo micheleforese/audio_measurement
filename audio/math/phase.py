@@ -1,6 +1,7 @@
-from typing import List, Optional, Tuple
-from audio.model.sampling import VoltageSampling
 import math
+from typing import List, Optional, Tuple
+
+from audio.model.sampling import VoltageSampling
 
 
 def phase_offset(
@@ -58,6 +59,7 @@ from audio.console import console
 def phase_offset_v2(
     voltage_sampling_0: VoltageSampling,
     voltage_sampling_1: VoltageSampling,
+    debug: bool = False,
 ):
     zero_index_0: Optional[int] = None
     zero_index_slope_0: Optional[float] = None
@@ -82,9 +84,10 @@ def phase_offset_v2(
 
     diffoffset = dcoffset1 - dcoffset0
 
-    console.log(
-        f"F: {voltage_sampling_0.input_frequency:+06.05f}, max0: {max0:+.05f}, max1: {max1:+.05f}, min0: {min0:+.05f}, min1: {min1:+.05f}, dcoffset0: {dcoffset0:+.05f}, dcoffset1: {dcoffset1:+.05f}, diffoffset: {diffoffset:+.07f}"
-    )
+    if debug:
+        console.log(
+            f"F: {voltage_sampling_0.input_frequency:+06.05f}, max0: {max0:+.05f}, max1: {max1:+.05f}, min0: {min0:+.05f}, min1: {min1:+.05f}, dcoffset0: {dcoffset0:+.05f}, dcoffset1: {dcoffset1:+.05f}, diffoffset: {diffoffset:+.07f}"
+        )
 
     volts_0.sub(dcoffset0)
     volts_1.sub(dcoffset1)
@@ -98,16 +101,16 @@ def phase_offset_v2(
 
         cross: float = samp_prev * samp_curr
 
-        if cross < 0:
+        is_cross = cross < 0
+
+        if is_cross:
             zero_index_slope_0 = samp_curr - samp_prev
-            # zero_index_0 = (
-            #     samp_curr_index if samp_curr - samp_prev < 0 else samp_prev_index
-            # )
+
             if abs(samp_curr) < abs(samp_prev):
                 zero_index_0 = samp_curr_index
             else:
                 zero_index_0 = samp_prev_index
-            begin_index_1 = samp_curr_index
+            begin_index_1 = samp_prev_index
 
             tx0_0 = samp_prev_index * (1 / voltage_sampling_0.sampling_frequency)
             tx1_0 = samp_curr_index * (1 / voltage_sampling_0.sampling_frequency)
@@ -120,7 +123,7 @@ def phase_offset_v2(
     if zero_index_0 is None or zero_index_slope_0 is None:
         return None
 
-    for idx in range(max([begin_index_1 - 20, 1]), len(volts_1)):
+    for idx in range(begin_index_1, len(volts_1)):
         samp_curr_index = idx
         samp_prev_index = idx - 1
 
@@ -128,8 +131,9 @@ def phase_offset_v2(
         samp_prev = volts_1[samp_prev_index]
 
         cross: float = samp_prev * samp_curr
+        is_cross = cross < 0
 
-        if cross < 0:
+        if is_cross:
             slope = samp_curr - samp_prev
             zero_index_slope_1 = slope
             if zero_index_slope_0 * zero_index_slope_1 < 0:
@@ -162,17 +166,16 @@ def phase_offset_v2(
     alpha = (time / T) * 360
     if sign_phase < 0:
         alpha -= 180
-        # alpha *= sign_phase
+    # alpha *= sign_phase
 
-    # if abs(alpha) > 0.2:
-    #     import matplotlib.pyplot as plt
+    import matplotlib.pyplot as plt
 
-    #     plt.title(
-    #         f"F: {voltage_sampling_0.input_frequency}\ni1: {zero_index_1}, i0: {zero_index_0},idiff: {index_diff}\ns1: {zero_index_slope_1},s0: {zero_index_slope_0},\nalpha: {alpha}, sF: {voltage_sampling_0.sampling_frequency}, sphase: {sign_phase}"
-    #     )
-    #     plt.plot(voltage_sampling_0.voltages, ".-", color="#0000cf")
-    #     plt.plot(voltage_sampling_1.voltages, ".-", color="#00ff00")
-    #     plt.show()
-    #     plt.close()
+    # plt.title(
+    #     f"F: {voltage_sampling_0.input_frequency}\ni1: {zero_index_1}, i0: {zero_index_0},idiff: {index_diff}\ns1: {zero_index_slope_1},s0: {zero_index_slope_0},\nalpha: {alpha}, sF: {voltage_sampling_0.sampling_frequency}, sphase: {sign_phase}"
+    # )
+    # plt.plot(voltage_sampling_0.voltages, ".-", color="#0000cf")
+    # plt.plot(voltage_sampling_1.voltages, ".-", color="#00ff00")
+    # plt.show()
+    # plt.close()
 
     return alpha

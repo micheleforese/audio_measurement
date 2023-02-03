@@ -13,8 +13,14 @@ from matplotlib.figure import Figure
 from rich.console import Group
 from rich.live import Live
 from rich.panel import Panel
-from rich.progress import (BarColumn, MofNCompleteColumn, Progress,
-                           SpinnerColumn, TextColumn, TimeElapsedColumn)
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 from rich.table import Column, Table
 from usbtmc import Instrument
 
@@ -24,8 +30,7 @@ from audio.console import console
 from audio.device.cDAQ import ni9223
 from audio.math import dBV, percentage_error, transfer_function
 from audio.math.algorithm import LogarithmicScale
-from audio.math.interpolation import (INTERPOLATION_KIND,
-                                      logx_interpolation_model)
+from audio.math.interpolation import INTERPOLATION_KIND, logx_interpolation_model
 from audio.math.pid import PID_Controller, Timed_Value
 from audio.math.rms import RMS, RMSResult
 from audio.math.voltage import VdBu_to_Vrms, Vpp_to_Vrms, calculate_gain_dB
@@ -1105,43 +1110,49 @@ def config_set_level_v2(
     nidaq = ni9223(
         config.sampling.number_of_samples,
         Fs,
-        input_channel=config.nidaq.channels,
+        input_channel=[ch.name for ch in config.nidaq.channels],
     )
 
     nidaq.create_task()
-    nidaq.add_ai_channel(config.nidaq.channels)
+    nidaq.add_ai_channel([ch.name for ch in config.nidaq.channels])
     nidaq.set_sampling_clock_timing(Fs)
 
     while not Vpp_found:
 
         # GET MEASUREMENTS
         nidaq.task_start()
-        voltages = nidaq.read_single_voltages()
+        voltages = nidaq.read_multi_voltages()
         nidaq.task_stop()
-        voltages_sampling = VoltageSampling.from_list(voltages, frequency, Fs)
-        result: RMSResult = RMS.rms_v2(
-            voltages_sampling,
+        voltages_sampling_ref = VoltageSampling.from_list(voltages[0], frequency, Fs)
+        voltages_sampling_dut = VoltageSampling.from_list(voltages[1], frequency, Fs)
+        rms_ref: RMSResult = RMS.rms_v2(
+            voltages_sampling_ref,
+            interpolation_rate=20,
+            trim=True,
+        )
+        rms_dut: RMSResult = RMS.rms_v2(
+            voltages_sampling_dut,
+            interpolation_rate=20,
+            trim=True,
         )
 
-        if result.rms is not None:
+        if rms_dut.rms is not None:
 
             if not gain_apparato:
-                gain_apparato = result.rms / voltage_amplitude_start
+                gain_apparato = rms_dut.rms / voltage_amplitude_start
                 pid.controller_gain = k_tot / gain_apparato
 
-            pid.add_process_variable(result.rms)
+            pid.add_process_variable(rms_dut.rms)
 
-            error: float = target_Vrms - result.rms
+            error: float = target_Vrms - rms_dut.rms
 
             pid.add_error(Timed_Value(error))
 
             error_percentage: float = percentage_error(
-                exact=target_Vrms, approx=result.rms
+                exact=target_Vrms, approx=rms_dut.rms
             )
 
-            gain_dB: float = calculate_gain_dB(
-                result.rms, Vpp_to_Vrms(voltage_amplitude)
-            )
+            gain_dB: float = calculate_gain_dB(rms_dut.rms, rms_ref.rms)
 
             gain_dB_list.append(gain_dB)
 
@@ -1149,7 +1160,7 @@ def config_set_level_v2(
                 f"{iteration}",
                 f"{target_Vrms:.8f}",
                 f"{voltage_amplitude:.8f}",
-                f"{result.rms:.8f}",
+                f"{rms_dut.rms:.8f}",
                 "[{}]{:+.8f}[/]".format(
                     "red" if error > diff_voltage else "green",
                     error,
@@ -1180,7 +1191,7 @@ def config_set_level_v2(
                 )
 
                 table_result.add_row(
-                    f"{result.rms / voltage_amplitude:.8f}",
+                    f"{rms_dut.rms / voltage_amplitude:.8f}",
                     f"{pid.controller_gain}",
                     f"{pid.tauI}",
                     f"{pid.tauD}",
@@ -1228,13 +1239,12 @@ def config_set_level_v2(
         SCPI.set_output(1, Switch.OFF),
     ]
 
-    from rich.prompt import Confirm
+    # from rich.prompt import Confirm
 
-    response = Confirm.ask("Continue?")
+    # response = Confirm.ask("Continue?")
 
     SCPI.exec_commands(generator, generator_ac_curves)
     generator.close()
-
 
     sp = np.full(iteration, target_Vrms)
     # plot_config_set_level_v2(sp, pid, plot_file_path)

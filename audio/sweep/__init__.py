@@ -267,6 +267,8 @@ def sweep(
         ]
     )
 
+    sleep(2)
+
     log_scale: LogarithmicScale = LogarithmicScale(
         config.sampling.frequency_min,
         config.sampling.frequency_max,
