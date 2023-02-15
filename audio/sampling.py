@@ -1059,6 +1059,11 @@ def config_set_level_v2(
     # Asks for the 2 instruments
     rm = ResourceManager()
     devices = rm.search_resources()
+    if len(devices) == 0:
+        console.log("RIGOL NOT FOUND")
+        console.log("Connect Rigol.")
+        exit()
+
     generator = rm.open_resource(device=devices[0])
 
     progress_list_task.update(task_sampling, task="Setting Devices")
@@ -1121,10 +1126,20 @@ def config_set_level_v2(
 
         # GET MEASUREMENTS
         nidaq.task_start()
-        voltages = nidaq.read_multi_voltages()
+
+        isVoltagesRetrievingOk = False
+        while isVoltagesRetrievingOk is not True:
+            voltages = nidaq.read_multi_voltages()
+            if voltages is None:
+                console.log("[ERROR]: Error in retrieving Samples.")
+            else:
+                isVoltagesRetrievingOk = True
+
         nidaq.task_stop()
+
         voltages_sampling_ref = VoltageSampling.from_list(voltages[0], frequency, Fs)
         voltages_sampling_dut = VoltageSampling.from_list(voltages[1], frequency, Fs)
+
         rms_ref: RMSResult = RMS.rms_v2(
             voltages_sampling_ref,
             interpolation_rate=20,
@@ -1135,6 +1150,9 @@ def config_set_level_v2(
             interpolation_rate=20,
             trim=True,
         )
+
+        if rms_ref is None or rms_dut is None:
+            console.log("[ERROR]: rms_not calculated")
 
         if rms_dut.rms is not None:
 

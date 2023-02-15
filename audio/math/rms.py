@@ -185,11 +185,14 @@ class RMS:
         timer = Timer()
 
         voltages = list(voltages_sampling.voltages)
+        voltages_len = len(voltages)
+        if voltages_len < 2:
+            return None
 
         _, y_interpolated = interpolation_model(
-            range(0, len(voltages)),
+            range(0, voltages_len),
             voltages,
-            int(len(voltages) * interpolation_rate),
+            int(voltages_len * interpolation_rate),
             kind=INTERPOLATION_KIND.CUBIC,
         )
 
@@ -199,20 +202,20 @@ class RMS:
             trim_response = trim_sin_zero_offset(y_interpolated)
 
             if trim_response is not None:
+
                 voltages_trimmed, _, _ = trim_response
 
                 if len(voltages_trimmed) > 0:
                     voltages = voltages_trimmed
                 else:
                     console.log("trim ERROR - len(voltages_trimmed) < 0")
-
             else:
                 console.log("trim ERROR")
 
         rms: Optional[float] = None
 
         if time_report:
-            timer.start("[yellow]RMS Calculation Execution time[/]")
+            timer.start()
 
         if rms_mode == RMS_MODE.FFT:
             rms = RMS.fft(voltages)
@@ -222,7 +225,10 @@ class RMS:
             rms = RMS.integration(voltages, voltages_sampling.sampling_frequency)
 
         if time_report:
-            timer.stop().print()
+            calculation_time = timer.stop()
+            console.log(
+                f"[yellow]RMS Calculation Execution time[/]: [blue]{calculation_time}[/]"
+            )
 
         result.voltages = voltages
         result.rms = rms

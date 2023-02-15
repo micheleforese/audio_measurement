@@ -122,8 +122,8 @@ def make_graph_ref_dut_dutrefsub_dB_phase(
 
     comment = Prompt.ask("Test condition")
     plt.suptitle(f"ID: {sweep_id}, dB: {dB_offset:0.5f}, comment: {comment}")
-    # plt.style.use("ggplot")
-    plt.style.use("seaborn")
+    plt.style.use("ggplot")
+    # plt.style.use("seaborn")
 
     freq_volts_ref = zip(frequencies, voltages_ref)
 
@@ -142,8 +142,6 @@ def make_graph_ref_dut_dutrefsub_dB_phase(
         console.log(
             f"[DATA]: freq: {freq_ref.frequency:.05f}, rms: {rms_result.rms:.05f}"
         )
-
-    from matplotlib.axes import Axes
 
     axis_ref: Axes = axis[0, 0]
 

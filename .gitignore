@@ -19,14 +19,14 @@ env
 **/*.egg-info
 
 # Test script
-audio-test/**
+/audio-test
 
 
 # Docs
-docs/site
-
-#TEST
-!audio-test/config/**
+/docs/site
 
 # Database
-data/**
+/data
+
+# Logging
+/logging

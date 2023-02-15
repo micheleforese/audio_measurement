@@ -3,8 +3,10 @@ from __future__ import annotations
 import copy
 import tkinter as tk
 import tkinter.ttk as ttk
+from dataclasses import dataclass, field
 from enum import Enum, auto
 from math import log10, sqrt
+from threading import Lock, Thread
 from time import sleep
 from tkinter import BooleanVar, DoubleVar, IntVar, StringVar, Variable
 from typing import List, Optional, Tuple
@@ -21,12 +23,10 @@ from audio.model.sampling import VoltageSampling
 from audio.usb.usbtmc import UsbTmc
 from audio.utility import trim_value
 from audio.utility.scpi import SCPI, Bandwidth, Switch
-from threading import Thread, Lock
-from dataclasses import dataclass, field
 
 rms_data_lock = Lock()
 
-from typing import TypeVar, Generic
+from typing import Generic, TypeVar
 
 T = TypeVar("T")
 
@@ -630,18 +630,23 @@ def update_rms_value(data: RmsDataParameters):
 
         from audio.math.rms import RMSResult
 
-        rms_result_n: List[RMSResult] = []
+        rms_result_n: List[Optional[RMSResult]] = []
 
         for volts in voltages_sampling_n:
-            rms_result_n.append(RMS.rms_v2(volts, interpolation_rate=20))
+            rms_result_n.append(
+                RMS.rms_v2(voltages_sampling=volts, interpolation_rate=20, trim=True)
+            )
 
         voltage_rms_values: List[Tuple[float, float, float]] = []
 
         for result in rms_result_n:
-            Vrms = result.rms
-            Vpp = Vrms_to_Vpp(Vrms)
-            VdBu = Vrms_to_VdBu(Vrms)
-            voltage_rms_values.append((Vrms, Vpp, VdBu))
+            if result is None:
+                voltage_rms_values.append((0, 0, 0))
+            else:
+                Vrms = result.rms
+                Vpp = Vrms_to_Vpp(Vrms)
+                VdBu = Vrms_to_VdBu(Vrms)
+                voltage_rms_values.append((Vrms, Vpp, VdBu))
 
         for lbls, values in zip(data.lbls, voltage_rms_values):
 
@@ -656,29 +661,36 @@ def update_rms_value(data: RmsDataParameters):
                 lblVdBu.value["text"] = f"{VdBu:.05f} VdBu"
 
         import time
+
         from audio.math.voltage import calculate_gain_dB
 
         gain_dB = calculate_gain_dB(voltage_rms_values[1][1], voltage_rms_values[0][1])
         with data.gain.lock:
-
             data.gain.value["text"] = f"{gain_dB:.05f}"
-
-        # if abs(gain_dB) > 1:
-        #     time.sleep(5)
 
         from audio.math.phase import phase_offset_v2
 
-        v_0 = rms_result_n[0].voltages
-        v_1 = rms_result_n[1].voltages
-
-        with data.frequency.lock:
-            freq = data.frequency.value
-            volts_0 = VoltageSampling.from_list(v_0, freq, Fs * 20)
-            volts_1 = VoltageSampling.from_list(v_1, freq, Fs * 20)
-
-        phase_offset = phase_offset_v2(volts_0, volts_1)
-
-        if phase_offset is not None:
-
+        if rms_result_n[0] is None or rms_result_n[1] is None:
             with data.phase.lock:
-                data.phase.value["text"] = f"{phase_offset:.05f}"
+                data.phase.value["text"] = "NONE"
+        else:
+            v_0 = voltages_sampling_n[0].voltages
+            v_1 = voltages_sampling_n[1].voltages
+
+            with data.frequency.lock:
+                freq = data.frequency.value
+                volts_0 = VoltageSampling.from_list(v_0, freq, Fs * 20)
+                volts_1 = VoltageSampling.from_list(v_1, freq, Fs * 20)
+
+                try:
+                    phase_offset = phase_offset_v2(volts_0, volts_1)
+                except Exception as e:
+                    console.log(f"{e}")
+                    phase_offset = None
+
+                if phase_offset is not None:
+                    with data.phase.lock:
+                        data.phase.value["text"] = f"{phase_offset:.05f}"
+                else:
+                    with data.phase.lock:
+                        data.phase.value["text"] = "NONE"

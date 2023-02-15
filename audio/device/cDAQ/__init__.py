@@ -256,7 +256,11 @@ class ni9223(cDAQAIDevice):
             (len(self.input_channel), self.number_of_samples),
             dtype=numpy.float64,
         )
-        reader.read_many_sample(
-            values_read, number_of_samples_per_channel=self.number_of_samples
-        )
+        try:
+            reader.read_many_sample(
+                values_read, number_of_samples_per_channel=self.number_of_samples
+            )
+        except Exception as e:
+            console.log(f"[EXCEPTION]: {e}")
+            return None
         return values_read
