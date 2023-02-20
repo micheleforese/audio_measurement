@@ -38,6 +38,7 @@ class Timer:
             raise TimerError("Timer is running. Use .stop() to stop it")
 
         self._start_time = time.perf_counter()
+        return self._start_time
 
     def stop(self):
         """Stop the timer, and report the elapsed time"""
@@ -50,3 +51,9 @@ class Timer:
 
         self._start_time = None
         return elapsed_time
+
+    def lap(self):
+        current_time = time.perf_counter()
+        diff = current_time - self._start_time
+        self._start_time = current_time
+        return timedelta(seconds=diff)

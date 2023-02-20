@@ -69,7 +69,7 @@ class RigolAdminGUI:
 
     channels = [
         "cDAQ9189-1CDBE0AMod5/ai1",
-        "cDAQ9189-1CDBE0AMod5/ai3",
+        "cDAQ9189-1CDBE0AMod5/ai2",
     ]
 
     amplitude_mode: VoltageMode
@@ -318,28 +318,24 @@ class RigolAdminGUI:
         btn_off.grid(row=0, column=1)
 
     def __init__(self) -> None:
-        self.amplitude = 1
-        self.n_sample = 100
+        self.amplitude = 0
+        self.n_sample = 500
         self.fs_multiplier = 50
-        self.amplitude_mode = VoltageMode.Vpp
+        self.amplitude_mode = VoltageMode.VdBu
 
         self.rms_value_safe = LockValue[float](0.0)
         self.b_on = False
 
         self.focus = RigolAdminGUI.Focus.UNKNOWN
-        self.amplitude_mode = VoltageMode.Vpp
 
         self.windows = tk.Tk()
         self.windows.wm_title("Rigol Admin Panel")
         self.windows.geometry("600x400")
-        # self.windows.columnconfigure(0, minsize=250)
-        # self.windows.rowconfigure(0, minsize=200)
-
         self.amplitude_mode_curr_string_var = StringVar(value=self.amplitude_mode.name)
-        # amplitude_mode_curr_string_var.trace_add("write", self.on_amplitude_mode_change)
 
         self.amplitude_var = DoubleVar(value=self.amplitude)
         self.amplitude_var.trace_add("write", self.on_amplitude_change)
+        self.amplitude_var.set(-5.95)
 
         self.amplitude_multiplier_var = DoubleVar(value=1)
 
@@ -664,7 +660,9 @@ def update_rms_value(data: RmsDataParameters):
 
         from audio.math.voltage import calculate_gain_dB
 
-        gain_dB = calculate_gain_dB(voltage_rms_values[1][1], voltage_rms_values[0][1])
+        gain_dB = calculate_gain_dB(
+            Vin=voltage_rms_values[0][1], Vout=voltage_rms_values[1][1]
+        )
         with data.gain.lock:
             data.gain.value["text"] = f"{gain_dB:.05f}"
 

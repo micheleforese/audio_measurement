@@ -180,6 +180,7 @@ class RMS:
         time_report: bool = False,
         trim: bool = False,
         interpolation_rate: float = 1,
+        interpolation_mode: INTERPOLATION_KIND = INTERPOLATION_KIND.CUBIC,
     ):
         result = RMSResult()
         timer = Timer()
@@ -193,7 +194,7 @@ class RMS:
             range(0, voltages_len),
             voltages,
             int(voltages_len * interpolation_rate),
-            kind=INTERPOLATION_KIND.CUBIC,
+            kind=interpolation_mode,
         )
 
         voltages = y_interpolated

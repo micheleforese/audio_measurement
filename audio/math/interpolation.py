@@ -10,7 +10,7 @@ class INTERPOLATION_KIND(enum.Enum):
     NEAREST = "nearest"
     ZERO = "zero"
     SLINEAR = "slinear"
-    QUDRATIC = "quadratic"
+    QUADRATIC = "quadratic"
     CUBIC = "cubic"
     PREVIUS = "previous"
     NEXT = "next"
@@ -55,5 +55,29 @@ def logx_interpolation_model(
     x_interpolated = [np.float_power(10, x_intrp) for x_intrp in x_log_interpolated]
 
     y_interpolated = intrp_model(x_log_interpolated)
+
+    return x_interpolated, y_interpolated
+
+
+def logx_interpolation_model_Bspline(
+    x_log: List[float],
+    yy: List[float],
+    interpolation_rate: int,
+    lam: float,
+) -> Tuple[List[float], List[float]]:
+    x_log = [np.log10(x) for x in x_log]
+
+    from scipy.interpolate import BSpline, make_interp_spline, make_smoothing_spline
+
+    intrp_model = make_smoothing_spline(x_log, yy, lam=lam)
+
+    x_log_interpolated = np.linspace(
+        min(x_log),
+        max(x_log),
+        int(len(x_log) * interpolation_rate),
+    )
+
+    y_interpolated = intrp_model(x_log_interpolated)
+    x_interpolated = [np.float_power(10, x_intrp) for x_intrp in x_log_interpolated]
 
     return x_interpolated, y_interpolated

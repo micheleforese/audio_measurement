@@ -15,12 +15,18 @@ from audio.config.sampling import SamplingConfig
 from audio.config.sweep import SweepConfig
 from audio.console import console
 from audio.database.db import Database, DbChannel, DbFrequency, DbSweepVoltage, DbTest
-from audio.math.interpolation import INTERPOLATION_KIND, interpolation_model
+from audio.logging import log
+from audio.math.interpolation import (
+    INTERPOLATION_KIND,
+    interpolation_model,
+    logx_interpolation_model_Bspline,
+)
 from audio.math.phase import phase_offset_v2
 from audio.math.rms import RMS, RMSResult
+from audio.math.voltage import calculate_gain_dB
 from audio.model.sampling import VoltageSampling
 from audio.sampling import DataSetLevel, config_set_level_v2
-from audio.sweep import sweep
+from audio.sweep import sweep, sweep_single
 
 
 def test_v2_procedure():
@@ -31,16 +37,20 @@ def test_v2_procedure():
         datetime.now(),
         comment="Test Procedure with Database",
     )
+
+    channel_ref = Channel("cDAQ9189-1CDBE0AMod5/ai1", "Ref")
+    channel_dut = Channel("cDAQ9189-1CDBE0AMod5/ai2", "DUT")
+
     sampling_config = SweepConfig(
         RigolConfig(),
         NiDaqConfig(
             Fs_max=1_000_000,
-            channels=[
-                Channel("cDAQ9189-1CDBE0AMod5/ai1", "Ref"),
-                Channel("cDAQ9189-1CDBE0AMod5/ai3", "DUT"),
-            ],
+            channels=[channel_ref, channel_dut],
         ),
-        SamplingConfig(Fs_multiplier=50, number_of_samples=200),
+        SamplingConfig(
+            Fs_multiplier=50,
+            number_of_samples=500,
+        ),
         PlotConfig(),
     )
     dBu: float = -6
@@ -50,30 +60,33 @@ def test_v2_procedure():
     )
 
     console.log(data_set_level)
+    log.info(f"[DATA] dB setlevel {data_set_level}")
+
+    data_set_level.dB = sweep_single(
+        data_set_level.volts, frequency=1000, n_sweep=10, config=sampling_config
+    )
 
     config = SweepConfig(
         RigolConfig(amplitude_peak_to_peak=data_set_level.volts),
         NiDaqConfig(
             Fs_max=1_000_000,
-            channels=[
-                Channel("cDAQ9189-1CDBE0AMod5/ai1", "Ref"),
-                Channel("cDAQ9189-1CDBE0AMod5/ai3", "DUT"),
-            ],
+            channels=[channel_ref, channel_dut],
         ),
         SamplingConfig(
             Fs_multiplier=50,
-            points_per_decade=20,
+            points_per_decade=50,
             number_of_samples=200,
             number_of_samples_max=1_000,
             frequency_min=10,
             frequency_max=300_000,
-            interpolation_rate=20,
+            interpolation_rate=50,
             delay_measurements=0,
         ),
         PlotConfig(),
     )
     sweep_id = sweep(test_id=test_id, config=config)
     console.log(f"[DATA]: sweep_id: {sweep_id}")
+    log.info(f"[DATA] sweep_id: {sweep_id}")
 
     make_calculation(sweep_id, data_set_level.dB)
 
@@ -296,6 +309,9 @@ def make_graph_dB_phase(
 
     figure, axis = plt.subplots(2, 1)
     figure.set_size_inches(15, 9)
+    plt.ticklabel_format(style="plain")
+
+    # map(lambda x: {x.ticklabel_format(useOffset=False, style="plain")}, axis)
 
     comment = Prompt.ask("Test condition")
     plt.suptitle(f"ID: {sweep_id}, dB: {dB_offset:0.5f}, comment: {comment}")
@@ -307,6 +323,8 @@ def make_graph_dB_phase(
 
     rms_ref: List[RMSResult] = []
 
+    interpolation_rate_rms = 50
+
     # Ref
     for freq_ref, volt_ref in freq_volts_ref:
         voltage_sampling = VoltageSampling.from_list(
@@ -314,7 +332,11 @@ def make_graph_dB_phase(
             input_frequency=freq_ref.frequency,
             sampling_frequency=freq_ref.Fs,
         )
-        rms = RMS.rms_v2(voltage_sampling, interpolation_rate=50)
+        rms = RMS.rms_v2(
+            voltage_sampling,
+            interpolation_rate=interpolation_rate_rms,
+            trim=True,
+        )
         rms_ref.append(rms)
 
     # for freq_ref, rms_result in zip(frequencies, rms_ref):
@@ -333,7 +355,11 @@ def make_graph_dB_phase(
             input_frequency=freq_ref.frequency,
             sampling_frequency=freq_ref.Fs,
         )
-        rms = RMS.rms_v2(voltage_sampling, interpolation_rate=50)
+        rms = RMS.rms_v2(
+            voltage_sampling,
+            interpolation_rate=interpolation_rate_rms,
+            trim=True,
+        )
         rms_dut.append(rms)
 
     # for freq_ref, rms_result in zip(frequencies, rms_dut):
@@ -347,30 +373,40 @@ def make_graph_dB_phase(
     rms_dut_sub_ref_dB: List[float] = []
 
     for ref, dut in zip(rms_ref, rms_dut):
-        rms_dut_sub_ref_dB.append(20 * math.log10(dut.rms / ref.rms))
+        # rms_dut_sub_ref_dB.append(20 * math.log10(dut.rms / ref.rms))
+        rms_dut_sub_ref_dB.append(calculate_gain_dB(ref.rms, dut.rms))
 
-    rms_dut_sub_ref_dB = [rms - dB_offset for rms in rms_dut_sub_ref_dB]
+    rms_dut_sub_ref_dB = [rms_dB - dB_offset for rms_dB in rms_dut_sub_ref_dB]
+
+    (
+        axis_dut_sub_ref_dB_data_x,
+        axis_dut_sub_ref_dB_data_y,
+    ) = logx_interpolation_model_Bspline(
+        [freq.frequency for freq in frequencies], rms_dut_sub_ref_dB, 1, lam=0.005
+    )
 
     axis_dut_sub_ref_dB.semilogx(
-        [freq.frequency for freq in frequencies],
-        rms_dut_sub_ref_dB,
+        [freq.frequency for freq in frequencies], rms_dut_sub_ref_dB, ".", color="blue"
+    )
+    axis_dut_sub_ref_dB.semilogx(
+        axis_dut_sub_ref_dB_data_x, axis_dut_sub_ref_dB_data_y, "-", color="red"
     )
     axis_dut_sub_ref_dB.set_title("DUT - Ref [dB]")
     import numpy as np
 
-    granularity = 0.1
-    rms_dut_sub_ref_dB_min = min(rms_dut_sub_ref_dB)
-    rms_dut_sub_ref_dB_max = max(rms_dut_sub_ref_dB)
-
-    if abs(rms_dut_sub_ref_dB_min - rms_dut_sub_ref_dB_max) < granularity * 10:
-        axis_dut_sub_ref_dB.set_yticks(
-            np.arange(
-                rms_dut_sub_ref_dB_min - granularity,
-                rms_dut_sub_ref_dB_max + granularity,
-                granularity,
-            )
-        )
-    axis_dut_sub_ref_dB.grid()
+    # granularity = 0.1
+    # rms_dut_sub_ref_dB_min = min(rms_dut_sub_ref_dB)
+    # rms_dut_sub_ref_dB_max = max(rms_dut_sub_ref_dB)
+    # if abs(rms_dut_sub_ref_dB_min - rms_dut_sub_ref_dB_max) < granularity * 10:
+    #     axis_dut_sub_ref_dB.set_yticks(
+    #         np.arange(
+    #             rms_dut_sub_ref_dB_min - granularity,
+    #             rms_dut_sub_ref_dB_max + granularity,
+    #             granularity,
+    #         )
+    #     )
+    axis_dut_sub_ref_dB.grid(which="major", color="grey", linestyle="-")
+    axis_dut_sub_ref_dB.grid(which="minor", color="grey", linestyle="--")
 
     # DUT - Red [Phase °]
     axis_dut_sub_ref_phase: Axes = axis[1]
@@ -401,12 +437,29 @@ def make_graph_dB_phase(
             input_frequency=freq.frequency,
             sampling_frequency=freq.Fs * interpolation_rate_phase,
         )
-        offset_phase = phase_offset_v2(voltage_sampling_ref, voltage_sampling_dut)
+        try:
+            offset_phase = phase_offset_v2(voltage_sampling_ref, voltage_sampling_dut)
+        except Exception as e:
+            console.log(f"{e}")
+            # import matplotlib.pyplot as plt
+
+            plt.close()
+            plt.plot(voltage_sampling_ref.voltages, ".-", color="blue")
+            plt.plot(voltage_sampling_dut.voltages, ".-", color="red")
+            plt.show()
+            plt.close()
+
         offset_phase_ref_dut.append(offset_phase)
 
+    (
+        axis_dut_sub_ref_dB_data_x,
+        axis_dut_sub_ref_dB_data_y,
+    ) = logx_interpolation_model_Bspline(
+        [freq.frequency for freq in frequencies], offset_phase_ref_dut, 1, lam=0.005
+    )
+
     axis_dut_sub_ref_phase.semilogx(
-        [freq.frequency for freq in frequencies],
-        offset_phase_ref_dut,
+        axis_dut_sub_ref_dB_data_x, axis_dut_sub_ref_dB_data_y, "-"
     )
     axis_dut_sub_ref_phase.set_yticks(
         np.arange(
@@ -415,7 +468,8 @@ def make_graph_dB_phase(
             15,
         )
     )
-    axis_dut_sub_ref_phase.grid()
+    axis_dut_sub_ref_phase.grid(which="major", color="grey", linestyle="-")
+    axis_dut_sub_ref_phase.grid(which="minor", color="grey", linestyle="--")
 
     file = directory / f"{datetime.now().strftime('%Y-%m-%dT%H-%M-%SZ')}.jpeg"
     plt.savefig(file)
@@ -425,4 +479,4 @@ def make_graph_dB_phase(
 
 
 def test_calculation():
-    make_calculation(sweep_id=45, dB_offset=10.06194)
+    make_calculation(sweep_id=165, dB_offset=1.1462572099639496)

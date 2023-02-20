@@ -1,5 +1,6 @@
 from enum import Enum, auto
-from math import sqrt, log10
+from math import log10, sqrt
+
 from audio.console import console
 
 
@@ -55,4 +56,4 @@ def voltage_converter(voltage: float, frm: VoltageMode, to: VoltageMode):
 
 
 def calculate_gain_dB(Vin: float, Vout: float):
-    return 20 * log10(Vin / Vout)
+    return 20 * log10(Vout / Vin)

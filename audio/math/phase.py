@@ -123,7 +123,7 @@ def phase_offset_v2(
     if zero_index_0 is None or zero_index_slope_0 is None:
         return None
 
-    for idx in range(begin_index_1, len(volts_1)):
+    for idx in range(max(begin_index_1, 1), len(volts_1)):
         samp_curr_index = idx
         samp_prev_index = idx - 1
 
@@ -158,24 +158,11 @@ def phase_offset_v2(
     if zero_index_1 is None:
         return None
 
-    index_diff = zero_index_1 - zero_index_0
-    # time = index_diff * (1 / voltage_sampling_0.sampling_frequency)
     time = tx_1 - tx_0
     T = 1 / voltage_sampling_0.input_frequency
 
     alpha = (time / T) * 360
     if sign_phase < 0:
         alpha -= 180
-    # alpha *= sign_phase
-
-    import matplotlib.pyplot as plt
-
-    # plt.title(
-    #     f"F: {voltage_sampling_0.input_frequency}\ni1: {zero_index_1}, i0: {zero_index_0},idiff: {index_diff}\ns1: {zero_index_slope_1},s0: {zero_index_slope_0},\nalpha: {alpha}, sF: {voltage_sampling_0.sampling_frequency}, sphase: {sign_phase}"
-    # )
-    # plt.plot(voltage_sampling_0.voltages, ".-", color="#0000cf")
-    # plt.plot(voltage_sampling_1.voltages, ".-", color="#00ff00")
-    # plt.show()
-    # plt.close()
 
     return alpha

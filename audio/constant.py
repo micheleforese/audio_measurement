@@ -5,3 +5,5 @@ APP_TEST = APP_HOME / "test"
 APP_TEST.mkdir(exist_ok=True, parents=True)
 
 APP_AUDIO_TEST = APP_HOME / "audio-test"
+
+APP_LOGGING_FILE = APP_HOME / "logging/app.log"

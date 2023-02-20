@@ -977,8 +977,9 @@ def config_set_level_v2(
     Fs = trim_value(
         frequency * config.sampling.Fs_multiplier, max_value=config.nidaq.Fs_max
     )
-    diff_voltage = 0.001
+    diff_voltage = 0.0005
     target_Vrms = VdBu_to_Vrms(dBu)
+    interpolation_rate_rms: float = 50
 
     table = Table(
         Column("Iteration", justify="right"),
@@ -1056,13 +1057,20 @@ def config_set_level_v2(
     )
     progress_list_task.start_task(task_sampling)
 
+    from rich.prompt import Confirm
+
     # Asks for the 2 instruments
+    isSwitchedOn: bool = False
     rm = ResourceManager()
-    devices = rm.search_resources()
-    if len(devices) == 0:
-        console.log("RIGOL NOT FOUND")
-        console.log("Connect Rigol.")
-        exit()
+
+    while not isSwitchedOn:
+        devices = rm.search_resources()
+        if len(devices) == 0:
+            live.console.log("RIGOL NOT FOUND")
+            live.console.log("Connect Rigol.")
+            sleep(3)
+        else:
+            isSwitchedOn = True
 
     generator = rm.open_resource(device=devices[0])
 
@@ -1142,12 +1150,12 @@ def config_set_level_v2(
 
         rms_ref: RMSResult = RMS.rms_v2(
             voltages_sampling_ref,
-            interpolation_rate=20,
+            interpolation_rate=interpolation_rate_rms,
             trim=True,
         )
         rms_dut: RMSResult = RMS.rms_v2(
             voltages_sampling_dut,
-            interpolation_rate=20,
+            interpolation_rate=interpolation_rate_rms,
             trim=True,
         )
 
@@ -1170,7 +1178,7 @@ def config_set_level_v2(
                 exact=target_Vrms, approx=rms_dut.rms
             )
 
-            gain_dB: float = calculate_gain_dB(rms_dut.rms, rms_ref.rms)
+            gain_dB: float = calculate_gain_dB(rms_ref.rms, rms_dut.rms)
 
             gain_dB_list.append(gain_dB)
 

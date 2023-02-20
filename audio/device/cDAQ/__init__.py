@@ -225,9 +225,8 @@ class ni9223(cDAQAIDevice):
         self.task.start()
 
     def task_stop(self):
-        # self.task.wait_until_done()
-        while not self.task.is_task_done():
-            pass
+        # while not self.task.is_task_done():
+        #     pass
         self.task.stop()
 
     def task_close(self):
