@@ -874,9 +874,7 @@ def config_set_level(
 
     live.stop()
 
-    console.print(
-        Panel(f"Generator Voltage to obtain +4dBu: {voltage_amplitude}")
-    )
+    console.print(Panel(f"Generator Voltage to obtain +4dBu: {voltage_amplitude}"))
 
     console.print(plot_file_path)
 
@@ -1054,7 +1052,6 @@ def config_set_level_v2(
         "CONFIGURING", start=False, task="Retrieving Devices"
     )
     progress_list_task.start_task(task_sampling)
-
 
     # Asks for the 2 instruments
     isSwitchedOn: bool = False

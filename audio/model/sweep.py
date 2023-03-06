@@ -126,7 +126,10 @@ class SweepData:
         yaml_dict = SweepData._yaml_extract_from_comments(path.read_text())
 
         amplitude = SweepData.get_amplitude_from_dictionary(yaml_dict)
-        plotConfigXML = PlotConfigXML.from_dict(yaml_dict)
+        # TODO: Implement PlotConfig.from_dict() version to PlotConfigXML.from_dict()
+        # plotConfigXML = PlotConfigXML.from_dict(yaml_dict)
+        # plotConfigXML = PlotConfig.from_dict(yaml_dict)
+        plotConfigXML = PlotConfig()
 
         return cls(data, amplitude, plotConfigXML)
 

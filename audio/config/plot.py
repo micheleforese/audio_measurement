@@ -6,8 +6,8 @@ from enum import Enum
 from pathlib import Path
 
 import rich
-from audio.config import Config
 
+from audio.config import Config
 from audio.config.type import Range
 from audio.console import console
 from audio.decoder.xml import DecoderXML
@@ -251,7 +251,7 @@ class PlotConfig(Config, DecoderXML, EncoderYAML):
         return None
 
     #########################
-    # Encoder XML
+    # Encoder YAML
     #########################
 
     def to_yaml_file(self, file: Path):
