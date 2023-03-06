@@ -20,7 +20,7 @@ from audio.device.cDAQ import ni9223
 from audio.math.rms import RMS
 from audio.math.voltage import VoltageMode, Vrms_to_VdBu, Vrms_to_Vpp, voltage_converter
 from audio.model.sampling import VoltageSampling
-from audio.usb.usbtmc import UsbTmc
+from audio.usb.usbtmc import ResourceManager, UsbTmc
 from audio.utility import trim_value
 from audio.utility.scpi import SCPI, Bandwidth, Switch
 
@@ -491,9 +491,15 @@ class RigolAdminGUI:
 
     def _init_instruments(self):
         # Asks for the 2 instruments
-        list_devices: List[Instrument] = UsbTmc.search_devices()
+        try:
+            rm = ResourceManager()
+            list_devices = rm.search_resources()
+            if len(list_devices) < 1:
+                raise Exception("UsbTmc devices not found.")
+            generator = rm.open_resource(list_devices[0])
 
-        generator: UsbTmc = UsbTmc(list_devices[0])
+        except Exception as e:
+            console.print(f"{e}")
 
         self.generator = generator
 
