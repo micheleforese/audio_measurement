@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -43,7 +44,7 @@ class SingleSweepData:
             )
         except Exception as e:
             console.print(f"Error: {e}")
-            exit()
+            sys.exit()
 
     def _yaml_extract_from_comments(self, data: str) -> dict:
         data_yaml = "\n".join(
