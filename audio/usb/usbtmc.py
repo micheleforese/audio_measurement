@@ -89,11 +89,11 @@ class UsbTmc:
         """Ask for the commands to arrive at this configuration."""
         return self.instr.instrument.ask("*LRN?")
 
-    def set_aperture(self, aperture: np.float):
+    def set_aperture(self, aperture: float):
         """Sets the frequency's Aperture.
 
         Args:
-            aperture (np.float): This is the Aperture of the Instrument
+            aperture (float): This is the Aperture of the Instrument
         """
         self.instr.instrument.write(f":FREQuency:APERture {aperture}")
 
@@ -295,11 +295,11 @@ class UsbTmcInstrument:
         """Ask for the commands to arrive at this configuration."""
         return self.instr.ask("*LRN?")
 
-    def set_aperture(self, aperture: np.float):
+    def set_aperture(self, aperture: float):
         """Sets the frequency's Aperture.
 
         Args:
-            aperture (np.float): This is the Aperture of the Instrument
+            aperture (float): This is the Aperture of the Instrument
         """
         self.instr.write(f":FREQuency:APERture {aperture}")
 
