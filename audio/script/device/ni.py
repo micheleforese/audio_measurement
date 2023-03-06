@@ -1,5 +1,4 @@
 from time import sleep
-from typing import List, Optional
 
 import click
 from rich.panel import Panel
@@ -11,8 +10,6 @@ from audio.model.sampling import VoltageSampling
 from audio.usb.usbtmc import UsbTmc
 from audio.utility import trim_value
 from audio.utility.scpi import SCPI, Bandwidth, Switch
-from pandas import DataFrame
-from audio.math.rms import RMSResult
 
 
 @click.command()
@@ -43,7 +40,7 @@ from audio.math.rms import RMSResult
 )
 def read_rms(frequency, amplitude, n_sample_cli: int, debug: bool):
     # Asks for the 2 instruments
-    list_devices: List[Instrument] = UsbTmc.search_devices()
+    list_devices: list[Instrument] = UsbTmc.search_devices()
     if debug:
         UsbTmc.print_devices_list(list_devices)
 
@@ -65,7 +62,7 @@ def read_rms(frequency, amplitude, n_sample_cli: int, debug: bool):
 
     SCPI.exec_commands(generator, generator_configs)
 
-    generator_ac_curves: List[str] = [
+    generator_ac_curves: list[str] = [
         SCPI.set_output(1, Switch.ON),
     ]
 
@@ -77,7 +74,7 @@ def read_rms(frequency, amplitude, n_sample_cli: int, debug: bool):
 
     n_sample: int = n_sample_cli
 
-    rms_value: Optional[float]
+    rms_value: float | None
 
     _, rms_value = RMS.rms(
         frequency=frequency,
@@ -90,13 +87,13 @@ def read_rms(frequency, amplitude, n_sample_cli: int, debug: bool):
         save_file=None,
     )
 
-    generator_ac_curves: List[str] = [
+    generator_ac_curves: list[str] = [
         SCPI.set_output(1, Switch.OFF),
     ]
     SCPI.exec_commands(generator, generator_ac_curves)
     generator.close()
 
-    console.print(Panel("[blue]RMS {}[/]".format(rms_value)))
+    console.print(Panel(f"[blue]RMS {rms_value}[/]"))
 
 
 @click.command()
@@ -127,7 +124,7 @@ def read_rms(frequency, amplitude, n_sample_cli: int, debug: bool):
 )
 def read_rms_loop(frequency, amplitude, n_sample_cli: int, debug: bool):
     # Asks for the 2 instruments
-    list_devices: List[Instrument] = UsbTmc.search_devices()
+    list_devices: list[Instrument] = UsbTmc.search_devices()
     if debug:
         UsbTmc.print_devices_list(list_devices)
 
@@ -149,7 +146,7 @@ def read_rms_loop(frequency, amplitude, n_sample_cli: int, debug: bool):
 
     SCPI.exec_commands(generator, generator_configs)
 
-    generator_ac_curves: List[str] = [
+    generator_ac_curves: list[str] = [
         SCPI.set_output(1, Switch.ON),
     ]
 
@@ -162,7 +159,7 @@ def read_rms_loop(frequency, amplitude, n_sample_cli: int, debug: bool):
     n_sample: int = n_sample_cli
 
     while True:
-        rms_value: Optional[float]
+        rms_value: float | None
 
         _, rms_value = RMS.rms(
             frequency=frequency,
@@ -176,7 +173,7 @@ def read_rms_loop(frequency, amplitude, n_sample_cli: int, debug: bool):
             trim=False,
         )
 
-        console.print(Panel("[blue]RMS {}[/]".format(rms_value)))
+        console.print(Panel(f"[blue]RMS {rms_value}[/]"))
 
 
 @click.command()
@@ -216,7 +213,7 @@ def read_rms_v2(
     n_sample = 200
 
     # Asks for the 2 instruments
-    list_devices: List[Instrument] = UsbTmc.search_devices()
+    list_devices: list[Instrument] = UsbTmc.search_devices()
     if debug:
         UsbTmc.print_devices_list(list_devices)
 
@@ -239,7 +236,7 @@ def read_rms_v2(
 
     SCPI.exec_commands(generator, generator_configs)
 
-    generator_ac_curves: List[str] = [
+    generator_ac_curves: list[str] = [
         SCPI.set_output(1, Switch.ON),
         SCPI.set_output(2, Switch.ON),
     ]
@@ -271,7 +268,7 @@ def read_rms_v2(
     voltages = nidaq.read_multi_voltages()
     nidaq.task_stop()
 
-    generator_ac_curves: List[str] = [
+    generator_ac_curves: list[str] = [
         SCPI.set_output(1, Switch.OFF),
         SCPI.set_output(2, Switch.OFF),
     ]

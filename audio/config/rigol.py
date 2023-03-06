@@ -4,7 +4,6 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Optional
 
 import rich
 
@@ -31,16 +30,16 @@ class RigolConfigOptionsXPATH(Enum):
 @dataclass
 @rich.repr.auto
 class RigolConfig(Config, DecoderXML):
-    amplitude_peak_to_peak: Optional[float] = None
+    amplitude_peak_to_peak: float | None = None
 
-    def merge(self, other: Optional[RigolConfig]):
+    def merge(self, other: RigolConfig | None):
         if other is None:
             return
 
         if self.amplitude_peak_to_peak is None:
             self.amplitude_peak_to_peak = other.amplitude_peak_to_peak
 
-    def override(self, other: Optional[RigolConfig]):
+    def override(self, other: RigolConfig | None):
         if other is None:
             return
 
@@ -63,7 +62,7 @@ class RigolConfig(Config, DecoderXML):
         return cls.from_xml_object(tree)
 
     @classmethod
-    def from_xml_object(cls, xml: Optional[ET.ElementTree]):
+    def from_xml_object(cls, xml: ET.ElementTree | None):
         if xml is None or not cls.xml_is_valid(xml):
             return None
 
@@ -76,7 +75,7 @@ class RigolConfig(Config, DecoderXML):
         return xml.tag == RigolConfigOptions.ROOT.value
 
     @staticmethod
-    def _get_amplitude_peak_to_peak_from_xml(xml: Optional[ET.ElementTree]):
+    def _get_amplitude_peak_to_peak_from_xml(xml: ET.ElementTree | None):
         Eamplitude_peak_to_peak = xml.find(
             RigolConfigOptionsXPATH.AMPLITUDE_PEAK_TO_PEAK.value
         )

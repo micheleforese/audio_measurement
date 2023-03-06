@@ -1,24 +1,16 @@
-import copy
 import time
-from enum import Enum, auto
-from math import log10
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple, Type
 
-import click
 import matplotlib.ticker as ticker
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from rich.panel import Panel
-from rich.prompt import Confirm, FloatPrompt, Prompt
+from rich.prompt import Prompt
 
 from audio.config.sweep import SweepConfig
-from audio.config.type import Range
 from audio.console import console
 from audio.math.algorithm import LogarithmicScale
 from audio.math.rms import RMS, RMSResult, VoltageSampling
-from audio.sampling import config_set_level, plot_from_csv, sampling_curve
-from audio.usb.usbtmc import Instrument, ResourceManager, UsbTmc
+from audio.usb.usbtmc import ResourceManager
 from audio.utility import trim_value
 from audio.utility.interrupt import InterruptHandler
 from audio.utility.scpi import SCPI, Bandwidth, Switch
@@ -62,7 +54,7 @@ def phase_sweep(
 
         SCPI.exec_commands(generator, generator_configs)
 
-        generator_ac_curves: List[str] = [
+        generator_ac_curves: list[str] = [
             SCPI.set_output(1, Switch.ON),
         ]
 
@@ -83,7 +75,7 @@ def phase_sweep(
         channels = config.nidaq.channels
         nidaq.add_ai_channel(channels)
 
-        phase_offset_list: List[float] = []
+        phase_offset_list: list[float] = []
 
         import matplotlib.pyplot as plt
         from rich.progress import track
@@ -148,7 +140,7 @@ def phase_sweep(
             if h.interrupted:
                 break
 
-        generator_ac_curves: List[str] = [
+        generator_ac_curves: list[str] = [
             SCPI.set_output(1, Switch.OFF),
             SCPI.set_output(2, Switch.OFF),
         ]
@@ -156,7 +148,7 @@ def phase_sweep(
         generator.close()
         nidaq.task_close()
 
-        plot: Tuple[Figure, Axes] = plt.subplots(figsize=(16 * 2, 9 * 2), dpi=600)
+        plot: tuple[Figure, Axes] = plt.subplots(figsize=(16 * 2, 9 * 2), dpi=600)
 
         fig: Figure
         axes: Axes
@@ -200,7 +192,7 @@ def phase_sweep(
         axes.grid(True, linestyle="-", which="both", color="0.7")
 
         def logMinorFormatFunc(x, pos):
-            return "{:.0f}".format(x)
+            return f"{x:.0f}"
 
         logMinorFormat = ticker.FuncFormatter(logMinorFormatFunc)
 

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import pandas as pd
 import yaml
@@ -14,8 +14,8 @@ class SingleSweepData:
     path: Path
 
     # Meta Information
-    frequency: Optional[float]
-    Fs: Optional[float]
+    frequency: float | None
+    Fs: float | None
 
     # CSV Data
     data: DataFrame
@@ -43,7 +43,7 @@ class SingleSweepData:
             console.print(f"Error: {e}")
             exit()
 
-    def _yaml_extract_from_comments(self, data: str) -> Dict:
+    def _yaml_extract_from_comments(self, data: str) -> dict:
         data_yaml = "\n".join(
             [line[2:] for line in data.split("\n") if line.find("#") == 0]
         )
@@ -60,8 +60,8 @@ class SingleSweepData:
         return f"# {name}: {value}\n"
 
     @staticmethod
-    def get_frequency_from_dictionary(dictionary: Dict) -> Optional[float]:
-        frequency: Optional[float] = dictionary.get("frequency", None)
+    def get_frequency_from_dictionary(dictionary: dict) -> float | None:
+        frequency: float | None = dictionary.get("frequency", None)
 
         if frequency is not None:
             frequency = float(frequency)
@@ -69,8 +69,8 @@ class SingleSweepData:
         return frequency
 
     @staticmethod
-    def get_Fs_from_dictionary(dictionary: Dict) -> Optional[float]:
-        Fs: Optional[float] = dictionary.get("Fs", None)
+    def get_Fs_from_dictionary(dictionary: dict) -> float | None:
+        Fs: float | None = dictionary.get("Fs", None)
 
         if Fs is not None:
             Fs = float(Fs)
@@ -87,8 +87,8 @@ class SweepData:
     path: Path
 
     # Meta Information
-    amplitude: Optional[float]
-    config: Optional[PlotConfig]
+    amplitude: float | None
+    config: PlotConfig | None
 
     # CSV Data
     data: DataFrame
@@ -96,7 +96,7 @@ class SweepData:
     def __init__(
         self,
         data: DataFrame,
-        amplitude: Optional[float] = None,
+        amplitude: float | None = None,
         config: PlotConfig = None,
     ) -> None:
         self.data = data
@@ -147,7 +147,7 @@ class SweepData:
             )
 
     @staticmethod
-    def _yaml_extract_from_comments(data: str) -> Dict:
+    def _yaml_extract_from_comments(data: str) -> dict:
         data_yaml = "\n".join(
             [line[2:] for line in data.splitlines() if line.find("#") == 0]
         )
@@ -160,8 +160,8 @@ class SweepData:
         return "\n".join([f"# {line}" for line in yaml_string.splitlines()]) + "\n"
 
     @staticmethod
-    def get_amplitude_from_dictionary(dictionary: Dict) -> Optional[float]:
-        amplitude: Optional[float] = dictionary.get("amplitude", None)
+    def get_amplitude_from_dictionary(dictionary: dict) -> float | None:
+        amplitude: float | None = dictionary.get("amplitude", None)
 
         if amplitude is not None:
             amplitude = float(amplitude)

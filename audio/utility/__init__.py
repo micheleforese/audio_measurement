@@ -1,6 +1,5 @@
 import datetime
 import pathlib
-from typing import List, Optional
 
 import nidaqmx
 import nidaqmx.constants
@@ -18,8 +17,8 @@ def trim_value(value: float, max_value: float):
 
 def get_subfolder(
     home: pathlib.Path, pattern: str = r"%Y-%m-%d--%H-%M-%f"
-) -> List[pathlib.Path]:
-    measurement_dirs: List[pathlib.Path] = []
+) -> list[pathlib.Path]:
+    measurement_dirs: list[pathlib.Path] = []
 
     for directory in home.iterdir():
         try:
@@ -41,7 +40,7 @@ def read_voltages(
     input_channel: str,
     min_voltage: float,
     max_voltage: float,
-    input_frequency: Optional[float] = None,
+    input_frequency: float | None = None,
 ) -> np.ndarray:
 
     if input_frequency is not None:
@@ -78,7 +77,7 @@ def read_voltages(
         )
         task.close()
     except Exception as e:
-        console.print("[EXCEPTION] - {}".format(e))
+        console.print(f"[EXCEPTION] - {e}")
         task.close()
 
     return voltages
@@ -91,7 +90,7 @@ def read_voltages_v2(
     input_channel: str,
     min_voltage: float,
     max_voltage: float,
-    input_frequency: Optional[float] = None,
+    input_frequency: float | None = None,
 ) -> np.ndarray:
 
     if input_frequency is not None:
@@ -128,7 +127,7 @@ def read_voltages_v2(
         )
         task.close()
     except Exception as e:
-        console.print("[EXCEPTION] - {}".format(e))
+        console.print(f"[EXCEPTION] - {e}")
         task.close()
 
     return voltages

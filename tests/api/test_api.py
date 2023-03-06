@@ -1,6 +1,5 @@
 import json
 from datetime import datetime
-from typing import Dict
 
 import requests
 
@@ -9,7 +8,7 @@ from audio.console import console
 
 def test_api():
     response = requests.get("http://localhost:3000/api/tests")
-    data: Dict = json.loads(response.content)
+    data: dict = json.loads(response.content)
 
     console.log(data)
 
@@ -17,7 +16,7 @@ def test_api():
     console.log(date)
 
     response = requests.get("http://localhost:3000/api/tests/15")
-    data: Dict = json.loads(response.content)
+    data: dict = json.loads(response.content)
 
     console.log(data)
 

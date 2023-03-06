@@ -1,9 +1,10 @@
 from re import split
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 import usb
 import usbtmc
+from rich.panel import Panel
 
 from audio.console import console
 
@@ -22,7 +23,7 @@ class Instrument:
     @classmethod
     def from_device(
         cls,
-        device: Optional[usb.core.Device] = None,
+        device: usb.core.Device | None = None,
     ):
         dev_maj, dev_min = Instrument.device_maj_min(str(device))
 
@@ -32,7 +33,7 @@ class Instrument:
         return cls(dev_maj, dev_min)
 
     @staticmethod
-    def device_maj_min(instrument: str) -> Tuple[int, int]:
+    def device_maj_min(instrument: str) -> tuple[int, int]:
         return int(instrument[10:14], 16), int(instrument[15:19], 16)
 
 
@@ -73,7 +74,7 @@ class UsbTmc:
         """Clears the status."""
         self.instr.instrument.write("*CLS")
 
-    def query_event_status_register(self) -> Union[list, Any, str]:
+    def query_event_status_register(self) -> list | Any | str:
         """Asks for the Standard Event Status Registrer.
 
         Returns:
@@ -99,7 +100,7 @@ class UsbTmc:
 
     def exec(
         self,
-        commands: List[str],
+        commands: list[str],
         debug: bool = False,
     ):
         for command in commands:
@@ -117,10 +118,10 @@ class UsbTmc:
                     console.print(command)
 
     @staticmethod
-    def search_devices() -> List[Instrument]:
+    def search_devices() -> list[Instrument]:
 
-        list_devices: List[usb.core.Device] = usbtmc.list_devices()
-        instruments: List[Instrument] = []
+        list_devices: list[usb.core.Device] = usbtmc.list_devices()
+        instruments: list[Instrument] = []
 
         for device in list_devices:
             instr = Instrument.from_device(device)
@@ -130,7 +131,7 @@ class UsbTmc:
         return instruments
 
     @staticmethod
-    def print_devices_list(list_devices: List[Instrument]):
+    def print_devices_list(list_devices: list[Instrument]):
 
         for index, device in enumerate(list_devices):
 
@@ -139,7 +140,7 @@ class UsbTmc:
 
             for device_line in device_lines:
 
-                line: List[str] = device_line.strip().split()
+                line: list[str] = device_line.strip().split()
 
                 if line[0] == "iManufacturer":
 
@@ -158,7 +159,7 @@ class UsbTmc:
 
 
 def command_line_():
-    list_devices: List[usbtmc.Instrument] = UsbTmc.search_devices()
+    list_devices: list[usbtmc.Instrument] = UsbTmc.search_devices()
 
     UsbTmc.print_devices_list(list_devices)
 
@@ -195,7 +196,7 @@ def command_line_():
         if input_string.find("?") > 0:
             response = list_devices[index].ask(input_string[2:])
 
-            console.print("{}:\t{}".format(input_string[2:], response))
+            console.print(f"{input_string[2:]}:\t{response}")
         else:
             console.print(input_string[2:])
             list_devices[index].write(input_string[2:])
@@ -206,18 +207,13 @@ def command_line_():
     reader.close()
 
 
-import usb
-import usbtmc
-from rich.panel import Panel
-
-
 class ResourceManager:
     def search_resources(self):
-        devices: List[usb.core.Device] = usbtmc.list_devices()
+        devices: list[usb.core.Device] = usbtmc.list_devices()
 
         return devices
 
-    def open_resource(self, device: Optional[usb.core.Device] = None):
+    def open_resource(self, device: usb.core.Device | None = None):
         if device is None:
             devices = self.search_resources()
             if len(devices) == 1:
@@ -279,7 +275,7 @@ class UsbTmcInstrument:
         """Clears the status."""
         self.instr.write("*CLS")
 
-    def query_event_status_register(self) -> Union[list, Any, str]:
+    def query_event_status_register(self) -> list | Any | str:
         """Asks for the Standard Event Status Registrer.
 
         Returns:
@@ -305,7 +301,7 @@ class UsbTmcInstrument:
 
     def exec(
         self,
-        commands: List[str],
+        commands: list[str],
         debug: bool = False,
     ):
         for command in commands:

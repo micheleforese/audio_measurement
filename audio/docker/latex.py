@@ -1,6 +1,5 @@
 import os
 import pathlib
-from typing import List, Optional
 
 from rich.console import Group
 from rich.live import Live
@@ -15,14 +14,14 @@ from audio.docker.utility import exec_command
 class Package:
 
     package_name: str
-    config: Optional[List[str]]
+    config: list[str] | None
 
-    def __init__(self, package_name: str, config: Optional[List[str]] = None) -> None:
+    def __init__(self, package_name: str, config: list[str] | None = None) -> None:
         self.package_name = package_name
         self.config = config
 
 
-def use_package(packages: List[Package]):
+def use_package(packages: list[Package]):
     latex_packages: str = ""
 
     for p in packages:
@@ -65,8 +64,8 @@ def create_latex_file(
     progress_list_task.start_task(task_latex)
 
     if debug:
-        console.print('[PATH - image_file] - "{}"'.format(image_file.absolute()))
-        console.print('[PATH - home] - "{}"'.format(home.absolute()))
+        console.print(f'[PATH - image_file] - "{image_file.absolute()}"')
+        console.print(f'[PATH - home] - "{home.absolute()}"')
 
     latex_packages = use_package(
         [
@@ -105,7 +104,7 @@ def create_latex_file(
     docker_image_file_path = image_file.name
     if debug:
         console.print(
-            '[PATH - docker - image_file] - "{}"'.format(docker_image_file_path)
+            f'[PATH - docker - image_file] - "{docker_image_file_path}"'
         )
 
     latex = (
@@ -113,7 +112,7 @@ def create_latex_file(
         r"\begin{figure}[h]"
         + "\centering"
         + r"\includegraphics[width=.9\paperwidth]{"
-        + "{}".format(docker_image_file_path)
+        + f"{docker_image_file_path}"
         + r"}"
         + "\n"
         + r"\end{figure}"
@@ -138,7 +137,7 @@ def create_latex_file(
         + r"\end{tikzpicture}"
     )
 
-    latex_complete = "{0}{2}{1}".format(latex_start, latex_end, latex)
+    latex_complete = f"{latex_start}{latex}{latex_end}"
 
     latex_file_path: pathlib.Path = image_file.with_suffix(".tex")
     docker_latex_file_path = latex_file_path.name

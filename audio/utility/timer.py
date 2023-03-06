@@ -1,7 +1,5 @@
-import functools
 import time
 from datetime import timedelta
-from typing import Optional
 
 from rich.panel import Panel
 

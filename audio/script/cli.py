@@ -1,6 +1,5 @@
 import pathlib
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
 
 import click
 import matplotlib.pyplot as plt
@@ -8,9 +7,8 @@ import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from rich.panel import Panel
-from rich.prompt import Confirm
 
+from audio.config.plot import PlotConfig
 from audio.config.sweep import SweepConfig
 from audio.config.type import Range
 from audio.console import console
@@ -137,15 +135,15 @@ def cli():
 def sweep(
     config_path: pathlib.Path,
     home: pathlib.Path,
-    set_level_file: Optional[pathlib.Path],
-    amplitude_pp: Optional[float],
-    n_fs: Optional[float],
-    spd: Optional[float],
-    n_samp: Optional[int],
-    f_range: Optional[Tuple[float, float]],
-    y_lim: Optional[Tuple[float, float]],
-    x_lim: Optional[Tuple[float, float]],
-    y_offset: Optional[float],
+    set_level_file: pathlib.Path | None,
+    amplitude_pp: float | None,
+    n_fs: float | None,
+    spd: float | None,
+    n_samp: int | None,
+    f_range: tuple[float, float] | None,
+    y_lim: tuple[float, float] | None,
+    x_lim: tuple[float, float] | None,
+    y_offset: float | None,
     time: bool,
     debug: bool,
     simulate: bool,
@@ -176,7 +174,7 @@ def sweep(
         frequency_max=f_range[1] if f_range else None,
     )
 
-    amplitude_peak_to_peak: Optional[float] = None
+    amplitude_peak_to_peak: float | None = None
 
     if set_level_file:
         amplitude_peak_to_peak = SetLevel(set_level_file).set_level
@@ -325,29 +323,29 @@ def sweep(
     default=False,
 )
 def plot(
-    csv: Optional[pathlib.Path],
-    output: Optional[pathlib.Path],
+    csv: pathlib.Path | None,
+    output: pathlib.Path | None,
     home: pathlib.Path,
-    config_path: Optional[pathlib.Path],
-    format_plot: List[str],
-    y_lim: Optional[Tuple[float, float]],
-    x_lim: Optional[Tuple[float, float]],
-    y_offset: Optional[float],
-    interpolation_rate: Optional[float],
-    dpi: Optional[int],
+    config_path: pathlib.Path | None,
+    format_plot: list[str],
+    y_lim: tuple[float, float] | None,
+    x_lim: tuple[float, float] | None,
+    y_offset: float | None,
+    interpolation_rate: float | None,
+    dpi: int | None,
     pdf: bool,
     debug: bool,
 ):
     HOME_PATH = home
-    csv_file_path: Optional[pathlib.Path] = None
-    plot_file_path: Optional[pathlib.Path] = None
+    csv_file_path: pathlib.Path | None = None
+    plot_file_path: pathlib.Path | None = None
 
     sweep_config = SweepConfig.from_xml_file(config_path)
 
     if sweep_config is None:
         raise Exception("sweep_config is NULL")
 
-    plot_config: PlotConfigXML = sweep_config.plot
+    plot_config: PlotConfig = sweep_config.plot
 
     plot_config.override(
         y_offset=y_offset,
@@ -378,7 +376,7 @@ def plot(
 
     if is_most_recent_file:
 
-        measurement_dirs: List[pathlib.Path] = get_subfolder(HOME_PATH)
+        measurement_dirs: list[pathlib.Path] = get_subfolder(HOME_PATH)
 
         if len(measurement_dirs) > 0:
             csv_file_path = measurement_dirs[-1] / "sweep.csv"
@@ -447,7 +445,7 @@ def set_level(
     config_set_level(
         dBu=4,
         config=config,
-        plot_file_path=HOME_PATH / "{}.config.png".format(datetime_now),
+        plot_file_path=HOME_PATH / f"{datetime_now}.config.png",
         debug=debug,
     )
 
@@ -475,7 +473,7 @@ def set_level(
 )
 def sweep_debug(
     home,
-    sweep_dir: Optional[pathlib.Path],
+    sweep_dir: pathlib.Path | None,
     iteration_rms: bool,
 ):
     measurement_dir: pathlib.Path = pathlib.Path()
@@ -484,7 +482,7 @@ def sweep_debug(
         measurement_dir = sweep_dir / "sweep"
 
     else:
-        measurement_dirs: List[pathlib.Path] = get_subfolder(home)
+        measurement_dirs: list[pathlib.Path] = get_subfolder(home)
 
         if len(measurement_dirs) > 0:
             measurement_dir = measurement_dirs[-1] / "sweep"
@@ -505,7 +503,7 @@ def sweep_debug(
 
         single_sweep_data = SingleSweepData(csv)
 
-        plot: Tuple[Figure, Dict[str, Axes]] = plt.subplot_mosaic(
+        plot: tuple[Figure, dict[str, Axes]] = plt.subplot_mosaic(
             [
                 ["samp", "samp", "rms_samp"],
                 ["intr_samp", "intr_samp", "rms_intr_samp"],
@@ -561,7 +559,7 @@ def sweep_debug(
         # PLOT: RMS iterating every 5 values
         if iteration_rms:
             plot_rms_samp = axd["rms_samp"]
-            rms_samp_iter_list: List[float] = [0]
+            rms_samp_iter_list: list[float] = [0]
             for n in range(5, len(single_sweep_data.voltages.values), 5):
                 rms_samp_iter_list.append(
                     RMS.fft(single_sweep_data.voltages.values[0:n])
@@ -616,7 +614,7 @@ def sweep_debug(
 
         if iteration_rms:
             plot_rms_intr_samp = axd["rms_intr_samp"]
-            rms_intr_samp_iter_list: List[float] = [0]
+            rms_intr_samp_iter_list: list[float] = [0]
             for n in range(1, len(y_interpolated), 20):
                 rms_intr_samp_iter_list.append(RMS.fft(y_interpolated[0:n]))
 
@@ -648,7 +646,7 @@ def sweep_debug(
 
         if iteration_rms:
             plot_rms_intr_samp_offset = axd["rms_intr_samp_offset"]
-            rms_intr_samp_offset_iter_list: List[float] = [0]
+            rms_intr_samp_offset_iter_list: list[float] = [0]
 
             for n in range(1, len(offset_interpolated), 20):
                 rms_intr_samp_offset_iter_list.append(RMS.fft(offset_interpolated[0:n]))

@@ -1,19 +1,14 @@
 from __future__ import annotations
 
-import copy
 import tkinter as tk
 import tkinter.ttk as ttk
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from math import log10, sqrt
 from threading import Lock, Thread
-from time import sleep
-from tkinter import BooleanVar, DoubleVar, IntVar, StringVar, Variable
-from typing import List, Optional, Tuple
+from tkinter import BooleanVar, DoubleVar, StringVar
+from typing import Generic, TypeVar
 
 import click
-from rich.panel import Panel
-from usbtmc import Instrument
 
 from audio.console import console
 from audio.device.cDAQ import ni9223
@@ -26,7 +21,6 @@ from audio.utility.scpi import SCPI, Bandwidth, Switch
 
 rms_data_lock = Lock()
 
-from typing import Generic, TypeVar
 
 T = TypeVar("T")
 
@@ -51,12 +45,12 @@ def rigol_admin():
 class RmsDataParameters:
     frequency: LockValue[float]
     Fs_multiplier: LockValue[float]
-    device: Optional[LockValue[ni9223]] = None
-    gain: Optional[LockValue[ttk.Label]] = None
-    phase: Optional[LockValue[ttk.Label]] = None
+    device: LockValue[ni9223] | None = None
+    gain: LockValue[ttk.Label] | None = None
+    phase: LockValue[ttk.Label] | None = None
 
-    lbls: List[
-        Tuple[LockValue[ttk.Label], LockValue[ttk.Label], LockValue[ttk.Label]]
+    lbls: list[
+        tuple[LockValue[ttk.Label], LockValue[ttk.Label], LockValue[ttk.Label]]
     ] = field(default_factory=lambda: [])
 
 
@@ -195,11 +189,11 @@ class RigolAdminGUI:
         self.amplitude_multiplier_var.set(amplitude_steps[0])
 
         def _handle_frm_amplitude_focus_in(event):
-            console.log(f"[FOCUS IN]: frm_amplitude")
+            console.log("[FOCUS IN]: frm_amplitude")
             self.focus = RigolAdminGUI.Focus.AMPLITUDE
 
         def _handle_frm_amplitude_focus_out(event):
-            console.log(f"[FOCUS OUT]: frm_amplitude")
+            console.log("[FOCUS OUT]: frm_amplitude")
             self.focus = RigolAdminGUI.Focus.UNKNOWN
 
         frm_amplitude.bind("<FocusIn>", _handle_frm_amplitude_focus_in)
@@ -237,11 +231,11 @@ class RigolAdminGUI:
         ent_frequency.grid(row=0, column=1)
 
         def _handle_frm_frequency_focus_in(event):
-            console.log(f"[FOCUS IN]: frm_frequency")
+            console.log("[FOCUS IN]: frm_frequency")
             self.focus = RigolAdminGUI.Focus.FREQUENCY
 
         def _handle_frm_frequency_focus_out(event):
-            console.log(f"[FOCUS OUT]: frm_frequency")
+            console.log("[FOCUS OUT]: frm_frequency")
             self.focus = RigolAdminGUI.Focus.UNKNOWN
 
         frm_frequency.bind("<FocusIn>", _handle_frm_frequency_focus_in)
@@ -377,8 +371,6 @@ class RigolAdminGUI:
         if event.keycode == 65 and event.state == 20:
             console.log("[KEY PRESSED]: SPACEBAR")
             self.on_off_state.set(not self.on_off_state.get())
-
-        from tkinter import EventType
 
         if self.focus == RigolAdminGUI.Focus.AMPLITUDE:
             if event.keycode == 111 and event.state == 20:
@@ -609,7 +601,7 @@ class UpdateRms(Thread):
 
 def update_rms_value(data: RmsDataParameters):
     while True:
-        Fs: Optional[float] = None
+        Fs: float | None = None
         with data.frequency.lock, data.Fs_multiplier.lock:
             Fs = trim_value(
                 data.frequency.value * data.Fs_multiplier.value, max_value=1000000
@@ -623,7 +615,7 @@ def update_rms_value(data: RmsDataParameters):
             voltages = data.device.value.read_multi_voltages()
             data.device.value.task_stop()
 
-        voltages_sampling_n: List[VoltageSampling] = []
+        voltages_sampling_n: list[VoltageSampling] = []
 
         for voltage_sampling in voltages:
             voltages_sampling_n.append(
@@ -632,14 +624,14 @@ def update_rms_value(data: RmsDataParameters):
 
         from audio.math.rms import RMSResult
 
-        rms_result_n: List[Optional[RMSResult]] = []
+        rms_result_n: list[RMSResult | None] = []
 
         for volts in voltages_sampling_n:
             rms_result_n.append(
                 RMS.rms_v2(voltages_sampling=volts, interpolation_rate=20, trim=True)
             )
 
-        voltage_rms_values: List[Tuple[float, float, float]] = []
+        voltage_rms_values: list[tuple[float, float, float]] = []
 
         for result in rms_result_n:
             if result is None:
@@ -661,8 +653,6 @@ def update_rms_value(data: RmsDataParameters):
                 lblVpp.value["text"] = f"{Vpp:.05f} Vpp"
             with lblVdBu.lock:
                 lblVdBu.value["text"] = f"{VdBu:.05f} VdBu"
-
-        import time
 
         from audio.math.voltage import calculate_gain_dB
 

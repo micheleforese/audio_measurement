@@ -1,23 +1,21 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
 
-import pandas as pd
 from pandas import DataFrame
 from audio.console import console
 
 
 @dataclass
 class VoltageSampling:
-    data: Optional[DataFrame]
+    data: DataFrame | None
     input_frequency: float
     sampling_frequency: float
-    amplitude_peak_to_peak: Optional[float] = None
+    amplitude_peak_to_peak: float | None = None
 
     @classmethod
     def from_list(
         cls,
-        voltages: List[float],
+        voltages: list[float],
         input_frequency: float,
         sampling_frequency: float,
     ):

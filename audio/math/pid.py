@@ -1,22 +1,21 @@
-from typing import List, Optional
 
 import numpy as np
 
 
 class Timed_Value:
     value: float
-    time: Optional[float] = None
+    time: float | None = None
 
-    def __init__(self, value: float, time: Optional[float] = None) -> None:
+    def __init__(self, value: float, time: float | None = None) -> None:
         self.value = value
         self.time = time
 
 
 class PID_TERM:
 
-    _proportional: List[float]
-    _integral: List[float]
-    _derivative: List[float]
+    _proportional: list[float]
+    _integral: list[float]
+    _derivative: list[float]
 
     def __init__(self) -> None:
         self._proportional = [0]
@@ -55,12 +54,12 @@ class PID_Controller:
     tauD: float
     controller_output_zero: float
 
-    _error_list: List[Timed_Value]  #
+    _error_list: list[Timed_Value]  #
     _error_integral: float
     _error_integral_cache_index: int
 
-    _process_output_list: List[float]  #
-    _process_variable_list: List[float]
+    _process_output_list: list[float]  #
+    _process_variable_list: list[float]
 
     def __init__(
         self,
@@ -173,14 +172,14 @@ class PID_Controller:
         )
 
 
-def calculate_area(function: List[float]) -> float:
+def calculate_area(function: list[float]) -> float:
     if len(function) > 1:
         return float(np.trapz(function))
     else:
         return 0
 
 
-def calculate_gradient(function: List[float]) -> float:
+def calculate_gradient(function: list[float]) -> float:
 
     if len(function) > 1:
         return float(np.gradient(function)[-1])

@@ -1,5 +1,4 @@
 from pathlib import Path
-from audio.console import console
 from audio.config.sweep import SweepConfig
 
 

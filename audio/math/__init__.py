@@ -1,5 +1,4 @@
 import math
-from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -12,17 +11,17 @@ def sinc(x: float):
     return math.sin(math.pi * x) / (math.pi * x)
 
 
-def decimal_decompose(x) -> Tuple[float, int]:
+def decimal_decompose(x) -> tuple[float, int]:
     exponent = int(math.floor(np.log10(abs(x)))) if x != 0 else 0
     mantissa = float(x / 10**exponent)
     return mantissa, exponent
 
 
 def trim_sin_zero_offset(
-    sample: List[float],
-) -> Optional[Tuple[List[float], int, int]]:
+    sample: list[float],
+) -> tuple[list[float], int, int] | None:
 
-    zero_index_intersections: List[Tuple[float, float]] = []
+    zero_index_intersections: list[tuple[float, float]] = []
 
     index_start: int = 0
     index_end: int = len(sample)
@@ -83,10 +82,10 @@ def trim_sin_zero_offset(
         return None
 
 
-def rms_full_cycle(sample: List[float]) -> List[float]:
+def rms_full_cycle(sample: list[float]) -> list[float]:
     from audio.math.rms import RMS
 
-    rms_fft_cycle_list: List[float] = []
+    rms_fft_cycle_list: list[float] = []
 
     start_slope = sample[1] - sample[0]
     last_slope = 0
@@ -125,7 +124,7 @@ def transfer_function(rms: float, input_rms: float) -> float:
     return 20 * np.log10(rms / input_rms)
 
 
-def integrate(y_values: List[float], delta) -> float:
+def integrate(y_values: list[float], delta) -> float:
 
     volume: float = 0.0
 

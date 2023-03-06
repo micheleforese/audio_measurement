@@ -3,12 +3,9 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from time import sleep
-from typing import List, Optional
 
 import pandas as pd
 import requests
-from matplotlib.axes import Axes
-from rich.panel import Panel
 from rich.progress import track
 from rich.table import Column, Table
 
@@ -19,10 +16,9 @@ from audio.database.db import Database
 from audio.device.cDAQ import ni9223
 from audio.logging import log
 from audio.math.algorithm import LogarithmicScale
-from audio.math.rms import RMS, RMSResult, VoltageSampling
-from audio.math.voltage import Vpp_to_Vrms, calculate_gain_dB
+from audio.math.rms import RMS
+from audio.math.voltage import calculate_gain_dB
 from audio.model.sampling import VoltageSampling
-from audio.model.sweep import SweepData
 from audio.usb.usbtmc import ResourceManager
 from audio.utility import trim_value
 from audio.utility.scpi import SCPI, Bandwidth, SCPI_v2, Switch
@@ -57,14 +53,14 @@ class SweepAmplitudePhaseTable:
         calculation_time: timedelta,
     ):
         self.table.add_row(
-            "{:.2f}".format(frequency),
-            "{:.2f}".format(Fs),
-            "{}".format(number_of_samples),
-            "{}".format(amplitude_peak_to_peak),
-            "{:.5f} ".format(rms),
+            f"{frequency:.2f}",
+            f"{Fs:.2f}",
+            f"{number_of_samples}",
+            f"{amplitude_peak_to_peak}",
+            f"{rms:.5f} ",
             "[{}]{:.2f}[/]".format("red" if gain_dBV <= 0 else "green", gain_dBV),
-            "[cyan]{}[/]".format(sampling_time),
-            "[cyan]{}[/]".format(calculation_time),
+            f"[cyan]{sampling_time}[/]",
+            f"[cyan]{calculation_time}[/]",
         )
 
 
@@ -161,7 +157,7 @@ def sweep_amplitude_phase(
         config.sampling.delay_measurements,
     )
 
-    channel_ids: List[int] = []
+    channel_ids: list[int] = []
 
     for idx, channel in enumerate(config.nidaq.channels):
         _id = db.insert_channel(
@@ -200,12 +196,12 @@ def sweep_amplitude_phase(
         nidaq.task_start()
         timer.start()
         voltages = nidaq.read_multi_voltages()
-        sampling_time = timer.stop()
+        timer.stop()
         nidaq.task_stop()
 
         frequency_id = db.insert_frequency(sweep_id, idx, frequency, Fs)
 
-        sweep_voltages_ids: List[int] = []
+        sweep_voltages_ids: list[int] = []
 
         for channel, voltages_sweep in zip(channel_ids, voltages):
 
@@ -316,7 +312,7 @@ def sweep(
         config.sampling.delay_measurements,
     )
 
-    PB_sweeps_id: Optional[str] = None
+    PB_sweeps_id: str | None = None
     url = "http://127.0.0.1:8090/api/collections/sweeps/records"
     response = requests.post(
         url,
@@ -334,8 +330,8 @@ def sweep(
     else:
         PB_sweeps_id = response_data["id"]
 
-    channel_ids: List[int] = []
-    PB_channels_ids: List[str] = []
+    channel_ids: list[int] = []
+    PB_channels_ids: list[str] = []
 
     if config.nidaq.channels is None:
         return None
@@ -349,7 +345,7 @@ def sweep(
         )
         channel_ids.append(_id)
 
-        PB_channels_id: Optional[str] = None
+        PB_channels_id: str | None = None
         url = "http://127.0.0.1:8090/api/collections/channels/records"
         response = requests.post(
             url,
@@ -415,7 +411,7 @@ def sweep(
 
         time_db_insert_frequency = timer.lap()
 
-        sweep_voltages_ids: List[int] = []
+        sweep_voltages_ids: list[int] = []
 
         for channel, voltages_sweep in zip(channel_ids, voltages):
 
@@ -435,7 +431,6 @@ def sweep(
             file = directory / f"{datetime.now().strftime('%Y-%m-%dT%H-%M-%SZ')}.csv"
             pd.DataFrame(voltage_data).to_csv(file)
 
-            PB_measurements_id: Optional[str] = None
             url = "http://127.0.0.1:8090/api/collections/measurements/records"
             json_data = {
                 "sweep_id": PB_sweeps_id,
@@ -458,7 +453,7 @@ def sweep(
             if response.status_code != 200:
                 console.log(f"[RESPONSE ERROR]: {url}")
             else:
-                PB_measurements_id = response_data["id"]
+                response_data["id"]
 
         time_db_insert_sweep_voltage = timer.lap()
 
@@ -562,7 +557,7 @@ def sweep_single(
             else DEFAULT.get("delay")
         )
 
-        time_sleep = timer.lap()
+        timer.lap()
 
         # GET MEASUREMENTS
         nidaq.task_start()

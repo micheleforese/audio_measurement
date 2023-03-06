@@ -1,9 +1,7 @@
 import json
 import math
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Set, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -45,7 +43,7 @@ def test_v2_procedure():
         comment="Test Procedure with Database",
     )
 
-    PB_test_id: Optional[str] = None
+    PB_test_id: str | None = None
     url = "http://127.0.0.1:8090/api/collections/tests/records"
     response = requests.post(
         url,
@@ -120,12 +118,12 @@ def make_calculation(sweep_id: int, dB_offset: float = 0):
 
     console.print(Panel("[bold]RETRIEVING DATA FROM DB[/]"))
 
-    frequencies: List[DbFrequency] = db.get_frequencies_from_sweep_id(sweep_id=sweep_id)
+    frequencies: list[DbFrequency] = db.get_frequencies_from_sweep_id(sweep_id=sweep_id)
 
-    channels: List[DbChannel] = db.get_channels_from_sweep_id(sweep_id=sweep_id)
+    channels: list[DbChannel] = db.get_channels_from_sweep_id(sweep_id=sweep_id)
 
-    voltages_ref: List[DbSweepVoltage] = []
-    voltages_dut: List[DbSweepVoltage] = []
+    voltages_ref: list[DbSweepVoltage] = []
+    voltages_dut: list[DbSweepVoltage] = []
 
     for freq_ref in frequencies:
         voltages_ref.append(db.get_sweep_voltages(freq_ref.id, channels[0].id))
@@ -143,9 +141,9 @@ def make_calculation(sweep_id: int, dB_offset: float = 0):
 
 def make_graph_ref_dut_dutrefsub_dB_phase(
     sweep_id: int,
-    frequencies: List[DbFrequency],
-    voltages_ref: List[DbSweepVoltage],
-    voltages_dut: List[DbSweepVoltage],
+    frequencies: list[DbFrequency],
+    voltages_ref: list[DbSweepVoltage],
+    voltages_dut: list[DbSweepVoltage],
     dB_offset: float = 0,
 ):
     from audio.constant import APP_HOME
@@ -164,7 +162,7 @@ def make_graph_ref_dut_dutrefsub_dB_phase(
 
     freq_volts_ref = zip(frequencies, voltages_ref)
 
-    rms_ref: List[RMSResult] = []
+    rms_ref: list[RMSResult] = []
 
     for freq_ref, volt_ref in freq_volts_ref:
         voltage_sampling = VoltageSampling.from_list(
@@ -193,7 +191,7 @@ def make_graph_ref_dut_dutrefsub_dB_phase(
     # DUT
     freq_volts_dut = zip(frequencies, voltages_dut)
 
-    rms_dut: List[RMSResult] = []
+    rms_dut: list[RMSResult] = []
 
     for freq_ref, volt_dut in freq_volts_dut:
         voltage_sampling = VoltageSampling.from_list(
@@ -222,7 +220,7 @@ def make_graph_ref_dut_dutrefsub_dB_phase(
     # DUT - Red [VRms]
     axis_dut_sub_ref: Axes = axis[1, 0]
 
-    rms_dut_sub_ref: List[float] = []
+    rms_dut_sub_ref: list[float] = []
 
     for ref, dut in zip(rms_ref, rms_dut):
         rms_dut_sub_ref.append(dut.rms - ref.rms)
@@ -236,7 +234,7 @@ def make_graph_ref_dut_dutrefsub_dB_phase(
     # DUT - Red [dB]
     axis_dut_sub_ref_dB: Axes = axis[1, 1]
 
-    rms_dut_sub_ref_dB: List[float] = []
+    rms_dut_sub_ref_dB: list[float] = []
 
     for ref, dut in zip(rms_ref, rms_dut):
         rms_dut_sub_ref_dB.append(20 * math.log10(dut.rms / ref.rms))
@@ -265,7 +263,7 @@ def make_graph_ref_dut_dutrefsub_dB_phase(
 
     # DUT - Red [Phase °]
     axis_dut_sub_ref_phase: Axes = axis[2, 0]
-    offset_phase_ref_dut: List[float] = []
+    offset_phase_ref_dut: list[float] = []
     interpolation_rate_phase = 50
 
     for freq, volts_ref, volts_dut in zip(frequencies, voltages_dut, voltages_ref):
@@ -317,9 +315,9 @@ def make_graph_ref_dut_dutrefsub_dB_phase(
 
 def make_graph_dB_phase(
     sweep_id: int,
-    frequencies: List[DbFrequency],
-    voltages_ref: List[DbSweepVoltage],
-    voltages_dut: List[DbSweepVoltage],
+    frequencies: list[DbFrequency],
+    voltages_ref: list[DbSweepVoltage],
+    voltages_dut: list[DbSweepVoltage],
     dB_offset: float = 0,
 ):
     log.info("make_graph_dB_phase")
@@ -349,7 +347,7 @@ def make_graph_dB_phase(
 
     # Ref
     freq_volts_ref = zip(frequencies, voltages_ref)
-    rms_ref: List[RMSResult] = []
+    rms_ref: list[RMSResult] = []
     # rms_ref = parallel_calculate_rms(freq_volts_ref)
     for freq_ref, volt_ref in freq_volts_ref:
         voltage_sampling = VoltageSampling.from_list(
@@ -369,7 +367,7 @@ def make_graph_dB_phase(
 
     # DUT
     freq_volts_dut = zip(frequencies, voltages_dut)
-    rms_dut: List[RMSResult] = []
+    rms_dut: list[RMSResult] = []
     # rms_dut = parallel_calculate_rms(freq_volts_dut)
     for freq_ref, volt_dut in freq_volts_dut:
         voltage_sampling = VoltageSampling.from_list(
@@ -394,7 +392,7 @@ def make_graph_dB_phase(
     axis_dut_sub_ref_dB.set_ylabel("dB")
     axis_dut_sub_ref_dB.tick_params(labelright=True)
 
-    rms_dut_sub_ref_dB: List[float] = [
+    rms_dut_sub_ref_dB: list[float] = [
         calculate_gain_dB(ref.rms, dut.rms) - dB_offset
         for ref, dut in zip(rms_ref, rms_dut)
     ]
@@ -431,8 +429,8 @@ def make_graph_dB_phase(
     axis_dut_sub_ref_phase_ax1.tick_params(labelright=True)
     axis_dut_sub_ref_phase_ax1.axhline(0, color="black", linewidth=1)
 
-    offset_phase_ref_dut: List[float] = []
-    sign_phase_list: List[float] = []
+    offset_phase_ref_dut: list[float] = []
+    sign_phase_list: list[float] = []
 
     interpolation_rate_phase = 150
 
@@ -485,7 +483,7 @@ def make_graph_dB_phase(
     # sign_plot.semilogx([freq.frequency for freq in frequencies], sign_phase_list, ".")
 
     # --------------------------------------
-    index_to_transform: List[float] = []
+    index_to_transform: list[float] = []
     for idx in range(1, len(sign_phase_list)):
         prev_sign_phase = sign_phase_list[idx - 1]
         curr_sign_phase = sign_phase_list[idx]
@@ -500,7 +498,7 @@ def make_graph_dB_phase(
                 index_to_transform.append(idx - 1)
 
     for index_transform in index_to_transform:
-        sign_phase_list_transformed: List[float] = []
+        sign_phase_list_transformed: list[float] = []
 
         for idx, phase_value in enumerate(offset_phase_ref_dut):
             if idx <= index_transform:
@@ -508,7 +506,7 @@ def make_graph_dB_phase(
             sign_phase_list_transformed.append(phase_value)
         offset_phase_ref_dut = sign_phase_list_transformed
 
-    index_to_transform: List[float] = []
+    index_to_transform: list[float] = []
 
     for idx in range(1, len(sign_phase_list)):
         prev_sign_phase = sign_phase_list[idx - 1]
@@ -524,7 +522,7 @@ def make_graph_dB_phase(
                 index_to_transform.append(idx - 1)
 
     for index_transform in index_to_transform:
-        sign_phase_list_transformed: List[float] = []
+        sign_phase_list_transformed: list[float] = []
 
         for idx, phase_value in enumerate(offset_phase_ref_dut):
             if idx <= index_transform:
@@ -634,14 +632,14 @@ def make_graph_dB_phase(
     plt.close()
 
 
-def parallel_calculate_rms(data: List[Tuple[DbFrequency, DbSweepVoltage]]):
+def parallel_calculate_rms(data: list[tuple[DbFrequency, DbSweepVoltage]]):
     from multiprocessing.pool import Pool
 
-    data: List[Tuple[int, Tuple[DbFrequency, DbSweepVoltage]]] = list(
+    data: list[tuple[int, tuple[DbFrequency, DbSweepVoltage]]] = list(
         [(idx, d) for idx, d in enumerate(data)]
     )
 
-    rms_list: List[Tuple[int, RMSResult]] = []
+    rms_list: list[tuple[int, RMSResult]] = []
 
     with Pool() as pool:
         results = pool.imap_unordered(parallel_calculate_rms_calulate, data)
@@ -654,7 +652,7 @@ def parallel_calculate_rms(data: List[Tuple[DbFrequency, DbSweepVoltage]]):
 
 
 def parallel_calculate_rms_calulate(
-    data: Tuple[int, Tuple[DbFrequency, DbSweepVoltage]]
+    data: tuple[int, tuple[DbFrequency, DbSweepVoltage]]
 ):
     idx, data_db = data
     freq, volt = data_db

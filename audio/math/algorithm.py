@@ -1,4 +1,3 @@
-from typing import List
 
 import numpy as np
 
@@ -12,8 +11,8 @@ class LogarithmicScale:
 
     points_per_decade: float
 
-    f_log_list: List[float] = []
-    f_list: List[float] = []
+    f_log_list: list[float] = []
+    f_list: list[float] = []
 
     def __init__(self, min_Hz: float, max_Hz: float, points_per_decade: float) -> None:
         self.min_Hz = min_Hz

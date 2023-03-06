@@ -1,8 +1,6 @@
 from dataclasses import dataclass
-from math import sqrt
 from pathlib import Path
 from time import sleep
-from typing import List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
@@ -151,7 +149,7 @@ def sampling_curve(
 
     # Asks for the 2 instruments
     try:
-        list_devices: List[Instrument] = UsbTmc.search_devices()
+        list_devices: list[Instrument] = UsbTmc.search_devices()
 
         if len(list_devices) < 1:
             raise Exception("UsbTmc devices not found.")
@@ -211,17 +209,17 @@ def sampling_curve(
         config.sampling.points_per_decade,
     )
 
-    frequency_list: List[float] = []
-    rms_list: List[float] = []
-    dBV_list: List[float] = []
-    fs_list: List[float] = []
-    oversampling_ratio_list: List[float] = []
-    n_periods_list: List[float] = []
-    n_samples_list: List[int] = []
+    frequency_list: list[float] = []
+    rms_list: list[float] = []
+    dBV_list: list[float] = []
+    fs_list: list[float] = []
+    oversampling_ratio_list: list[float] = []
+    n_periods_list: list[float] = []
+    n_samples_list: list[int] = []
 
     frequency: float = round(config.sampling.frequency_min, 5)
 
-    max_dB: Optional[float] = None
+    max_dB: float | None = None
 
     progress_list_task.update(task_sampling, task="Sweep")
 
@@ -320,7 +318,7 @@ def sampling_curve(
             progress_sweep.update(
                 task_sweep,
                 frequency=f"{round(frequency, 5)}",
-                rms="{}".format(round(result.rms, 5)),
+                rms=f"{round(result.rms, 5)}",
             )
 
             gain_bBV: float = dBV(
@@ -338,17 +336,17 @@ def sampling_curve(
                 max_dB = transfer_func_dB
 
             table.add_row(
-                "{:.2f}".format(frequency),
-                "{:.2f}".format(Fs),
-                "{}".format(config.sampling.number_of_samples),
-                "{}".format(config.rigol.amplitude_peak_to_peak),
-                "{:.5f} ".format(round(result.rms, 5)),
+                f"{frequency:.2f}",
+                f"{Fs:.2f}",
+                f"{config.sampling.number_of_samples}",
+                f"{config.rigol.amplitude_peak_to_peak}",
+                f"{round(result.rms, 5):.5f} ",
                 "[{}]{:.2f}[/]".format(
                     "red" if gain_bBV <= 0 else "green", transfer_func_dB
                 ),
-                "[cyan]{}[/]".format(message.elapsed_time),
-                "{:.5f}".format(max_voltage),
-                "{:.5f}".format(min_voltage),
+                f"[cyan]{message.elapsed_time}[/]",
+                f"{max_voltage:.5f}",
+                f"{min_voltage:.5f}",
             )
 
             dBV_list.append(gain_bBV)
@@ -405,7 +403,7 @@ def sampling_curve(
     progress_list_task.remove_task(task_sampling)
 
     if debug:
-        console.print(Panel("max_dB: {}".format(max_dB)))
+        console.print(Panel(f"max_dB: {max_dB}"))
 
     console.print(
         Panel(
@@ -419,8 +417,8 @@ def sampling_curve(
 def plot_from_csv(
     measurements_file_path: Path,
     plot_file_path: Path,
-    file_offset_sweep_path: Optional[Path] = None,
-    plot_config: Optional[PlotConfig] = None,
+    file_offset_sweep_path: Path | None = None,
+    plot_config: PlotConfig | None = None,
     debug: bool = False,
 ):
 
@@ -445,8 +443,8 @@ def plot_from_csv(
     task_plotting = progress_list_task.add_task("Plotting", task="Plotting")
     progress_list_task.start_task(task_plotting)
 
-    x_frequency: List[float] = []
-    y_dBV: List[float] = []
+    x_frequency: list[float] = []
+    y_dBV: list[float] = []
 
     progress_list_task.update(task_plotting, task="Read Measurements")
 
@@ -475,15 +473,15 @@ def plot_from_csv(
     if debug:
         console.print(
             Panel(
-                "min dB: {}\n".format(min(y_dBV))
-                + "max dB: {}\n".format(max(y_dBV))
-                + "diff dB: {}".format(abs(max(y_dBV) - min(y_dBV)))
+                f"min dB: {min(y_dBV)}\n"
+                + f"max dB: {max(y_dBV)}\n"
+                + f"diff dB: {abs(max(y_dBV) - min(y_dBV))}"
             )
         )
 
     progress_list_task.update(task_plotting, task="Interpolate")
 
-    plot: Tuple[Figure, Axes] = plt.subplots(
+    plot: tuple[Figure, Axes] = plt.subplots(
         figsize=(16 * 2, 9 * 2), dpi=cfg.dpi if cfg.dpi else 300
     )
 
@@ -553,7 +551,7 @@ def plot_from_csv(
     logLocator = ticker.LogLocator(subs=np.arange(0, 1, granularity_ticks))
 
     def logMinorFormatFunc(x, pos):
-        return "{:.0f}".format(x)
+        return f"{x:.0f}"
 
     logMinorFormat = ticker.FuncFormatter(logMinorFormatFunc)
 
@@ -596,7 +594,7 @@ def config_set_level(
     dBu: float,
     config: SweepConfig,
     plot_file_path: Path,
-    set_level_file_path: Optional[Path] = None,
+    set_level_file_path: Path | None = None,
     debug: bool = False,
 ):
 
@@ -686,7 +684,7 @@ def config_set_level(
     progress_list_task.start_task(task_sampling)
 
     # Asks for the 2 instruments
-    list_devices: List[Instrument] = UsbTmc.search_devices()
+    list_devices: list[Instrument] = UsbTmc.search_devices()
     if debug:
         UsbTmc.print_devices_list(list_devices)
 
@@ -713,7 +711,7 @@ def config_set_level(
 
     sleep(2)
 
-    generator_ac_curves: List[str] = [
+    generator_ac_curves: list[str] = [
         SCPI.set_output(1, Switch.ON),
     ]
 
@@ -731,12 +729,12 @@ def config_set_level(
         controller_output_zero=voltage_amplitude_start,
     )
 
-    gain_dB_list: List[float] = []
+    gain_dB_list: list[float] = []
 
     k_tot = 0.2745
-    gain_apparato: Optional[float] = None
+    gain_apparato: float | None = None
 
-    level_offset: Optional[float] = None
+    level_offset: float | None = None
 
     nidaq = ni9223(
         config.sampling.number_of_samples,
@@ -829,11 +827,11 @@ def config_set_level(
                     set_level_file_path = plot_file_path.with_suffix(".offset")
 
                 f = open(set_level_file_path, "w", encoding="utf-8")
-                f.write("{}\n".format(level_offset))
-                f.write("{}\n".format(gain_dB))
+                f.write(f"{level_offset}\n")
+                f.write(f"{gain_dB}\n")
                 f.close()
 
-                console.print(Panel("[PATH] - {}".format(set_level_file_path)))
+                console.print(Panel(f"[PATH] - {set_level_file_path}"))
 
             else:
 
@@ -867,7 +865,7 @@ def config_set_level(
 
     nidaq.task_close()
 
-    generator_ac_curves: List[str] = [
+    generator_ac_curves: list[str] = [
         SCPI.set_output(1, Switch.OFF),
     ]
 
@@ -877,7 +875,7 @@ def config_set_level(
     live.stop()
 
     console.print(
-        Panel("Generator Voltage to obtain +4dBu: {}".format(voltage_amplitude))
+        Panel(f"Generator Voltage to obtain +4dBu: {voltage_amplitude}")
     )
 
     console.print(plot_file_path)
@@ -969,7 +967,7 @@ def config_set_level_v2(
     dBu: float,
     config: SweepConfig,
 ):
-    data_set_level: Optional[DataSetLevel] = None
+    data_set_level: DataSetLevel | None = None
 
     voltage_amplitude_start: float = 0.1
     voltage_amplitude = voltage_amplitude_start
@@ -1057,7 +1055,6 @@ def config_set_level_v2(
     )
     progress_list_task.start_task(task_sampling)
 
-    from rich.prompt import Confirm
 
     # Asks for the 2 instruments
     isSwitchedOn: bool = False
@@ -1095,7 +1092,7 @@ def config_set_level_v2(
 
     sleep(2)
 
-    generator_ac_curves: List[str] = [
+    generator_ac_curves: list[str] = [
         SCPI.set_output(1, Switch.ON),
     ]
 
@@ -1113,12 +1110,12 @@ def config_set_level_v2(
         controller_output_zero=voltage_amplitude_start,
     )
 
-    gain_dB_list: List[float] = []
+    gain_dB_list: list[float] = []
 
     k_tot = 0.2745
-    gain_apparato: Optional[float] = None
+    gain_apparato: float | None = None
 
-    level_offset: Optional[float] = None
+    level_offset: float | None = None
 
     nidaq = ni9223(
         config.sampling.number_of_samples,
@@ -1261,7 +1258,7 @@ def config_set_level_v2(
     nidaq.task_close()
     live.stop()
 
-    generator_ac_curves: List[str] = [
+    generator_ac_curves: list[str] = [
         SCPI.set_output(1, Switch.OFF),
     ]
 
@@ -1272,7 +1269,7 @@ def config_set_level_v2(
     SCPI.exec_commands(generator, generator_ac_curves)
     generator.close()
 
-    sp = np.full(iteration, target_Vrms)
+    np.full(iteration, target_Vrms)
     # plot_config_set_level_v2(sp, pid, plot_file_path)
 
     return data_set_level

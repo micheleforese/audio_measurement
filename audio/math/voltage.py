@@ -1,7 +1,6 @@
 from enum import Enum, auto
 from math import log10, sqrt
 
-from audio.console import console
 
 
 def Vrms_to_Vpp(Vrms: float):

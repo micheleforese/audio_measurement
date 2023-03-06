@@ -1,9 +1,7 @@
 import logging
 
-import click
 from rich import pretty, traceback
 from rich.console import Console
-from rich.logging import RichHandler
 from rich.theme import Theme
 
 from audio.constant import APP_HOME
@@ -26,7 +24,6 @@ FORMAT = "%(message)s"
 LOG_FILE_PATH = APP_HOME / "logging/app.log"
 
 # console_log = Console(file=LOG_FILE_PATH.open())
-import sys
 
 logging.basicConfig(
     level="NOTSET",

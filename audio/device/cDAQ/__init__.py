@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
 
 import nidaqmx
 import nidaqmx.constants
@@ -11,7 +10,6 @@ import nidaqmx.system
 import numpy
 import numpy as np
 from nidaqmx._task_modules.channels.ao_channel import AOChannel
-from nidaqmx.constants import VoltageUnits
 from nidaqmx.system import Device, System
 from nidaqmx.system._collections.device_collection import DeviceCollection
 from nidaqmx.utils import flatten_channel_string
@@ -19,6 +17,7 @@ from rich.panel import Panel
 from rich.table import Column, Table
 from rich.tree import Tree
 
+from audio.config.type import Range
 from audio.console import console
 
 
@@ -61,17 +60,17 @@ class cDAQ:
 
             # Major Version
             table.add_row(
-                "Major Version", "{}".format(self.system.driver_version.major_version)
+                "Major Version", f"{self.system.driver_version.major_version}"
             )
 
             # Minor Version
             table.add_row(
-                "Minor Version", "{}".format(self.system.driver_version.minor_version)
+                "Minor Version", f"{self.system.driver_version.minor_version}"
             )
 
             # Update Version
             table.add_row(
-                "Update Version", "{}".format(self.system.driver_version.update_version)
+                "Update Version", f"{self.system.driver_version.update_version}"
             )
             console.print(table)
 
@@ -101,9 +100,7 @@ def print_supported_output_types(channel: AOChannel):
     )
 
     for t in channel.physical_channel.ao_output_types:
-        supported_types.add(
-            "[green]{}[/green]: [blue]{}[/blue]".format(t.name, int(t.value))
-        )
+        supported_types.add(f"[green]{t.name}[/green]: [blue]{int(t.value)}[/blue]")
 
     console.print(Panel.fit(supported_types))
 
@@ -114,18 +111,18 @@ class cDAQAIDevice:
 
 class ni9251(cDAQAIDevice):
 
-    Fs: Optional[float] = None
+    Fs: float | None = None
     max_Fs: float = 102000
     min_voltage: float = -4
     max_voltage: float = 4
-    number_of_samples: Optional[float]
-    ch_input: Optional[str]
+    number_of_samples: float | None
+    ch_input: str | None
 
     def __init__(
         self,
         Fs: float,
-        number_of_samples: Optional[int] = None,
-        ch_input: Optional[str] = None,
+        number_of_samples: int | None = None,
+        ch_input: str | None = None,
     ) -> None:
 
         self.Fs = Fs
@@ -138,9 +135,9 @@ class ni9251(cDAQAIDevice):
     def read_voltage(
         self,
         number_of_samples: int,
-        frequency: Optional[float] = None,
+        frequency: float | None = None,
         # Example: "cDAQ9189-1CDBE0AMod1/ai1"
-        ch_input: Optional[str] = None,
+        ch_input: str | None = None,
     ) -> np.ndarray:
 
         if frequency and self.Fs and frequency > self.Fs / 2:
@@ -171,23 +168,20 @@ class ni9251(cDAQAIDevice):
         return voltages
 
 
-from audio.config.type import Range
-
-
 @dataclass
 class ni9223(cDAQAIDevice):
     number_of_samples: int
     sampling_frequency: float = None
-    input_channel: List[str] = None
+    input_channel: list[str] = None
     task: nidaqmx.Task = None
-    device: Optional[Device] = None
+    device: Device | None = None
 
     def init_device(self):
         self.device = Device(self.input_channel)
 
     @property
     def device_voltage_ranges(self) -> Range[float]:
-        ranges: Tuple[float, float] = self.device.ai_voltage_rngs
+        ranges: tuple[float, float] = self.device.ai_voltage_rngs
         range_min, range_max = ranges
         r: Range[float] = Range(range_min, range_max)
         return r
@@ -202,14 +196,14 @@ class ni9223(cDAQAIDevice):
             # 1. Create a NidaqMX Task
             self.task = nidaqmx.Task(name)
         except Exception as e:
-            console.print("[EXCEPTION] - {}".format(e))
+            console.print(f"[EXCEPTION] - {e}")
             self.task_close()
 
     def set_sampling_clock_timing(self, sampling_frequency: float):
         self.task.timing.cfg_samp_clk_timing(sampling_frequency)
         self.sampling_frequency = sampling_frequency
 
-    def add_ai_channel(self, input_channel: List[str]):
+    def add_ai_channel(self, input_channel: list[str]):
         # 2. Add the AI Voltage Channel
         self.task.ai_channels.add_ai_voltage_chan(
             flatten_channel_string(input_channel),

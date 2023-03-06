@@ -1,7 +1,6 @@
 from datetime import timedelta
 from pathlib import Path
 from time import sleep
-from typing import List, Optional
 
 import pandas as pd
 from rich.console import Group
@@ -61,15 +60,15 @@ class AmplitudeSweepTable:
         voltage_min: float,
     ):
         self.table.add_row(
-            "{:.2f}".format(frequency),
-            "{:.2f}".format(Fs),
-            "{}".format(number_of_samples),
-            "{}".format(amplitude_peak_to_peak),
-            "{:.5f} ".format(rms),
+            f"{frequency:.2f}",
+            f"{Fs:.2f}",
+            f"{number_of_samples}",
+            f"{amplitude_peak_to_peak}",
+            f"{rms:.5f} ",
             "[{}]{:.2f}[/]".format("red" if gain_dBV <= 0 else "green", gain_dBV),
-            "[cyan]{}[/]".format(time),
-            "{:.5f}".format(voltage_max),
-            "{:.5f}".format(voltage_min),
+            f"[cyan]{time}[/]",
+            f"{voltage_max:.5f}",
+            f"{voltage_min:.5f}",
         )
 
 
@@ -210,17 +209,17 @@ def amplitude_sweep(
         config.sampling.points_per_decade,
     )
 
-    frequency_list: List[float] = []
-    rms_list: List[float] = []
-    dBV_list: List[float] = []
-    fs_list: List[float] = []
-    oversampling_ratio_list: List[float] = []
-    n_periods_list: List[float] = []
-    n_samples_list: List[int] = []
+    frequency_list: list[float] = []
+    rms_list: list[float] = []
+    dBV_list: list[float] = []
+    fs_list: list[float] = []
+    oversampling_ratio_list: list[float] = []
+    n_periods_list: list[float] = []
+    n_samples_list: list[int] = []
 
     frequency: float = round(config.sampling.frequency_min, 5)
 
-    max_dB: Optional[float] = None
+    max_dB: float | None = None
 
     progress_list_task.update(task_sampling, task="Sweep")
 
@@ -325,7 +324,7 @@ def amplitude_sweep(
             progress_sweep.update(
                 task_sweep,
                 frequency=f"{round(frequency, 5)}",
-                rms="{}".format(round(result.rms, 5)),
+                rms=f"{round(result.rms, 5)}",
             )
 
             from audio.math.voltage import calculate_gain_dB
@@ -412,7 +411,7 @@ def amplitude_sweep(
     progress_list_task.remove_task(task_sampling)
 
     if debug:
-        console.print(Panel("max_dB: {}".format(max_dB)))
+        console.print(Panel(f"max_dB: {max_dB}"))
 
     console.print(
         Panel(

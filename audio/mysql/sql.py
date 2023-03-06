@@ -1,6 +1,4 @@
-from typing import Optional
 
-import mysql.connector
 import mysqlx
 from mysql.connector.connection import MySQLConnection
 
@@ -18,7 +16,7 @@ class mysqlxdev:
         password: str,
         host: str,
         port: int,
-        database: Optional[str] = None,
+        database: str | None = None,
     ):
         session = Session(
             MySQLConnection(

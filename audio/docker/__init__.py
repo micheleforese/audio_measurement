@@ -1,5 +1,4 @@
 import pathlib
-from typing import Optional
 
 
 class User:
@@ -28,9 +27,9 @@ class Docker_CLI:
         self,
         image: str,
         remove_on_exit: bool = True,
-        user: Optional[User] = None,
-        volume: Optional[Volume] = None,
-        command: Optional[str] = None,
+        user: User | None = None,
+        volume: Volume | None = None,
+        command: str | None = None,
     ) -> str:
 
         docker_run_command = ["docker", "run"]
@@ -40,11 +39,11 @@ class Docker_CLI:
 
         if user is not None:
             docker_run_command.append(
-                "--user {}:{}".format(str(user.id), str(user.group))
+                f"--user {str(user.id)}:{str(user.group)}"
             )
 
         if volume is not None:
-            docker_run_command.append("-v {}:{}".format(volume.local, volume.remote))
+            docker_run_command.append(f"-v {volume.local}:{volume.remote}")
 
         docker_run_command.append(image)
 

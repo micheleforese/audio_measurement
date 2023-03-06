@@ -2,27 +2,23 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 from abc import ABC
-from dataclasses import dataclass, field
-from enum import Enum, auto
+from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar, Dict, List, Optional, Type, Union
 
-import rich
 from rich.repr import auto as rich_repr
 
 from audio.config.sweep import SweepConfig
 from audio.console import console
 from audio.decoder.xml import DecoderXML
-from audio.model.file import CacheFile, File
-from audio.plot import CacheCsvData
+from audio.model.file import File
 
 
 class ProcedureStep(ABC):
     @staticmethod
     def proc_type_to_procedure(xml: ET.Element):
-        procedure: Optional[ProcedureStep] = None
+        procedure: ProcedureStep | None = None
 
-        StepList: List[DecoderXML] = [
+        StepList: list[DecoderXML] = [
             ProcedureText,
             ProcedureAsk,
             ProcedureDefault,
@@ -34,7 +30,6 @@ class ProcedureStep(ABC):
             ProcedureMultiPlot,
             ProcedureFile,
             ProcedureTask,
-            ProcedureCheck,
             ProcedurePhaseSweep,
         ]
 
@@ -61,11 +56,11 @@ class ProcedureText(ProcedureStep, DecoderXML):
         return cls.from_xml_object(xml)
 
     @classmethod
-    def from_xml_object(cls, xml: Optional[ET.Element]):
+    def from_xml_object(cls, xml: ET.Element | None):
         if xml is None or not cls.xml_is_valid(xml):
             return None
 
-        text: Optional[str] = xml.text
+        text: str | None = xml.text
 
         if text is not None:
             return cls(text=text.strip())
@@ -78,7 +73,7 @@ class ProcedureText(ProcedureStep, DecoderXML):
 @dataclass
 @rich_repr
 class ProcedureAsk(ProcedureStep, DecoderXML):
-    text: Optional[str] = None
+    text: str | None = None
 
     @classmethod
     def from_xml_file(cls, file: Path):
@@ -91,11 +86,11 @@ class ProcedureAsk(ProcedureStep, DecoderXML):
         return cls.from_xml_object(xml)
 
     @classmethod
-    def from_xml_object(cls, xml: Optional[ET.Element]):
+    def from_xml_object(cls, xml: ET.Element | None):
         if xml is None or not cls.xml_is_valid(xml):
             return None
 
-        text: Optional[str] = xml.text
+        text: str | None = xml.text
 
         if text is not None:
             return cls(text=text.strip())
@@ -108,8 +103,8 @@ class ProcedureAsk(ProcedureStep, DecoderXML):
 @dataclass
 @rich_repr
 class ProcedureFile(ProcedureStep, DecoderXML):
-    key: Optional[str] = None
-    path: Optional[str] = None
+    key: str | None = None
+    path: str | None = None
 
     @classmethod
     def from_xml_file(cls, file: Path):
@@ -122,7 +117,7 @@ class ProcedureFile(ProcedureStep, DecoderXML):
         return cls.from_xml_object(xml)
 
     @classmethod
-    def from_xml_object(cls, xml: Optional[ET.Element]):
+    def from_xml_object(cls, xml: ET.Element | None):
         if xml is None or not cls.xml_is_valid(xml):
             return None
 
@@ -142,22 +137,22 @@ class ProcedureFile(ProcedureStep, DecoderXML):
 
 @dataclass
 class DefaultSweepConfig:
-    set_level: Optional[File] = None
-    offset: Optional[File] = None
-    offset_sweep: Optional[File] = None
-    insertion_gain: Optional[File] = None
-    config: Optional[SweepConfig] = None
+    set_level: File | None = None
+    offset: File | None = None
+    offset_sweep: File | None = None
+    insertion_gain: File | None = None
+    config: SweepConfig | None = None
 
 
 @dataclass
 @rich_repr
 class ProcedureDefault(ProcedureStep, DecoderXML):
-    sweep_file_set_level: Optional[File] = None
-    sweep_file_offset: Optional[File] = None
-    sweep_file_offset_sweep: Optional[File] = None
-    sweep_file_insertion_gain: Optional[File] = None
+    sweep_file_set_level: File | None = None
+    sweep_file_offset: File | None = None
+    sweep_file_offset_sweep: File | None = None
+    sweep_file_insertion_gain: File | None = None
 
-    sweep_config: Optional[SweepConfig] = None
+    sweep_config: SweepConfig | None = None
 
     @classmethod
     def from_xml_file(cls, file: Path):
@@ -170,16 +165,16 @@ class ProcedureDefault(ProcedureStep, DecoderXML):
         return ProcedureText.from_xml_object(xml)
 
     @classmethod
-    def from_xml_object(cls, xml: Optional[ET.Element]):
+    def from_xml_object(cls, xml: ET.Element | None):
         if not ProcedureText.xml_is_valid(xml):
             return None
 
-        sweep_file_set_level: Optional[File] = None
-        sweep_file_offset: Optional[File] = None
-        sweep_file_offset_sweep: Optional[File] = None
-        sweep_file_insertion_gain: Optional[File] = None
+        sweep_file_set_level: File | None = None
+        sweep_file_offset: File | None = None
+        sweep_file_offset_sweep: File | None = None
+        sweep_file_insertion_gain: File | None = None
 
-        sweep_config: Optional[SweepConfig] = None
+        sweep_config: SweepConfig | None = None
 
         Esweep = xml.find("./sweep")
         if Esweep is not None:
@@ -238,10 +233,10 @@ class ProcedureDefault(ProcedureStep, DecoderXML):
 @rich_repr
 class ProcedureSetLevel(ProcedureStep, DecoderXML):
     name: str
-    comment: Optional[str] = None
-    dBu: Optional[float] = None
+    comment: str | None = None
+    dBu: float | None = None
     dBu_modifier: bool = False
-    config: Optional[SweepConfig] = None
+    config: SweepConfig | None = None
     # file_set_level_key: Optional[str] = None
     # file_set_level_name: Optional[str] = None
     # file_plot_key: Optional[str] = None
@@ -259,13 +254,13 @@ class ProcedureSetLevel(ProcedureStep, DecoderXML):
         return cls.from_xml_object(xml)
 
     @classmethod
-    def from_xml_object(cls, xml: Optional[ET.Element]):
+    def from_xml_object(cls, xml: ET.Element | None):
         if xml is None or not cls.xml_is_valid(xml):
             return None
 
-        dBu: Optional[float] = None
+        dBu: float | None = None
         dBu_modifier: bool = False
-        sweep_config_xml: Optional[SweepConfig] = None
+        sweep_config_xml: SweepConfig | None = None
         # file_set_level_key: Optional[str] = None
         # file_set_level_name: Optional[str] = None
         # file_plot_key: Optional[str] = None
@@ -279,7 +274,7 @@ class ProcedureSetLevel(ProcedureStep, DecoderXML):
         if EdBu is not None:
             dBu = float(EdBu.text)
 
-            modifier: Optional[str] = EdBu.get("modifier")
+            modifier: str | None = EdBu.get("modifier")
             if modifier is not None and modifier == "yes":
                 dBu_modifier = True
 
@@ -322,9 +317,9 @@ class ProcedureSetLevel(ProcedureStep, DecoderXML):
 @rich_repr
 class ProcedureSweep(ProcedureStep, DecoderXML):
 
-    name: Optional[str] = None
-    comment: Optional[str] = None
-    config: Optional[SweepConfig] = None
+    name: str | None = None
+    comment: str | None = None
+    config: SweepConfig | None = None
 
     @classmethod
     def from_xml_file(cls, file: Path):
@@ -337,11 +332,11 @@ class ProcedureSweep(ProcedureStep, DecoderXML):
         return cls.from_xml_object(xml)
 
     @classmethod
-    def from_xml_object(cls, xml: Optional[ET.Element]):
+    def from_xml_object(cls, xml: ET.Element | None):
         if xml is None or not cls.xml_is_valid(xml):
             return None
 
-        config: Optional[SweepConfig] = None
+        config: SweepConfig | None = None
 
         name = xml.get("name")
         comment = xml.get("comment")
@@ -373,7 +368,7 @@ class ProcedureSerialNumber(ProcedureStep, DecoderXML):
         return cls.from_xml_object(xml)
 
     @classmethod
-    def from_xml_object(cls, xml: Optional[ET.Element]):
+    def from_xml_object(cls, xml: ET.Element | None):
         if xml is None or not cls.xml_is_valid(xml):
             return None
 
@@ -395,14 +390,14 @@ class ProcedureSerialNumber(ProcedureStep, DecoderXML):
 @rich_repr
 class ProcedureInsertionGain(ProcedureStep, DecoderXML):
 
-    file_calibration_key: Optional[str] = None
-    file_calibration_path: Optional[str] = None
+    file_calibration_key: str | None = None
+    file_calibration_path: str | None = None
 
-    file_set_level_key: Optional[str] = None
-    file_set_level_path: Optional[str] = None
+    file_set_level_key: str | None = None
+    file_set_level_path: str | None = None
 
-    file_gain_key: Optional[str] = None
-    file_gain_path: Optional[str] = None
+    file_gain_key: str | None = None
+    file_gain_path: str | None = None
 
     @classmethod
     def from_xml_file(cls, file: Path):
@@ -415,16 +410,16 @@ class ProcedureInsertionGain(ProcedureStep, DecoderXML):
         return cls.from_xml_object(xml)
 
     @classmethod
-    def from_xml_object(cls, xml: Optional[ET.Element]):
+    def from_xml_object(cls, xml: ET.Element | None):
         if xml is None or not cls.xml_is_valid(xml):
             return None
 
-        file_calibration_key: Optional[str] = None
-        file_calibration_path: Optional[str] = None
-        file_set_level_key: Optional[str] = None
-        file_set_level_path: Optional[str] = None
-        file_gain_key: Optional[str] = None
-        file_gain_path: Optional[str] = None
+        file_calibration_key: str | None = None
+        file_calibration_path: str | None = None
+        file_set_level_key: str | None = None
+        file_set_level_path: str | None = None
+        file_gain_key: str | None = None
+        file_gain_path: str | None = None
 
         Efile_file_calibration = xml.find("./file_calibration")
         if Efile_file_calibration is not None:
@@ -469,13 +464,13 @@ class ProcedureInsertionGain(ProcedureStep, DecoderXML):
 @rich_repr
 class ProcedureTask(ProcedureStep, DecoderXML):
 
-    text: Optional[str]
-    steps: List[ProcedureStep]
+    text: str | None
+    steps: list[ProcedureStep]
 
     def __init__(
         self,
-        text: Optional[str] = None,
-        steps: List[ProcedureStep] = [],
+        text: str | None = None,
+        steps: list[ProcedureStep] = [],
     ) -> None:
         self.text = text
         self.steps = steps
@@ -491,17 +486,17 @@ class ProcedureTask(ProcedureStep, DecoderXML):
         return cls.from_xml_object(xml)
 
     @classmethod
-    def from_xml_object(cls, xml: Optional[ET.Element]):
+    def from_xml_object(cls, xml: ET.Element | None):
         if xml is None or not cls.xml_is_valid(xml):
             return None
 
-        text: Optional[str] = None
+        text: str | None = None
 
         text = xml.find(".").get("text")
 
-        step_nodes: List[ET.Element] = xml.findall("./*")
+        step_nodes: list[ET.Element] = xml.findall("./*")
 
-        steps: List[ProcedureStep] = []
+        steps: list[ProcedureStep] = []
 
         for idx, step in enumerate(step_nodes):
             proc_type = step.tag
@@ -526,9 +521,9 @@ class ProcedureTask(ProcedureStep, DecoderXML):
 @rich_repr
 class ProcedurePrint(ProcedureStep, DecoderXML):
 
-    variables: List[str]
+    variables: list[str]
 
-    def __init__(self, variables: List[str] = []) -> None:
+    def __init__(self, variables: list[str] = []) -> None:
         self.variables = variables
 
     @classmethod
@@ -542,11 +537,11 @@ class ProcedurePrint(ProcedureStep, DecoderXML):
         return cls.from_xml_object(xml)
 
     @classmethod
-    def from_xml_object(cls, xml: Optional[ET.Element]):
+    def from_xml_object(cls, xml: ET.Element | None):
         if xml is None or not cls.xml_is_valid(xml):
             return None
 
-        variables: List[str] = [
+        variables: list[str] = [
             var.text for var in xml.findall("./var") if var.text is not None
         ]
 
@@ -563,8 +558,8 @@ class ProcedureMultiPlot(ProcedureStep, DecoderXML):
 
     name: str
     file_plot: str
-    folder_sweep: List[str]
-    config: Optional[SweepConfig] = None
+    folder_sweep: list[str]
+    config: SweepConfig | None = None
 
     @classmethod
     def from_xml_file(cls, file: Path):
@@ -577,7 +572,7 @@ class ProcedureMultiPlot(ProcedureStep, DecoderXML):
         return cls.from_xml_object(xml)
 
     @classmethod
-    def from_xml_object(cls, xml: Optional[ET.Element]):
+    def from_xml_object(cls, xml: ET.Element | None):
         if xml is None or not cls.xml_is_valid(xml):
             return None
 
@@ -585,7 +580,7 @@ class ProcedureMultiPlot(ProcedureStep, DecoderXML):
 
         file_plot = xml.find("./file_plot")
 
-        folder_sweep: List[str] = []
+        folder_sweep: list[str] = []
 
         Efolders = xml.findall("./folder_sweep/var")
 
@@ -603,7 +598,7 @@ class ProcedureMultiPlot(ProcedureStep, DecoderXML):
 
         Econfig = xml.find("./config")
 
-        sweep_config_xml: Optional[SweepConfig] = None
+        sweep_config_xml: SweepConfig | None = None
 
         if Econfig is not None:
             sweep_config_xml = SweepConfig.from_xml_object(ET.ElementTree(Econfig))
@@ -626,10 +621,10 @@ class ProcedureMultiPlot(ProcedureStep, DecoderXML):
 @dataclass
 @rich_repr
 class ProcedurePhaseSweepData:
-    name: Optional[str] = None
-    folder_path: Optional[str] = None
-    graph_path: Optional[str] = None
-    config: Optional[SweepConfig] = None
+    name: str | None = None
+    folder_path: str | None = None
+    graph_path: str | None = None
+    config: SweepConfig | None = None
 
 
 @rich_repr
@@ -653,13 +648,13 @@ class ProcedurePhaseSweep(ProcedureStep, DecoderXML):
         return cls.from_xml_object(xml)
 
     @classmethod
-    def from_xml_object(cls, xml: Optional[ET.Element]):
+    def from_xml_object(cls, xml: ET.Element | None):
         if xml is None or not cls.xml_is_valid(xml):
             return None
 
-        name: Optional[str] = None
-        folder_path: Optional[str] = None
-        graph_path: Optional[str] = None
+        name: str | None = None
+        folder_path: str | None = None
+        graph_path: str | None = None
 
         Ename = xml.find(".")
         if Ename is not None:
@@ -675,7 +670,7 @@ class ProcedurePhaseSweep(ProcedureStep, DecoderXML):
 
         Econfig = xml.find("./config")
 
-        sweep_config_xml: Optional[SweepConfig] = None
+        sweep_config_xml: SweepConfig | None = None
 
         if Econfig is not None:
             sweep_config_xml = SweepConfig.from_xml_object(ET.ElementTree(Econfig))
@@ -696,11 +691,11 @@ class ProcedurePhaseSweep(ProcedureStep, DecoderXML):
 
 class ProcedureCalculation(ProcedureStep, DecoderXML):
 
-    steps: List[ProcedureStep]
+    steps: list[ProcedureStep]
 
     def __init__(
         self,
-        steps: List[ProcedureStep] = [],
+        steps: list[ProcedureStep] = [],
     ) -> None:
         self.steps = steps
 
@@ -715,13 +710,13 @@ class ProcedureCalculation(ProcedureStep, DecoderXML):
         return cls.from_xml_object(xml)
 
     @classmethod
-    def from_xml_object(cls, xml: Optional[ET.Element]):
+    def from_xml_object(cls, xml: ET.Element | None):
         if xml is None or not cls.xml_is_valid(xml):
             return None
 
-        step_nodes: List[ET.Element] = xml.findall("./*")
+        step_nodes: list[ET.Element] = xml.findall("./*")
 
-        steps: List[ProcedureStep] = []
+        steps: list[ProcedureStep] = []
 
         for idx, step in enumerate(step_nodes):
             proc_type = step.tag
@@ -738,51 +733,6 @@ class ProcedureCalculation(ProcedureStep, DecoderXML):
     @staticmethod
     def xml_is_valid(xml: ET.Element):
         return xml.tag == "calculation"
-
-
-class ProcedureCalculation_dBInsertionGain(ProcedureStep, DecoderXML):
-    name: str
-    comment: Optional[str]
-    data: Optional[List] = None
-
-    def __init__(
-        self,
-        data: Optional[List] = None,
-    ) -> None:
-        self.data = data
-
-    @classmethod
-    def from_xml_file(cls, file: Path):
-        return cls.from_xml_string(file.read_text())
-
-    @classmethod
-    def from_xml_string(cls, data: str):
-        tree = ET.ElementTree(ET.fromstring(data))
-        xml = tree.getroot()
-        return cls.from_xml_object(xml)
-
-    @classmethod
-    def from_xml_object(cls, xml: Optional[ET.Element]):
-        if xml is None or not cls.xml_is_valid(xml):
-            return None
-
-        name = xml.get("name")
-        comment = xml.get("comment")
-
-        list_sweep_voltage: List[ProcedureCalculation_sweepVoltageDb] = []
-
-        Elist_data_sweep_voltages = xml.findall("./*")
-        if len(Elist_data_sweep_voltages) > 0:
-            for elem in Elist_data_sweep_voltages:
-                sweepVoltageDb = ProcedureCalculation_sweepVoltageDb.from_xml_object(
-                    elem
-                )
-
-        return cls(steps=steps)
-
-    @staticmethod
-    def xml_is_valid(xml: ET.Element):
-        return xml.tag == "dB_insertion_gain"
 
 
 class ProcedureCalculation_sweepVoltageDb(ProcedureStep, DecoderXML):
@@ -808,7 +758,7 @@ class ProcedureCalculation_sweepVoltageDb(ProcedureStep, DecoderXML):
         return cls.from_xml_object(xml)
 
     @classmethod
-    def from_xml_object(cls, xml: Optional[ET.Element]):
+    def from_xml_object(cls, xml: ET.Element | None):
         if xml is None or not cls.xml_is_valid(xml):
             return None
 
@@ -842,7 +792,7 @@ class ProcedureCalculation_sweepVoltageLocal(ProcedureStep, DecoderXML):
         return cls.from_xml_object(xml)
 
     @classmethod
-    def from_xml_object(cls, xml: Optional[ET.Element]):
+    def from_xml_object(cls, xml: ET.Element | None):
         if xml is None or not cls.xml_is_valid(xml):
             return None
 
@@ -875,7 +825,7 @@ class ProcedurePlot(ProcedureStep, DecoderXML):
         return cls.from_xml_object(xml)
 
     @classmethod
-    def from_xml_object(cls, xml: Optional[ET.Element]):
+    def from_xml_object(cls, xml: ET.Element | None):
         if xml is None or not cls.xml_is_valid(xml):
             return None
 

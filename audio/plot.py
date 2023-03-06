@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Optional, Set
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
@@ -17,7 +16,7 @@ from audio.console import console
 
 
 class CacheCsvData:
-    _csvData: Dict[str, SweepData]
+    _csvData: dict[str, SweepData]
 
     def __init__(self) -> None:
         self._csvData = dict()
@@ -35,17 +34,17 @@ class CacheCsvData:
             sweep_data = SweepData.from_csv_file(csv_path)
             self._csvData[path_hash] = sweep_data
 
-    def get_csv_file_data(self, csv_path: Path) -> Optional[SweepData]:
+    def get_csv_file_data(self, csv_path: Path) -> SweepData | None:
         path_hash = self._create_hash(csv_path)
 
         return self._csvData.get(path_hash, None)
 
 
 def multiplot(
-    csv_files_paths: List[Path],
+    csv_files_paths: list[Path],
     output_file_path: Path,
     cache_csv_data: CacheCsvData,
-    sweep_config: Optional[SweepConfig] = None,
+    sweep_config: SweepConfig | None = None,
 ) -> bool:
 
     # Check for Files validity
@@ -92,7 +91,7 @@ def multiplot(
     logLocator = ticker.LogLocator(subs=np.arange(0, 1, granularity_ticks))
 
     def logMinorFormatFunc(x, pos):
-        return "{:.0f}".format(x)
+        return f"{x:.0f}"
 
     logMinorFormat = ticker.FuncFormatter(logMinorFormatFunc)
 
@@ -116,7 +115,7 @@ def multiplot(
         cfg = sweep_data.config
 
         x_frequency = list(sweep_data.frequency.values)
-        y_dBV: List[float] = list(sweep_data.dBV.values)
+        y_dBV: list[float] = list(sweep_data.dBV.values)
 
         # Apply y_offset
         if cfg.y_offset:
@@ -138,7 +137,7 @@ def multiplot(
         xy_sampled = [x_frequency, y_dBV, "o"]
         xy_interpolated = [x_interpolated, y_interpolated, "-"]
 
-        legend: Optional[str] = None
+        legend: str | None = None
 
         if cfg is not None:
             if cfg.legend is not None:

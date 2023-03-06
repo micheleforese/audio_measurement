@@ -1,6 +1,5 @@
 from audio.procedure import Procedure
 from pathlib import Path
-from audio.console import console
 
 
 def test_procedure():

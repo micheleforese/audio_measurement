@@ -1,4 +1,3 @@
-from typing import List
 
 import click
 from rich.panel import Panel
@@ -18,7 +17,7 @@ from audio.utility.scpi import SCPI, Switch
 )
 def turn_on(debug: bool):
     # Asks for the 2 instruments
-    list_devices: List[Instrument] = UsbTmc.search_devices()
+    list_devices: list[Instrument] = UsbTmc.search_devices()
     if debug:
         UsbTmc.print_devices_list(list_devices)
 
@@ -26,7 +25,7 @@ def turn_on(debug: bool):
 
     generator.open()
 
-    generator_ac_curves: List[str] = [
+    generator_ac_curves: list[str] = [
         SCPI.set_output(1, Switch.ON),
     ]
 
@@ -46,7 +45,7 @@ def turn_on(debug: bool):
 )
 def turn_off(debug: bool):
     # Asks for the 2 instruments
-    list_devices: List[Instrument] = UsbTmc.search_devices()
+    list_devices: list[Instrument] = UsbTmc.search_devices()
     if debug:
         UsbTmc.print_devices_list(list_devices)
 
@@ -54,7 +53,7 @@ def turn_off(debug: bool):
 
     generator.open()
 
-    generator_ac_curves: List[str] = [
+    generator_ac_curves: list[str] = [
         SCPI.set_output(1, Switch.OFF),
     ]
 
@@ -79,7 +78,7 @@ def turn_off(debug: bool):
 def set_amplitude(amplitude: float, debug: bool):
 
     # Asks for the 2 instruments
-    list_devices: List[Instrument] = UsbTmc.search_devices()
+    list_devices: list[Instrument] = UsbTmc.search_devices()
     if debug:
         UsbTmc.print_devices_list(list_devices)
 
@@ -87,7 +86,7 @@ def set_amplitude(amplitude: float, debug: bool):
 
     generator.open()
 
-    generator_ac_curves: List[str] = [
+    generator_ac_curves: list[str] = [
         SCPI.set_source_voltage_amplitude(1, round(amplitude, 5)),
     ]
 
@@ -95,7 +94,7 @@ def set_amplitude(amplitude: float, debug: bool):
 
     generator.close()
 
-    console.print(Panel("[blue]Rigol Amplitude {}[/]".format(amplitude)))
+    console.print(Panel(f"[blue]Rigol Amplitude {amplitude}[/]"))
 
 
 @click.command()
@@ -112,7 +111,7 @@ def set_amplitude(amplitude: float, debug: bool):
 def set_frequency(frequency, debug: bool):
 
     # Asks for the 2 instruments
-    list_devices: List[Instrument] = UsbTmc.search_devices()
+    list_devices: list[Instrument] = UsbTmc.search_devices()
     if debug:
         UsbTmc.print_devices_list(list_devices)
 
@@ -120,7 +119,7 @@ def set_frequency(frequency, debug: bool):
 
     generator.open()
 
-    generator_ac_curves: List[str] = [
+    generator_ac_curves: list[str] = [
         SCPI.set_source_frequency(1, round(frequency, 5)),
     ]
 
@@ -128,4 +127,4 @@ def set_frequency(frequency, debug: bool):
 
     generator.close()
 
-    console.print(Panel("[blue]Rigol Frequency {}[/]".format(frequency)))
+    console.print(Panel(f"[blue]Rigol Frequency {frequency}[/]"))

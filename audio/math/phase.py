@@ -1,6 +1,6 @@
 import math
-from typing import List, Optional, Tuple
 
+from audio.console import console
 from audio.model.sampling import VoltageSampling
 
 
@@ -8,7 +8,7 @@ def phase_offset(
     voltage_sampling_0: VoltageSampling,
     voltage_sampling_1: VoltageSampling,
 ):
-    delta_list: List[float] = []
+    delta_list: list[float] = []
     for voltage_0, voltage_1 in zip(
         voltage_sampling_0.voltages, voltage_sampling_1.voltages
     ):
@@ -53,20 +53,17 @@ def delta_points(
     )
 
 
-from audio.console import console
-
-
 def phase_offset_v2(
     voltage_sampling_0: VoltageSampling,
     voltage_sampling_1: VoltageSampling,
     debug: bool = False,
 ):
-    zero_index_0: Optional[int] = None
-    zero_index_slope_0: Optional[float] = None
-    zero_index_1: Optional[int] = None
-    zero_index_slope_1: Optional[float] = None
+    zero_index_0: int | None = None
+    zero_index_slope_0: float | None = None
+    zero_index_1: int | None = None
+    zero_index_slope_1: float | None = None
     begin_index_1: int
-    alpha: Optional[float] = None
+    alpha: float | None = None
 
     sign_phase: float = 1
 
@@ -162,8 +159,8 @@ def phase_offset_v2(
     T = 1 / voltage_sampling_0.input_frequency
 
     alpha = (time / T) * 360
-    # if sign_phase < 0:
-    #     alpha -= 180
+    if sign_phase < 0:
+        alpha -= 180
 
     return alpha
 
@@ -173,12 +170,12 @@ def phase_offset_v3(
     voltage_sampling_1: VoltageSampling,
     debug: bool = False,
 ):
-    zero_index_0: Optional[int] = None
-    zero_index_slope_0: Optional[float] = None
-    zero_index_1: Optional[int] = None
-    zero_index_slope_1: Optional[float] = None
+    zero_index_0: int | None = None
+    zero_index_slope_0: float | None = None
+    zero_index_1: int | None = None
+    zero_index_slope_1: float | None = None
     begin_index_1: int
-    alpha: Optional[float] = None
+    alpha: float | None = None
 
     sign_phase: float = 1
 

@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import enum
-from typing import Generic, List, Optional, TypeVar, overload
+from typing import Generic, TypeVar
 
-from audio.type import Option
 
 RangeType = TypeVar("RangeType")
 
@@ -25,8 +23,8 @@ class Range(Generic[RangeType]):
     @classmethod
     def from_list(
         cls,
-        range: Optional[List[RangeType]],
-    ) -> Optional[Range[RangeType]]:
+        range: list[RangeType] | None,
+    ) -> Range[RangeType] | None:
 
         if range:
             if len(range) != 2:

@@ -2,7 +2,7 @@ import copy
 from enum import Enum, auto
 from math import log10
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Type
+from collections.abc import Callable
 
 import click
 from rich.panel import Panel
@@ -65,11 +65,11 @@ class AppAction(Enum):
     EXIT_TASK = auto()
 
 
-def exec_proc(data: DataProcedure, list_step: List[ProcedureStep]):
+def exec_proc(data: DataProcedure, list_step: list[ProcedureStep]):
     idx_tot = len(list_step)
 
-    procedure_step_dict: Dict[
-        Type, Callable[[DataProcedure, ProcedureStep], Optional[AppAction]]
+    procedure_step_dict: dict[
+        type, Callable[[DataProcedure, ProcedureStep], AppAction | None]
     ] = {
         ProcedureText: step_procedure_text,
         ProcedureAsk: step_procedure_ask,
@@ -88,7 +88,7 @@ def exec_proc(data: DataProcedure, list_step: List[ProcedureStep]):
     for idx, step in enumerate(list_step, start=1):
         console.print(Panel(f"{idx}/{idx_tot}: {step.__class__.__name__}()"))
 
-        app_action: Optional[AppAction] = procedure_step_dict.get(
+        app_action: AppAction | None = procedure_step_dict.get(
             type(step), step_not_implemented
         )(data, step)
 
@@ -149,8 +149,8 @@ def step_procedure_set_level(data: DataProcedure, step: ProcedureSetLevel):
     sampling_config = step.config
     sampling_config.print()
 
-    file_set_level_path: Optional[Path] = None
-    file_sweep_plot_path: Optional[Path] = None
+    file_set_level_path: Path | None = None
+    file_sweep_plot_path: Path | None = None
 
     if step.file_set_level_key is not None:
         file_set_level_path = data.cache_file.get(step.file_set_level_key)
@@ -165,7 +165,7 @@ def step_procedure_set_level(data: DataProcedure, step: ProcedureSetLevel):
     elif step.file_set_level_name is not None:
         file_set_level_path = Path(data.root / step.file_set_level_name)
     else:
-        console.log(f"[FILE] - File not present.", style="error")
+        console.log("[FILE] - File not present.", style="error")
 
     if step.file_plot_key is not None:
         file_sweep_plot_path = data.cache_file.get(step.file_plot_key)
@@ -180,7 +180,7 @@ def step_procedure_set_level(data: DataProcedure, step: ProcedureSetLevel):
     elif step.file_plot_name is not None:
         file_sweep_plot_path = Path(data.root / step.file_plot_name)
     else:
-        console.log(f"[FILE] - File not present.", style="error")
+        console.log("[FILE] - File not present.", style="error")
 
     if not step.override:
         if file_set_level_path.exists() and file_set_level_path.is_file():
@@ -255,7 +255,7 @@ def step_procedure_insertion_gain(data: DataProcedure, step: ProcedureInsertionG
 
 def step_procedure_print(data: DataProcedure, step: ProcedurePrint):
     for var in step.variables:
-        variable: Optional[str] = data.data.get(var, None)
+        variable: str | None = data.data.get(var, None)
         if variable is not None:
             console.print(
                 "{}: {}".format(var, Path(variable).read_text(encoding="utf-8"))
@@ -265,10 +265,10 @@ def step_procedure_print(data: DataProcedure, step: ProcedurePrint):
 
 
 def step_procedure_sweep(data: DataProcedure, step: ProcedureSweep):
-    file_set_level_path: Optional[Path] = None
-    file_offset_path: Optional[Path] = None
-    file_offset_sweep_path: Optional[Path] = None
-    file_insertion_gain_path: Optional[Path] = None
+    file_set_level_path: Path | None = None
+    file_offset_path: Path | None = None
+    file_offset_sweep_path: Path | None = None
+    file_insertion_gain_path: Path | None = None
 
     config: SweepConfig = copy.deepcopy(data.default_sweep_config.config)
 
@@ -305,7 +305,7 @@ def step_procedure_sweep(data: DataProcedure, step: ProcedureSweep):
     elif file_set_level.path is not None:
         file_set_level_path = Path(data.root / file_set_level.path)
     else:
-        console.log(f"[FILE] - File not present.", style="error")
+        console.log("[FILE] - File not present.", style="error")
         console.log(data.cache_file.database)
         exit()
 
@@ -332,7 +332,7 @@ def step_procedure_sweep(data: DataProcedure, step: ProcedureSweep):
     elif file_offset.path is not None:
         file_offset_path = Path(data.root / file_offset.path)
     else:
-        console.log(f"[FILE] - File not present.", style="error")
+        console.log("[FILE] - File not present.", style="error")
         console.log(data.cache_file.database)
         exit()
 
@@ -391,7 +391,7 @@ def step_procedure_sweep(data: DataProcedure, step: ProcedureSweep):
     elif file_insertion_gain.path is not None:
         file_insertion_gain_path = Path(data.root / file_insertion_gain.path)
     else:
-        console.log(f"[FILE] - File not present.", style="error")
+        console.log("[FILE] - File not present.", style="error")
         console.log(data.cache_file.database)
         exit()
 
@@ -446,7 +446,7 @@ def step_procedure_multiplot(data: DataProcedure, step: ProcedureMultiPlot):
     home_dir_path: Path = data.root
     file_sweep_plot: Path = home_dir_path / step.file_plot
 
-    csv_files: List[Path] = [Path(home_dir_path / dir) for dir in step.folder_sweep]
+    csv_files: list[Path] = [Path(home_dir_path / dir) for dir in step.folder_sweep]
 
     multiplot(
         csv_files,

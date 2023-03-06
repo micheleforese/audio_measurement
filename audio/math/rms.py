@@ -1,7 +1,6 @@
 import enum
 import pathlib
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -31,11 +30,11 @@ class RMS:
         min_voltage: float,
         rms_mode: RMS_MODE = RMS_MODE.FFT,
         time_report: bool = False,
-        save_file: Optional[pathlib.Path] = None,
+        save_file: pathlib.Path | None = None,
         trim: bool = True,
-        frequency: Optional[float] = None,
+        frequency: float | None = None,
         interpolation_rate: float = 10,
-    ) -> Tuple[List[float], Optional[float]]:
+    ) -> tuple[list[float], float | None]:
         """It calculates the RMS Value from the nidaq input
 
         Args:
@@ -74,8 +73,8 @@ class RMS:
 
         if save_file:
             with open(save_file.absolute().resolve(), "w", encoding="utf-8") as f:
-                f.write("# frequency: {}\n".format(round(frequency, 5)))
-                f.write("# Fs: {}\n".format(round(Fs, 5)))
+                f.write(f"# frequency: {round(frequency, 5)}\n")
+                f.write(f"# Fs: {round(Fs, 5)}\n")
                 pd.DataFrame(voltages).to_csv(
                     f,
                     header=["voltage"],
@@ -103,7 +102,7 @@ class RMS:
             else:
                 console.log("trim ERROR")
 
-        rms: Optional[float] = None
+        rms: float | None = None
 
         if time_report:
             timer.start("[yellow]RMS Calculation Execution time[/]")
@@ -121,7 +120,7 @@ class RMS:
         return voltages, rms
 
     @staticmethod
-    def average(voltages: List[float]) -> float:
+    def average(voltages: list[float]) -> float:
         """Calculate the RMS Voltage value from the sampling average
 
         Args:
@@ -161,7 +160,7 @@ class RMS:
         return rms
 
     @staticmethod
-    def integration(voltages: List[float], Fs: float) -> float:
+    def integration(voltages: list[float], Fs: float) -> float:
         """Calculate the RMS Voltage value with the Integration Technic
 
         Args:
@@ -213,7 +212,7 @@ class RMS:
             else:
                 console.log("trim ERROR")
 
-        rms: Optional[float] = None
+        rms: float | None = None
 
         if time_report:
             timer.start()
@@ -239,5 +238,5 @@ class RMS:
 
 @dataclass
 class RMSResult:
-    rms: Optional[float] = None
-    voltages: Optional[List[float]] = None
+    rms: float | None = None
+    voltages: list[float] | None = None

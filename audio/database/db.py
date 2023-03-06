@@ -2,11 +2,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from sqlite3 import Connection
-from typing import Any, List, Optional, Tuple
+
+import mysql.connector
+from mysql.connector.connection import MySQLConnection
 
 from audio.console import console
-from audio.math.rms import RMS
-from audio.model.sampling import VoltageSampling
 
 
 @dataclass
@@ -14,7 +14,7 @@ class DbTest:
     id: int
     name: str
     date: datetime
-    comment: Optional[str] = None
+    comment: str | None = None
 
 
 @dataclass
@@ -23,7 +23,7 @@ class DbSweep:
     test_id: int
     name: str
     date: datetime
-    comment: Optional[str] = None
+    comment: str | None = None
 
 
 @dataclass
@@ -41,19 +41,19 @@ class DbChannel:
     sweep_id: int
     idx: int
     name: str
-    comment: Optional[str] = None
+    comment: str | None = None
 
 
 @dataclass
 class DbSweepConfig:
     sweep_id: int
-    amplitude: Optional[float]
-    frequency_min: Optional[float]
-    frequency_max: Optional[float]
-    points_per_decade: Optional[float]
-    number_of_samples: Optional[float]
-    Fs_multiplier: Optional[float]
-    delay_measurements: Optional[float]
+    amplitude: float | None
+    frequency_min: float | None
+    frequency_max: float | None
+    points_per_decade: float | None
+    number_of_samples: float | None
+    Fs_multiplier: float | None
+    delay_measurements: float | None
 
 
 @dataclass
@@ -61,11 +61,7 @@ class DbSweepVoltage:
     id: int
     frequency_id: int
     channel_id: int
-    voltages: List[float]
-
-
-import mysql.connector
-from mysql.connector.connection import MySQLConnection
+    voltages: list[float]
 
 
 class Database:
@@ -100,7 +96,7 @@ class Database:
         # ciao
         self.connection.commit()
 
-    def insert_test(self, name: str, date: datetime, comment: Optional[str] = None):
+    def insert_test(self, name: str, date: datetime, comment: str | None = None):
         data = (name, date, comment)
         console.log(data)
 
@@ -134,7 +130,7 @@ class Database:
         self.connection.commit()
 
     def insert_sweep(
-        self, test_id: int, name: str, date: datetime, comment: Optional[str] = None
+        self, test_id: int, name: str, date: datetime, comment: str | None = None
     ) -> int:
         cur = self.connection.cursor()
         data = (
@@ -152,7 +148,7 @@ class Database:
 
     def get_all_sweeps(self):
         cur = self.connection.cursor()
-        cur.execute(f"SELECT * FROM audio.sweep")
+        cur.execute("SELECT * FROM audio.sweep")
         data = cur.fetchall()
 
         sweeps = [
@@ -271,7 +267,7 @@ class Database:
         return frequency_data
 
     def insert_channel(
-        self, sweep_id: int, idx: int, name: str, comment: Optional[str] = None
+        self, sweep_id: int, idx: int, name: str, comment: str | None = None
     ):
         cur = self.connection.cursor()
         data = (sweep_id, idx, name, comment)
@@ -306,13 +302,13 @@ class Database:
     def insert_sweep_config(
         self,
         sweep_id: int,
-        amplitude: Optional[float] = None,
-        frequency_min: Optional[float] = None,
-        frequency_max: Optional[float] = None,
-        points_per_decade: Optional[float] = None,
-        number_of_samples: Optional[int] = None,
-        Fs_multiplier: Optional[float] = None,
-        delay_measurements: Optional[float] = None,
+        amplitude: float | None = None,
+        frequency_min: float | None = None,
+        frequency_max: float | None = None,
+        points_per_decade: float | None = None,
+        number_of_samples: int | None = None,
+        Fs_multiplier: float | None = None,
+        delay_measurements: float | None = None,
     ):
         cur = self.connection.cursor()
         data = (
@@ -377,7 +373,7 @@ class Database:
         self,
         frequency_id: int,
         channel_id: int,
-        voltages: List[float],
+        voltages: list[float],
     ):
         cur = self.connection.cursor()
         voltages_string = [str(v) for v in voltages]
@@ -416,7 +412,7 @@ class Database:
             ORDER BY id ASC
             """
         )
-        data: Tuple[int, int, int, bytes] = cur.fetchone()
+        data: tuple[int, int, int, bytes] = cur.fetchone()
         _id, _frequency_id, _channel_id, _voltages = data
         _voltages = [float(line) for line in _voltages.decode().splitlines()]
         sweep_voltages_data = DbSweepVoltage(
@@ -440,7 +436,7 @@ class Database:
             WHERE frequency_id = {frequency_id} AND channel_id = {channel_id}
             """
         )
-        data: Tuple[int, int, int, bytes] = cur.fetchone()
+        data: tuple[int, int, int, bytes] = cur.fetchone()
 
         _id, _frequency_id, _channel_id, _voltages = data
         sweep_voltages_data = DbSweepVoltage(

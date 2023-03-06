@@ -1,13 +1,12 @@
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Optional
 import rich
 
 
 @dataclass
 @rich.repr.auto
 class CacheFile:
-    database: Dict[str, Path] = field(default_factory=lambda: dict({}))
+    database: dict[str, Path] = field(default_factory=lambda: dict({}))
 
     def get(self, key: str):
         file = self.database.get(key, None)
@@ -23,10 +22,10 @@ class CacheFile:
 @dataclass
 @rich.repr.auto
 class File:
-    key: Optional[str] = None
-    path: Optional[str] = None
+    key: str | None = None
+    path: str | None = None
 
-    def overload(self, key: Optional[str], path: Optional[str]):
+    def overload(self, key: str | None, path: str | None):
         if key is not None:
             self.key = key
         if path is not None:

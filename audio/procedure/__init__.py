@@ -3,7 +3,6 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Type, Union
 
 import rich
 
@@ -18,14 +17,14 @@ from audio.procedure.step import DefaultSweepConfig, ProcedureStep
 class Procedure(DecoderXML):
 
     name: str
-    comment: Optional[str]
-    steps: List[ProcedureStep]
+    comment: str | None
+    steps: list[ProcedureStep]
 
     def __init__(
         self,
         name: str,
-        comment: Optional[str],
-        steps: List[ProcedureStep] = [],
+        comment: str | None,
+        steps: list[ProcedureStep] = [],
     ) -> None:
         self.name = name
         self.comment = comment
@@ -60,9 +59,9 @@ class Procedure(DecoderXML):
         procedure = xml
         name = procedure.get("name")
         comment = procedure.get("comment")
-        step_nodes: List[ET.Element] = procedure.findall("./steps/*")
+        step_nodes: list[ET.Element] = procedure.findall("./steps/*")
 
-        steps: List[ProcedureStep] = []
+        steps: list[ProcedureStep] = []
 
         for idx, step in enumerate(step_nodes):
 
@@ -84,7 +83,7 @@ class Procedure(DecoderXML):
 class DataProcedure:
     name: str
     root: Path
-    data: Dict = field(default_factory=lambda: dict())
+    data: dict = field(default_factory=lambda: dict())
     cache_csv_data: CacheCsvData = field(default_factory=lambda: CacheCsvData())
     cache_file: CacheFile = field(default_factory=lambda: CacheFile())
     default_sweep_config: DefaultSweepConfig = field(

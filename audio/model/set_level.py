@@ -1,7 +1,5 @@
 from datetime import datetime
 import pathlib
-from typing import List
-from audio.console import console
 
 
 class SetLevel:
@@ -13,7 +11,7 @@ class SetLevel:
         if not file.exists() or not file.is_file():
             raise Exception("File does not Exists.")
 
-        lines: List[str] = [
+        lines: list[str] = [
             line
             for line in file.read_text(encoding="utf-8").splitlines()
             if line.find("#") == -1  # Eliminate any comment or empty string

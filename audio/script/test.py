@@ -1,17 +1,15 @@
 import time
-from typing import List, Tuple
 
 import click
 import matplotlib.ticker as ticker
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from rich.prompt import Confirm, FloatPrompt, Prompt
+from rich.prompt import Prompt
 
 from audio.config.type import Range
 from audio.console import console
 from audio.math.algorithm import LogarithmicScale
 from audio.math.rms import RMS, RMSResult, VoltageSampling
-from audio.model.sweep import SweepData
 from audio.usb.usbtmc import Instrument, UsbTmc
 from audio.utility import trim_value
 from audio.utility.interrupt import InterruptHandler
@@ -61,7 +59,7 @@ def phase_analysis():
 
     with InterruptHandler() as h:
         # Asks for the 2 instruments
-        list_devices: List[Instrument] = UsbTmc.search_devices()
+        list_devices: list[Instrument] = UsbTmc.search_devices()
 
         generator: UsbTmc = UsbTmc(list_devices[0])
 
@@ -82,7 +80,7 @@ def phase_analysis():
 
         SCPI.exec_commands(generator, generator_configs)
 
-        generator_ac_curves: List[str] = [
+        generator_ac_curves: list[str] = [
             SCPI.set_output(1, Switch.ON),
         ]
 
@@ -106,7 +104,7 @@ def phase_analysis():
         ]
         nidaq.add_ai_channel(channels)
 
-        phase_offset_list: List[float] = []
+        phase_offset_list: list[float] = []
 
         import matplotlib.pyplot as plt
         from rich.progress import track
@@ -173,7 +171,7 @@ def phase_analysis():
             if h.interrupted:
                 break
 
-        generator_ac_curves: List[str] = [
+        generator_ac_curves: list[str] = [
             SCPI.set_output(1, Switch.OFF),
             SCPI.set_output(2, Switch.OFF),
         ]
@@ -181,7 +179,7 @@ def phase_analysis():
         generator.close()
         nidaq.task_close()
 
-        plot: Tuple[Figure, Axes] = plt.subplots(figsize=(16 * 2, 9 * 2), dpi=600)
+        plot: tuple[Figure, Axes] = plt.subplots(figsize=(16 * 2, 9 * 2), dpi=600)
 
         fig: Figure
         axes: Axes
@@ -223,7 +221,7 @@ def phase_analysis():
         axes.grid(True, linestyle="-", which="both", color="0.7")
 
         def logMinorFormatFunc(x, pos):
-            return "{:.0f}".format(x)
+            return f"{x:.0f}"
 
         logMinorFormat = ticker.FuncFormatter(logMinorFormatFunc)
 
@@ -250,8 +248,6 @@ def phase_analysis():
 @click.command()
 def instrument():
 
-    import usb
-    import usbtmc
     from rich import inspect
 
     from audio.usb.usbtmc import ResourceManager
@@ -270,14 +266,14 @@ def instrument():
     exit()
 
     try:
-        list_devices: List[Instrument] = UsbTmc.search_devices()
+        list_devices: list[Instrument] = UsbTmc.search_devices()
 
         if len(list_devices) < 1:
             raise Exception("UsbTmc devices not found.")
 
         UsbTmc.print_devices_list(list_devices)
 
-        generator: UsbTmc = UsbTmc(list_devices[0])
+        UsbTmc(list_devices[0])
 
     except Exception as e:
         console.print(f"{e}")
@@ -287,7 +283,6 @@ def instrument():
 def bk_precision():
     console.log("BK PRECISION")
     import pyvisa
-    from rich import inspect
     from rich.panel import Panel
 
     from audio.utility.scpi import Function, SCPI_v2
@@ -295,7 +290,7 @@ def bk_precision():
     scpi = SCPI_v2()
 
     rm = pyvisa.ResourceManager("@py")
-    devs = rm.list_resources()
+    rm.list_resources()
 
     # dev_generator: pyvisa.resources.Resource = rm.open_resource(
     #     "USB0::6833::1603::DG8A230500644::0::INSTR"
@@ -340,7 +335,6 @@ def bk_precision():
     # dev_power_supply.write("SYSTem:REMote")
 
     import matplotlib.pyplot as plt
-    import numpy as np
     from rich.prompt import Confirm
 
     for t in [1]:
@@ -351,8 +345,8 @@ def bk_precision():
         Confirm.ask("Ready?")
         time.sleep(3)
 
-        res_list: List[float] = []
-        power_list: List[float] = []
+        res_list: list[float] = []
+        power_list: list[float] = []
 
         for resistance in reversed(range(700, 1300, 10)):
             dev_elec_load.write(scpi.source.resistance(resistance))

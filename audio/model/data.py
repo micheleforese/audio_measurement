@@ -1,5 +1,5 @@
 import pathlib
-from typing import Any, Generic, List, TypeVar, cast
+from typing import Generic, TypeVar, cast
 
 
 T = TypeVar("T")

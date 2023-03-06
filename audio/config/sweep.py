@@ -5,7 +5,6 @@ from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 import rich
 
@@ -43,10 +42,10 @@ class SweepConfigOptionsXPATH(Enum):
 @rich.repr.auto
 class SweepConfig(Config, DecoderXML):
 
-    rigol: Optional[RigolConfig] = None
-    nidaq: Optional[NiDaqConfig] = None
-    sampling: Optional[SamplingConfig] = None
-    plot: Optional[PlotConfig] = None
+    rigol: RigolConfig | None = None
+    nidaq: NiDaqConfig | None = None
+    sampling: SamplingConfig | None = None
+    plot: PlotConfig | None = None
 
     @classmethod
     def from_xml_file(cls, file: Path):
@@ -62,7 +61,7 @@ class SweepConfig(Config, DecoderXML):
         return cls.from_xml_object(root)
 
     @classmethod
-    def from_xml_object(cls, xml: Optional[ET.Element]):
+    def from_xml_object(cls, xml: ET.Element | None):
         if xml is None or not cls.xml_is_valid(xml):
             return None
 
@@ -87,7 +86,7 @@ class SweepConfig(Config, DecoderXML):
     def xml_is_valid(xml: ET.Element) -> bool:
         return xml.tag == SweepConfigOptions.ROOT.value
 
-    def merge(self, other: Optional[SweepConfig]):
+    def merge(self, other: SweepConfig | None):
         if other is None:
             return
 
@@ -111,7 +110,7 @@ class SweepConfig(Config, DecoderXML):
         else:
             self.plot = deepcopy(other.plot)
 
-    def override(self, other: Optional[SweepConfig]):
+    def override(self, other: SweepConfig | None):
         if other is None:
             return
 

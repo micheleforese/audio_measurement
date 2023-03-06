@@ -5,12 +5,11 @@ from audio.config.plot import PlotConfig
 from audio.config.rigol import RigolConfig
 from audio.config.sampling import SamplingConfig
 from audio.config.sweep import SweepConfig
-from audio.sweep import sweep_amplitude_phase
 
 
 def test_sweep_amplitude_phase():
-    HOME = Path(__file__).parent
-    config = SweepConfig(
+    Path(__file__).parent
+    SweepConfig(
         rigol=RigolConfig(),
         nidaq=NiDaqConfig(),
         sampling=SamplingConfig(),

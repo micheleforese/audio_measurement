@@ -1,6 +1,5 @@
 from __future__ import annotations
 from enum import Enum
-from typing import Any, List, Optional, Union
 
 from audio.console import console
 from audio.usb.usbtmc import UsbTmc
@@ -20,7 +19,7 @@ class Bandwidth(Enum):
 
 class SCPI:
     @staticmethod
-    def exec_commands(instr: UsbTmc, commands: List[str], debug: bool = False):
+    def exec_commands(instr: UsbTmc, commands: list[str], debug: bool = False):
         for command in commands:
             if command.find("?") > 0:
                 response = instr.ask(command)
@@ -48,45 +47,45 @@ class SCPI:
         return ":FUNCtion:VOLTage:AC"
 
     @staticmethod
-    def set_voltage_ac_bandwidth(bandwidth: Union[Bandwidth, float]) -> str:
+    def set_voltage_ac_bandwidth(bandwidth: Bandwidth | float) -> str:
         if type(bandwidth) is Bandwidth:
-            return "VOLTage:AC:BANDwidth {}".format(bandwidth.value)
+            return f"VOLTage:AC:BANDwidth {bandwidth.value}"
         else:
-            return "VOLTage:AC:BANDwidth {}".format(bandwidth)
+            return f"VOLTage:AC:BANDwidth {bandwidth}"
 
     @staticmethod
     def set_output(n_output: int, output: Switch) -> str:
-        return ":OUTPut{0} {1}".format(n_output, output.value)
+        return f":OUTPut{n_output} {output.value}"
 
     @staticmethod
     def set_voltage_ac_band(voltage_band: float) -> str:
-        return ":VOLT:AC:BAND {}".format(voltage_band)
+        return f":VOLT:AC:BAND {voltage_band}"
 
     @staticmethod
     def set_trig_source(source: str) -> str:
-        return ":TRIG:SOUR {}".format(source)
+        return f":TRIG:SOUR {source}"
 
     @staticmethod
     def set_trig_del_auto(output: Switch) -> str:
-        return ":TRIG:DEL:AUTO {}".format(output.value)
+        return f":TRIG:DEL:AUTO {output.value}"
 
     @staticmethod
     def set_freq_volt_rang_auto(output: Switch) -> str:
-        return ":FREQ:VOLT:RANG:AUTO {}".format(output.value)
+        return f":FREQ:VOLT:RANG:AUTO {output.value}"
 
     @staticmethod
     def set_sample_source(source: str) -> str:
-        return ":SAMP:SOUR {}".format(source)
+        return f":SAMP:SOUR {source}"
 
     @staticmethod
     def set_sample_count(count: int) -> str:
-        return ":SAMP:COUN {}".format(count)
+        return f":SAMP:COUN {count}"
 
     @staticmethod
     def check_source(source: int) -> bool:
         if source < 0:
             console.print(
-                "Invalid number for Source: {}.\nMust be 0 or above".format(source),
+                f"Invalid number for Source: {source}.\nMust be 0 or above",
                 style="error",
             )
             return True
@@ -97,7 +96,7 @@ class SCPI:
     def check_output(output: int) -> bool:
         if output < 0:
             console.print(
-                "Invalid number for Output: {}.\nMust be 0 or above".format(output),
+                f"Invalid number for Output: {output}.\nMust be 0 or above",
                 style="error",
             )
             return True
@@ -110,7 +109,7 @@ class SCPI:
             console.print("Setting Source to 0", style="warning")
             source = 0
 
-        return ":SOURce{0}:VOLTAGE:AMPLitude {1}".format(source, amplitude_pp)
+        return f":SOURce{source}:VOLTAGE:AMPLitude {amplitude_pp}"
 
     @staticmethod
     def set_source_frequency(source: int, frequency: float) -> str:
@@ -118,7 +117,7 @@ class SCPI:
             console.print("Setting Source to 0", style="warning")
             source = 0
 
-        return ":SOURce{0}:FREQ {1}".format(source, frequency)
+        return f":SOURce{source}:FREQ {frequency}"
 
     @staticmethod
     def set_output_impedance(output: int, impedance: float) -> str:
@@ -126,7 +125,7 @@ class SCPI:
             console.print("Setting output to 0", style="warning")
             output = 0
 
-        return ":OUTPut{0}:IMPedance {1}".format(output, impedance)
+        return f":OUTPut{output}:IMPedance {impedance}"
 
     @staticmethod
     def set_output_load(output: int, load: str) -> str:
@@ -134,7 +133,7 @@ class SCPI:
             console.print("Setting output to 0", style="warning")
             output = 0
 
-        return ":OUTPut{0}:LOAD {1}".format(output, load)
+        return f":OUTPut{output}:LOAD {load}"
 
     @staticmethod
     def set_source_phase(source: int, phase: float) -> str:
@@ -142,7 +141,7 @@ class SCPI:
             console.print("Setting source to 0", style="warning")
             source = 0
 
-        return ":SOURce{0}:PHASe {1}".format(source, phase)
+        return f":SOURce{source}:PHASe {phase}"
 
     @staticmethod
     def ask_voltage_bandwidth() -> str:
@@ -164,7 +163,7 @@ class SCPI:
 class SCPI_Command(abc.ABC):
     _cmd: str = ""
 
-    def __init__(self, cmd: Optional[str] = None) -> None:
+    def __init__(self, cmd: str | None = None) -> None:
         if cmd is not None:
             self._cmd = f"{cmd}:{self.cmd}"
 
@@ -282,7 +281,7 @@ class SCPI_average(SCPI_Command):
 class SCPI_count(SCPI_Command):
     _cmd: str = "COUNt"
 
-    def __call__(self, num: int) -> Optional[str]:
+    def __call__(self, num: int) -> str | None:
         if num >= 2 and num <= 16:
             return f"{self._cmd} {num}"
 

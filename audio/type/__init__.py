@@ -3,30 +3,22 @@ from __future__ import annotations
 import pathlib
 from typing import (
     Any,
-    Callable,
-    Dict,
     Generic,
-    List,
-    Optional,
-    Type,
     TypeVar,
-    cast,
-    overload,
 )
+from collections.abc import Callable
 
-import rich
 from pyjson5 import decode
 
-from audio.console import console
 
 T = TypeVar("T")
 
 
 class Option(Generic[T]):
 
-    value: Optional[T]
+    value: T | None
 
-    def __init__(self, value: Optional[T]) -> None:
+    def __init__(self, value: T | None) -> None:
         self.value = value
 
     # def __str__(self) -> str:
@@ -61,13 +53,13 @@ class Option(Generic[T]):
 
 
 class Dictionary:
-    _dict: Dict
+    _dict: dict
 
-    def __init__(self, value: Dict) -> None:
+    def __init__(self, value: dict) -> None:
         self._dict = value
 
     @classmethod
-    def from_json5_file(cls, path: pathlib.Path) -> Optional[Dictionary]:
+    def from_json5_file(cls, path: pathlib.Path) -> Dictionary | None:
 
         if path.exists() and path.is_file():
             with open(path, encoding="utf-8") as config_file:
@@ -77,19 +69,19 @@ class Dictionary:
         return None
 
     @classmethod
-    def from_json5_string(cls, data: str) -> Optional[Dictionary]:
+    def from_json5_string(cls, data: str) -> Dictionary | None:
         _dict = dict(decode(data))
 
         return Dictionary(_dict)
 
-    def get_dict(self) -> Dict:
+    def get_dict(self) -> dict:
         return self._dict
 
     T = TypeVar("T")
 
     def update(
         self,
-        property: List[str],
+        property: list[str],
         data: Any = {},
         override: bool = False,
     ) -> Dictionary:
@@ -117,8 +109,8 @@ class Dictionary:
     def get_property(
         self,
         property_name: str,
-        property_type: Type[T] = Any,
-    ) -> Optional[T]:
+        property_type: type[T] = Any,
+    ) -> T | None:
 
         if property_name in self.get_dict().keys():  # we don't want KeyError
             return self._dict.get(property_name)
@@ -128,8 +120,8 @@ class Dictionary:
     def get(
         self,
         dict_path: str,
-        property_type: Type[T] = Any,
-    ) -> Optional[T]:
+        property_type: type[T] = Any,
+    ) -> T | None:
 
         dictionary = self.get_dict()
 

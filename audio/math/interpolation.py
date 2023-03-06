@@ -1,5 +1,4 @@
 import enum
-from typing import List, Tuple
 
 import numpy as np
 from scipy.interpolate import interp1d
@@ -17,8 +16,8 @@ class INTERPOLATION_KIND(enum.Enum):
 
 
 def interpolation_model(
-    xx: List[float],
-    yy: List[float],
+    xx: list[float],
+    yy: list[float],
     interpolation_rate: int,
     kind: INTERPOLATION_KIND = INTERPOLATION_KIND.LINEAR,
 ):
@@ -37,11 +36,11 @@ def interpolation_model(
 
 
 def logx_interpolation_model(
-    x_log: List[float],
-    yy: List[float],
+    x_log: list[float],
+    yy: list[float],
     interpolation_rate: int,
     kind: INTERPOLATION_KIND = INTERPOLATION_KIND.LINEAR,
-) -> Tuple[List[float], List[float]]:
+) -> tuple[list[float], list[float]]:
     x_log = [np.log10(x) for x in x_log]
 
     intrp_model = interp1d(x_log, yy, kind=kind.value)
@@ -60,14 +59,14 @@ def logx_interpolation_model(
 
 
 def logx_interpolation_model_Bspline(
-    x_log: List[float],
-    yy: List[float],
+    x_log: list[float],
+    yy: list[float],
     interpolation_rate: int,
     lam: float,
-) -> Tuple[List[float], List[float]]:
+) -> tuple[list[float], list[float]]:
     x_log = [np.log10(x) for x in x_log]
 
-    from scipy.interpolate import BSpline, make_interp_spline, make_smoothing_spline
+    from scipy.interpolate import make_smoothing_spline
 
     intrp_model = make_smoothing_spline(x_log, yy, lam=lam)
 
