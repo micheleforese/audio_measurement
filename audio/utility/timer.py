@@ -31,6 +31,7 @@ class Timer_Message:
 
 class Timer:
     _start_time = None
+    _last_lap = None
 
     def start(self):
         """Start a new timer"""
@@ -38,6 +39,7 @@ class Timer:
             raise TimerError("Timer is running. Use .stop() to stop it")
 
         self._start_time = time.perf_counter()
+        self._last_lap = self._start_time
         return self._start_time
 
     def stop(self):
@@ -54,6 +56,6 @@ class Timer:
 
     def lap(self):
         current_time = time.perf_counter()
-        diff = current_time - self._start_time
-        self._start_time = current_time
+        diff = current_time - self._last_lap
+        self._last_lap = current_time
         return timedelta(seconds=diff)
