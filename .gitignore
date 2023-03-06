@@ -30,3 +30,8 @@ env
 
 # Logging
 /logging
+
+# PocketBase
+pocketbase
+/pb_data
+/pb_migrations
