@@ -1,3 +1,4 @@
+import json
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -5,6 +6,7 @@ from time import sleep
 from typing import List, Optional
 
 import pandas as pd
+import requests
 from matplotlib.axes import Axes
 from rich.panel import Panel
 from rich.progress import track
@@ -12,6 +14,7 @@ from rich.table import Column, Table
 
 from audio.config.sweep import SweepConfig
 from audio.console import console
+from audio.constant import APP_HOME
 from audio.database.db import Database
 from audio.device.cDAQ import ni9223
 from audio.logging import log
@@ -223,6 +226,7 @@ def sweep_amplitude_phase(
 
 def sweep(
     test_id: int,
+    PB_test_id: str,
     config: SweepConfig,
 ):
     DEFAULT = {"delay": 0.2}
@@ -312,7 +316,26 @@ def sweep(
         config.sampling.delay_measurements,
     )
 
+    PB_sweeps_id: Optional[str] = None
+    url = "http://127.0.0.1:8090/api/collections/sweeps/records"
+    response = requests.post(
+        url,
+        json={
+            "test_id": PB_test_id,
+            "name": "Sweep v2 Procedure",
+            "comment": "v2 Sweep Comment",
+        },
+        timeout=5,
+    )
+    response_data = json.loads(response.content.decode())
+    console.log(response_data)
+    if response.status_code != 200:
+        console.log(f"[RESPONSE ERROR]: {url}")
+    else:
+        PB_sweeps_id = response_data["id"]
+
     channel_ids: List[int] = []
+    PB_channels_ids: List[str] = []
 
     if config.nidaq.channels is None:
         return None
@@ -325,6 +348,27 @@ def sweep(
             comment=channel.comment,
         )
         channel_ids.append(_id)
+
+        PB_channels_id: Optional[str] = None
+        url = "http://127.0.0.1:8090/api/collections/channels/records"
+        response = requests.post(
+            url,
+            json={
+                "sweep_id": PB_sweeps_id,
+                "idx": idx,
+                "name": channel.name,
+                "comment": channel.comment,
+            },
+            timeout=5,
+        )
+        response_data = json.loads(response.content.decode())
+        console.log(response_data)
+        if response.status_code != 200:
+            console.log(f"[RESPONSE ERROR]: {url}")
+        else:
+            PB_channels_id = response_data["id"]
+
+        PB_channels_ids.append(PB_channels_id)
 
     for idx, frequency in track(
         enumerate(log_scale.f_list),
@@ -381,6 +425,40 @@ def sweep(
                 voltages_sweep,
             )
             sweep_voltages_ids.append(_id)
+
+        directory = Path(APP_HOME / "data/measurements")
+        directory.mkdir(parents=True, exist_ok=True)
+
+        for idx, data in enumerate(zip(PB_channels_ids, voltages)):
+            PK_channel_id, voltage_data = data
+
+            file = directory / f"{datetime.now().strftime('%Y-%m-%dT%H-%M-%SZ')}.csv"
+            pd.DataFrame(voltage_data).to_csv(file)
+
+            PB_measurements_id: Optional[str] = None
+            url = "http://127.0.0.1:8090/api/collections/measurements/records"
+            json_data = {
+                "sweep_id": PB_sweeps_id,
+                "channel_id": PK_channel_id,
+                "idx": idx,
+                "frequency": frequency,
+                "sampling_frequency": Fs,
+            }
+            console.log(json_data)
+            response = requests.post(
+                url,
+                json=json_data,
+                files={
+                    "samples": open(file, "rb"),
+                },
+                timeout=5,
+            )
+            response_data = json.loads(response.content.decode())
+            console.log(response_data)
+            if response.status_code != 200:
+                console.log(f"[RESPONSE ERROR]: {url}")
+            else:
+                PB_measurements_id = response_data["id"]
 
         time_db_insert_sweep_voltage = timer.lap()
 
