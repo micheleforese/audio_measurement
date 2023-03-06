@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +22,7 @@ class SingleSweepData:
     # CSV Data
     data: DataFrame
 
-    def __init__(self, path: Path) -> None:
+    def __init__(self: SingleSweepData, path: Path) -> None:
 
         self.frequency = None
         self.Fs = None
@@ -94,10 +96,10 @@ class SweepData:
     data: DataFrame
 
     def __init__(
-        self,
+        self: SweepData,
         data: DataFrame,
         amplitude: float | None = None,
-        config: PlotConfig = None,
+        config: PlotConfig | None = None,
     ) -> None:
         self.data = data
         self.amplitude = amplitude
@@ -126,7 +128,7 @@ class SweepData:
         yaml_dict = SweepData._yaml_extract_from_comments(path.read_text())
 
         amplitude = SweepData.get_amplitude_from_dictionary(yaml_dict)
-        # TODO: Implement PlotConfig.from_dict() version to PlotConfigXML.from_dict()
+        # TODO: Implement PlotConfig.from_dict() version to PlotConfigXML. from_dict()
         # plotConfigXML = PlotConfigXML.from_dict(yaml_dict)
         # plotConfigXML = PlotConfig.from_dict(yaml_dict)
         plotConfigXML = PlotConfig()
@@ -136,7 +138,12 @@ class SweepData:
     def save(self, path: Path):
         with open(path, "w", encoding="utf-8") as file:
 
-            file.write(self._meta_info("amplitude", round(self.amplitude, 5)))
+            file.write(
+                self._meta_info(
+                    "amplitude",
+                    round(self.amplitude if self.amplitude is not None else 0, 5),
+                ),
+            )
             if self.config is not None:
                 config_yaml = self.config.to_yaml_string()
                 yaml_str = self._yaml_string_to_yaml_comment(config_yaml)
@@ -146,7 +153,7 @@ class SweepData:
             self.data.to_csv(
                 file,
                 header=True,
-                index=None,
+                index=False,
             )
 
     @staticmethod
@@ -172,29 +179,30 @@ class SweepData:
         return amplitude
 
     @property
-    def frequency(self) -> Series:
+    def frequency(self):
         return self.data.get("frequency")
 
     @property
-    def rms(self) -> Series:
+    def rms(self):
         return self.data.get("rms")
 
     @property
-    def dBV(self) -> Series:
+    def dBV(self):
         return self.data.get("dBV")
 
     @property
-    def Fs(self) -> Series:
+    def Fs(self):
         return self.data.get("Fs")
 
     @property
-    def oversampling_ratio(self) -> Series:
+    def oversampling_ratio(self):
         return self.data.get("oversampling_ratio")
 
     @property
-    def n_periods(self) -> Series:
+    def n_periods(self):
         return self.data.get("n_periods")
 
     @property
-    def n_samples(self) -> Series:
+    def n_samples(self):
+        return self.data.get("n_samples")
         return self.data.get("n_samples")
