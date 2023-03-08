@@ -12,9 +12,11 @@ import click
 
 from audio.console import console
 from audio.device.cDAQ import ni9223
-from audio.math.rms import RMS
+from audio.math.interpolation import INTERPOLATION_KIND
+from audio.math.phase import phase_offset_v3, phase_offset_v4
+from audio.math.rms import RMS, RMS_MODE
 from audio.math.voltage import VoltageMode, Vrms_to_VdBu, Vrms_to_Vpp, voltage_converter
-from audio.model.sampling import VoltageSampling
+from audio.model.sampling import VoltageSampling, VoltageSamplingV2
 from audio.usb.usbtmc import ResourceManager, UsbTmc
 from audio.utility import trim_value
 from audio.utility.scpi import SCPI, Bandwidth, Switch
@@ -337,7 +339,7 @@ class RigolAdminGUI:
         self.on_off_state.trace_add("write", callback=self._handle_on_off)
 
         self.data = RmsDataParameters(
-            frequency=LockValue(1000),
+            frequency=LockValue(200000),
             Fs_multiplier=LockValue(50),
         )
         self._init_instruments()
@@ -604,7 +606,8 @@ def update_rms_value(data: RmsDataParameters):
         Fs: float | None = None
         with data.frequency.lock, data.Fs_multiplier.lock:
             Fs = trim_value(
-                data.frequency.value * data.Fs_multiplier.value, max_value=1000000
+                value=data.frequency.value * data.Fs_multiplier.value,
+                max_value=1000000,
             )
         if Fs is not None:
             with data.device.lock:
@@ -615,20 +618,31 @@ def update_rms_value(data: RmsDataParameters):
             voltages = data.device.value.read_multi_voltages()
             data.device.value.task_stop()
 
-        voltages_sampling_n: list[VoltageSampling] = []
+        voltages_sampling_n: list[VoltageSamplingV2] = []
 
+        with data.frequency.lock:
+            frequency = data.frequency.value
         for voltage_sampling in voltages:
             voltages_sampling_n.append(
-                VoltageSampling.from_list(voltage_sampling, data.frequency, Fs)
+                VoltageSamplingV2.from_list(
+                    voltage_sampling,
+                    frequency,
+                    Fs,
+                ).augment_interpolation(
+                    interpolation_rate=50,
+                    interpolation_mode=INTERPOLATION_KIND.CUBIC,
+                ),
             )
 
-        from audio.math.rms import RMSResult
-
-        rms_result_n: list[RMSResult | None] = []
+        rms_result_n: list[float | None] = []
 
         for volts in voltages_sampling_n:
             rms_result_n.append(
-                RMS.rms_v2(voltages_sampling=volts, interpolation_rate=20, trim=True)
+                RMS.rms_v3(
+                    voltages_sampling=volts,
+                    trim=True,
+                    rms_mode=RMS_MODE.FFT,
+                ),
             )
 
         voltage_rms_values: list[tuple[float, float, float]] = []
@@ -637,12 +651,12 @@ def update_rms_value(data: RmsDataParameters):
             if result is None:
                 voltage_rms_values.append((0, 0, 0))
             else:
-                Vrms = result.rms
+                Vrms = result
                 Vpp = Vrms_to_Vpp(Vrms)
                 VdBu = Vrms_to_VdBu(Vrms)
                 voltage_rms_values.append((Vrms, Vpp, VdBu))
 
-        for lbls, values in zip(data.lbls, voltage_rms_values):
+        for lbls, values in zip(data.lbls, voltage_rms_values, strict=True):
 
             lblVrms, lblVpp, lblVdBu = lbls
             Vrms, Vpp, VdBu = values
@@ -657,34 +671,30 @@ def update_rms_value(data: RmsDataParameters):
         from audio.math.voltage import calculate_gain_dB
 
         gain_dB = calculate_gain_dB(
-            Vin=voltage_rms_values[0][1], Vout=voltage_rms_values[1][1]
+            Vin=voltage_rms_values[0][0],
+            Vout=voltage_rms_values[1][0],
         )
         with data.gain.lock:
             data.gain.value["text"] = f"{gain_dB:.05f}"
 
-        from audio.math.phase import phase_offset_v2
-
-        if rms_result_n[0] is None or rms_result_n[1] is None:
+        if voltages_sampling_n[0] is None or voltages_sampling_n[1] is None:
             with data.phase.lock:
                 data.phase.value["text"] = "NONE"
         else:
-            v_0 = voltages_sampling_n[0].voltages
-            v_1 = voltages_sampling_n[1].voltages
 
-            with data.frequency.lock:
-                freq = data.frequency.value
-                volts_0 = VoltageSampling.from_list(v_0, freq, Fs * 20)
-                volts_1 = VoltageSampling.from_list(v_1, freq, Fs * 20)
+            volts_0 = voltages_sampling_n[0]
+            volts_1 = voltages_sampling_n[1]
 
-                try:
-                    phase_offset = phase_offset_v2(volts_0, volts_1)
-                except Exception as e:
-                    console.log(f"{e}")
-                    phase_offset = None
+            try:
+                phase_offset = phase_offset_v4(volts_0, volts_1)
 
-                if phase_offset is not None:
-                    with data.phase.lock:
-                        data.phase.value["text"] = f"{phase_offset:.05f}"
-                else:
-                    with data.phase.lock:
-                        data.phase.value["text"] = "NONE"
+            except Exception as e:
+                console.log(f"{e}")
+                phase_offset = None
+
+            if phase_offset is not None:
+                with data.phase.lock:
+                    data.phase.value["text"] = f"{phase_offset:.05f}"
+            else:
+                with data.phase.lock:
+                    data.phase.value["text"] = "NONE"

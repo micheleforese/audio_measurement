@@ -967,7 +967,7 @@ def config_set_level_v2(
 ):
     data_set_level: DataSetLevel | None = None
 
-    voltage_amplitude_start: float = 0.1
+    voltage_amplitude_start: float = 0.001
     voltage_amplitude = voltage_amplitude_start
     frequency = 1000
     Fs = trim_value(

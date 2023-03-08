@@ -18,7 +18,7 @@ class INTERPOLATION_KIND(enum.Enum):
 def interpolation_model(
     xx: list[float],
     yy: list[float],
-    interpolation_rate: int,
+    n_points: int,
     kind: INTERPOLATION_KIND = INTERPOLATION_KIND.LINEAR,
 ):
 
@@ -27,7 +27,7 @@ def interpolation_model(
     x_interpolated = np.linspace(
         min(xx),
         max(xx),
-        interpolation_rate,
+        n_points,
     )
 
     y_interpolated: np.ndarray = intrp_model(x_interpolated)
@@ -38,7 +38,7 @@ def interpolation_model(
 def logx_interpolation_model(
     x_log: list[float],
     yy: list[float],
-    interpolation_rate: int,
+    n_points: int,
     kind: INTERPOLATION_KIND = INTERPOLATION_KIND.LINEAR,
 ) -> tuple[list[float], list[float]]:
     x_log = [np.log10(x) for x in x_log]
@@ -48,7 +48,7 @@ def logx_interpolation_model(
     x_log_interpolated = np.linspace(
         min(x_log),
         max(x_log),
-        interpolation_rate,
+        n_points,
     )
 
     x_interpolated = [np.float_power(10, x_intrp) for x_intrp in x_log_interpolated]

@@ -23,12 +23,13 @@ from audio.logging import log
 from audio.math.interpolation import (
     INTERPOLATION_KIND,
     interpolation_model,
+    logx_interpolation_model,
     logx_interpolation_model_Bspline,
 )
-from audio.math.phase import phase_offset_v2, phase_offset_v3
-from audio.math.rms import RMS, RMSResult
+from audio.math.phase import phase_offset_v2, phase_offset_v3, phase_offset_v4
+from audio.math.rms import RMS, RMS_MODE, RMSResult
 from audio.math.voltage import calculate_gain_dB
-from audio.model.sampling import VoltageSampling
+from audio.model.sampling import VoltageSampling, VoltageSamplingV2
 from audio.sampling import DataSetLevel, config_set_level_v2
 from audio.sweep import sweep, sweep_single
 from audio.utility.timer import Timer
@@ -85,7 +86,10 @@ def test_v2_procedure():
     log.info(f"[DATA] dB setlevel {data_set_level}")
 
     data_set_level.dB = sweep_single(
-        data_set_level.volts, frequency=1000, n_sweep=10, config=sampling_config
+        data_set_level.volts,
+        frequency=1000,
+        n_sweep=10,
+        config=sampling_config,
     )
 
     config = SweepConfig(
@@ -345,20 +349,28 @@ def make_graph_dB_phase(
 
     interpolation_rate_rms = 50
 
+    voltage_sampling_ref_list: list[VoltageSamplingV2] = []
+    voltage_sampling_dut_list: list[VoltageSamplingV2] = []
+
     # Ref
     freq_volts_ref = zip(frequencies, voltages_ref)
-    rms_ref: list[RMSResult] = []
+    rms_ref: list[float] = []
     # rms_ref = parallel_calculate_rms(freq_volts_ref)
     for freq_ref, volt_ref in freq_volts_ref:
-        voltage_sampling = VoltageSampling.from_list(
+        voltage_sampling = VoltageSamplingV2.from_list(
             volt_ref.voltages,
             input_frequency=freq_ref.frequency,
             sampling_frequency=freq_ref.Fs,
         )
-        rms = RMS.rms_v2(
-            voltage_sampling,
-            interpolation_rate=interpolation_rate_rms,
+        voltage_sampling_ref_list.append(voltage_sampling)
+
+        rms = RMS.rms_v3(
+            voltage_sampling.augment_interpolation(
+                interpolation_rate=interpolation_rate_rms,
+                interpolation_mode=INTERPOLATION_KIND.CUBIC,
+            ),
             trim=True,
+            rms_mode=RMS_MODE.FFT,
         )
         rms_ref.append(rms)
 
@@ -370,15 +382,21 @@ def make_graph_dB_phase(
     rms_dut: list[RMSResult] = []
     # rms_dut = parallel_calculate_rms(freq_volts_dut)
     for freq_ref, volt_dut in freq_volts_dut:
-        voltage_sampling = VoltageSampling.from_list(
+
+        voltage_sampling = VoltageSamplingV2.from_list(
             volt_dut.voltages,
             input_frequency=freq_ref.frequency,
             sampling_frequency=freq_ref.Fs,
         )
-        rms = RMS.rms_v2(
-            voltage_sampling,
-            interpolation_rate=interpolation_rate_rms,
+        voltage_sampling_dut_list.append(voltage_sampling)
+
+        rms = RMS.rms_v3(
+            voltage_sampling.augment_interpolation(
+                interpolation_rate=interpolation_rate_rms,
+                interpolation_mode=INTERPOLATION_KIND.CUBIC,
+            ),
             trim=True,
+            rms_mode=RMS_MODE.FFT,
         )
         rms_dut.append(rms)
 
@@ -393,25 +411,46 @@ def make_graph_dB_phase(
     axis_dut_sub_ref_dB.tick_params(labelright=True)
 
     rms_dut_sub_ref_dB: list[float] = [
-        calculate_gain_dB(ref.rms, dut.rms) - dB_offset
-        for ref, dut in zip(rms_ref, rms_dut)
+        calculate_gain_dB(ref, dut) - dB_offset for ref, dut in zip(rms_ref, rms_dut)
     ]
 
     (
         axis_dut_sub_ref_dB_data_x,
         axis_dut_sub_ref_dB_data_y,
     ) = logx_interpolation_model_Bspline(
-        [freq.frequency for freq in frequencies], rms_dut_sub_ref_dB, 1, lam=0.005
+        [freq.frequency for freq in frequencies],
+        rms_dut_sub_ref_dB,
+        1,
+        lam=0.00001,
     )
 
+    # (
+    #     axis_dut_sub_ref_dB_data_x,
+    #     axis_dut_sub_ref_dB_data_y,
+    # ) = logx_interpolation_model(
+    #     [freq.frequency for freq in frequencies],
+    #     rms_dut_sub_ref_dB,
+    #     int(len(rms_dut_sub_ref_dB) * 0.4),
+    #     kind=INTERPOLATION_KIND.CUBIC,
+    # )
+
     axis_dut_sub_ref_dB.semilogx(
-        [freq.frequency for freq in frequencies], rms_dut_sub_ref_dB, ".", color="blue"
+        [freq.frequency for freq in frequencies],
+        rms_dut_sub_ref_dB,
+        ".",
+        color="blue",
+        markersize=5,
     )
     axis_dut_sub_ref_dB.semilogx(
-        axis_dut_sub_ref_dB_data_x, axis_dut_sub_ref_dB_data_y, "-", color="red"
+        axis_dut_sub_ref_dB_data_x,
+        axis_dut_sub_ref_dB_data_y,
+        "-",
+        color="red",
+        linewidth=1,
     )
     if min(axis_dut_sub_ref_dB_data_y) < -3:
-        axis_dut_sub_ref_dB.axhline(-3, color="black", linewidth=1)
+        axis_dut_sub_ref_dB.axhline(0, color="black", linewidth=1)
+        axis_dut_sub_ref_dB.axhline(-3, color="green", linewidth=1)
 
     axis_dut_sub_ref_dB.axes.xaxis.set_minor_formatter(ticker.NullFormatter())
     axis_dut_sub_ref_dB.axes.xaxis.set_major_formatter(ticker.ScalarFormatter())
@@ -432,39 +471,32 @@ def make_graph_dB_phase(
     offset_phase_ref_dut: list[float] = []
     sign_phase_list: list[float] = []
 
-    interpolation_rate_phase = 150
+    interpolation_rate_phase = 50
 
-    for freq, volts_ref, volts_dut in zip(frequencies, voltages_dut, voltages_ref):
+    for freq, volts_ref, volts_dut in zip(
+        frequencies,
+        voltage_sampling_dut_list,
+        voltage_sampling_ref_list,
+        strict=True,
+    ):
 
-        _, y_interpolated_ref = interpolation_model(
-            range(0, len(volts_ref.voltages)),
-            volts_ref.voltages,
-            int(len(volts_ref.voltages) * interpolation_rate_phase),
-            kind=INTERPOLATION_KIND.CUBIC,
+        voltage_sampling_ref = volts_ref.augment_interpolation(
+            interpolation_rate=interpolation_rate_phase,
+            interpolation_mode=INTERPOLATION_KIND.CUBIC,
         )
-        voltage_sampling_ref = VoltageSampling.from_list(
-            y_interpolated_ref,
-            input_frequency=freq.frequency,
-            sampling_frequency=freq.Fs * interpolation_rate_phase,
+
+        voltage_sampling_dut = volts_dut.augment_interpolation(
+            interpolation_rate=interpolation_rate_phase,
+            interpolation_mode=INTERPOLATION_KIND.CUBIC,
         )
-        _, y_interpolated_dut = interpolation_model(
-            range(0, len(volts_dut.voltages)),
-            volts_dut.voltages,
-            int(len(volts_dut.voltages) * interpolation_rate_phase),
-            kind=INTERPOLATION_KIND.CUBIC,
-        )
-        voltage_sampling_dut = VoltageSampling.from_list(
-            y_interpolated_dut,
-            input_frequency=freq.frequency,
-            sampling_frequency=freq.Fs * interpolation_rate_phase,
-        )
+
         try:
-            offset_phase, sign_phase = phase_offset_v3(
-                voltage_sampling_ref, voltage_sampling_dut
+            offset_phase = phase_offset_v4(
+                voltage_sampling_ref,
+                voltage_sampling_dut,
             )
         except Exception as e:
             console.log(f"{e}")
-            # import matplotlib.pyplot as plt
 
             plt.close()
             plt.plot(voltage_sampling_ref.voltages, ".-", color="blue")
@@ -473,78 +505,105 @@ def make_graph_dB_phase(
             plt.close()
 
         offset_phase_ref_dut.append(offset_phase)
-        sign_phase_list.append(sign_phase)
-
-    # axis_dut_sub_ref_phase_ax1_not_modified = axis[2]
-    # axis_dut_sub_ref_phase_ax1_not_modified.semilogx(
-    #     [freq.frequency for freq in frequencies], offset_phase_ref_dut, "."
-    # )
-    # sign_plot = axis[3]
-    # sign_plot.semilogx([freq.frequency for freq in frequencies], sign_phase_list, ".")
 
     # --------------------------------------
-    index_to_transform: list[float] = []
-    for idx in range(1, len(sign_phase_list)):
-        prev_sign_phase = sign_phase_list[idx - 1]
-        curr_sign_phase = sign_phase_list[idx]
+    # index_to_transform: list[float] = []
+    # for idx in range(1, len(sign_phase_list)):
+    #     prev_sign_phase = sign_phase_list[idx - 1]
+    #     curr_sign_phase = sign_phase_list[idx]
 
-        cross = prev_sign_phase * curr_sign_phase
-        is_cross = cross < 0
-        if is_cross:
-            if (
-                curr_sign_phase - prev_sign_phase < 0
-                and abs(offset_phase_ref_dut[idx - 1] - offset_phase_ref_dut[idx]) > 100
-            ):
-                index_to_transform.append(idx - 1)
+    #     cross = prev_sign_phase * curr_sign_phase
+    #     is_cross = cross < 0
+    #     if is_cross:
+    #         if (
+    #             curr_sign_phase - prev_sign_phase < 0
+    #             and abs(offset_phase_ref_dut[idx - 1] - offset_phase_ref_dut[idx]) > 100
+    #         ):
+    #             index_to_transform.append(idx - 1)
 
-    for index_transform in index_to_transform:
-        sign_phase_list_transformed: list[float] = []
+    # for index_transform in index_to_transform:
+    #     sign_phase_list_transformed: list[float] = []
 
-        for idx, phase_value in enumerate(offset_phase_ref_dut):
-            if idx <= index_transform:
-                phase_value -= 360
-            sign_phase_list_transformed.append(phase_value)
-        offset_phase_ref_dut = sign_phase_list_transformed
+    #     for idx, phase_value in enumerate(offset_phase_ref_dut):
+    #         if idx <= index_transform:
+    #             phase_value -= 360
+    #         sign_phase_list_transformed.append(phase_value)
+    #     offset_phase_ref_dut = sign_phase_list_transformed
 
-    index_to_transform: list[float] = []
+    # index_to_transform: list[float] = []
 
-    for idx in range(1, len(sign_phase_list)):
-        prev_sign_phase = sign_phase_list[idx - 1]
-        curr_sign_phase = sign_phase_list[idx]
+    # for idx in range(1, len(sign_phase_list)):
+    #     prev_sign_phase = sign_phase_list[idx - 1]
+    #     curr_sign_phase = sign_phase_list[idx]
 
-        cross = prev_sign_phase * curr_sign_phase
-        is_cross = cross < 0
-        if is_cross:
-            if (
-                curr_sign_phase - prev_sign_phase > 0
-                and abs(offset_phase_ref_dut[idx - 1] - offset_phase_ref_dut[idx]) > 100
-            ):
-                index_to_transform.append(idx - 1)
+    #     cross = prev_sign_phase * curr_sign_phase
+    #     is_cross = cross < 0
+    #     if is_cross:
+    #         if (
+    #             curr_sign_phase - prev_sign_phase > 0
+    #             and abs(offset_phase_ref_dut[idx - 1] - offset_phase_ref_dut[idx]) > 100
+    #         ):
+    #             index_to_transform.append(idx - 1)
 
-    for index_transform in index_to_transform:
-        sign_phase_list_transformed: list[float] = []
+    # for index_transform in index_to_transform:
+    #     sign_phase_list_transformed: list[float] = []
 
-        for idx, phase_value in enumerate(offset_phase_ref_dut):
-            if idx <= index_transform:
-                phase_value += 360
-            sign_phase_list_transformed.append(phase_value)
-        offset_phase_ref_dut = sign_phase_list_transformed
+    #     for idx, phase_value in enumerate(offset_phase_ref_dut):
+    #         if idx <= index_transform:
+    #             phase_value += 360
+    #         sign_phase_list_transformed.append(phase_value)
+    #     offset_phase_ref_dut = sign_phase_list_transformed
     # --------------------------------------
+
+    # TODO: V2
+    # for idx in range(1, len(offset_phase_ref_dut)):
+    #     prev_sign_phase = offset_phase_ref_dut[idx - 1]
+    #     curr_sign_phase = offset_phase_ref_dut[idx]
+
+    #     if curr_sign_phase - prev_sign_phase:
+    #         if (
+    #             curr_sign_phase - prev_sign_phase > 0
+    #             and abs(offset_phase_ref_dut[idx - 1] - offset_phase_ref_dut[idx]) > 100
+    #         ):
+    #             index_to_transform.append(idx - 1)
+
+    # TODO: V1
+    for idx, value in enumerate(offset_phase_ref_dut):
+        if value > 180:
+            offset_phase_ref_dut[idx] -= 360
 
     (
         axis_dut_sub_ref_dB_data_x,
         axis_dut_sub_ref_dB_data_y,
     ) = logx_interpolation_model_Bspline(
-        [freq.frequency for freq in frequencies], offset_phase_ref_dut, 1, lam=0.005
+        [freq.frequency for freq in frequencies],
+        offset_phase_ref_dut,
+        1,
+        lam=0.00001,
     )
+
+    # (
+    #     axis_dut_sub_ref_dB_data_x,
+    #     axis_dut_sub_ref_dB_data_y,
+    # ) = logx_interpolation_model(
+    #     [freq.frequency for freq in frequencies],
+    #     offset_phase_ref_dut,
+    #     int(len(offset_phase_ref_dut) * 0.4),
+    #     kind=INTERPOLATION_KIND.CUBIC,
+    # )
     axis_dut_sub_ref_phase_ax1.semilogx(
         [freq.frequency for freq in frequencies],
         offset_phase_ref_dut,
         ".",
         color="blue",
+        markersize=5,
     )
     axis_dut_sub_ref_phase_ax1.semilogx(
-        axis_dut_sub_ref_dB_data_x, axis_dut_sub_ref_dB_data_y, "-", color="red"
+        axis_dut_sub_ref_dB_data_x,
+        axis_dut_sub_ref_dB_data_y,
+        "-",
+        color="red",
+        linewidth=1,
     )
 
     data_phase_y_max = max(offset_phase_ref_dut)
@@ -673,6 +732,6 @@ def parallel_calculate_rms_calulate(
 
 def test_calculation():
     make_calculation(
-        sweep_id=193,
-        dB_offset=5.5592632446805625e-05,
+        sweep_id=227,
+        dB_offset=1.38644,
     )

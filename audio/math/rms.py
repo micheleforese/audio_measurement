@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import enum
 import pathlib
 from dataclasses import dataclass
@@ -9,7 +11,7 @@ from scipy.fft import fft
 from audio.console import console
 from audio.math import integrate, trim_sin_zero_offset
 from audio.math.interpolation import INTERPOLATION_KIND, interpolation_model
-from audio.model.sampling import VoltageSampling
+from audio.model.sampling import VoltageSampling, VoltageSamplingV2
 from audio.utility import read_voltages
 from audio.utility.timer import Timer
 
@@ -140,7 +142,7 @@ class RMS:
         return average * 1.111
 
     @staticmethod
-    def fft(voltages) -> float:
+    def fft(voltages) -> float | None:
         """Calculate the RMS Voltage value with the Fast Fourier Transform
         of the voltage sampling list
 
@@ -151,11 +153,16 @@ class RMS:
         Returns:
             float: The RMS Voltage
         """
-        n_samp = len(voltages)
-        voltages_fft = fft(voltages, n_samp, workers=-1)
+        try:
+            n_samp = len(voltages)
+            voltages_fft = fft(voltages, n_samp, workers=-1)
 
-        summation = np.sum([np.float_power(np.absolute(v), 2) for v in voltages_fft])
-        rms: float = np.sqrt(summation) / n_samp
+            summation = np.sum(
+                [np.float_power(np.absolute(v), 2) for v in voltages_fft],
+            )
+            rms: float = np.sqrt(summation) / n_samp
+        except Exception:
+            return None
 
         return rms
 
@@ -234,6 +241,45 @@ class RMS:
         result.rms = rms
 
         return result
+
+    @staticmethod
+    def rms_v3(
+        voltages_sampling: VoltageSamplingV2,
+        trim: bool,
+        rms_mode: RMS_MODE,
+    ) -> float | None:
+
+        voltages = list(voltages_sampling.voltages)
+        voltages_len = len(voltages)
+        if voltages_len < 2:
+            return None
+
+        if trim:
+            trim_response = trim_sin_zero_offset(voltages)
+
+            if trim_response is not None:
+
+                voltages_trimmed, _, _ = trim_response
+
+                if len(voltages_trimmed) > 0:
+                    voltages = voltages_trimmed
+                else:
+                    console.log("trim ERROR - len(voltages_trimmed) < 0")
+            else:
+                console.log("trim ERROR")
+
+        rms: float | None = None
+
+        if rms_mode == RMS_MODE.FFT:
+            rms = RMS.fft(voltages)
+        elif rms_mode == RMS_MODE.AVERAGE:
+            rms = RMS.average(voltages)
+        elif rms_mode == RMS_MODE.INTEGRATE:
+            rms = RMS.integration(voltages, voltages_sampling.sampling_frequency)
+        else:
+            return None
+
+        return rms
 
 
 @dataclass
