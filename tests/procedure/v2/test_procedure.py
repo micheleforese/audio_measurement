@@ -439,7 +439,7 @@ def make_graph_dB_phase(
         rms_dut_sub_ref_dB,
         ".",
         color="blue",
-        markersize=5,
+        markersize=3,
     )
     axis_dut_sub_ref_dB.semilogx(
         axis_dut_sub_ref_dB_data_x,
@@ -596,7 +596,7 @@ def make_graph_dB_phase(
         offset_phase_ref_dut,
         ".",
         color="blue",
-        markersize=5,
+        markersize=3,
     )
     axis_dut_sub_ref_phase_ax1.semilogx(
         axis_dut_sub_ref_dB_data_x,
@@ -732,6 +732,9 @@ def parallel_calculate_rms_calulate(
 
 def test_calculation():
     make_calculation(
-        sweep_id=227,
-        dB_offset=1.38644,
+        sweep_id=233,
+        dB_offset=1.41326,
     )
+
+
+# id 233 offset 1.41326 da errore in test_calculation!!!
