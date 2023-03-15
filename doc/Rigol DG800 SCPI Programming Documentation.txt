@@ -288,7 +288,7 @@ the :MMEMory:LOAD:STATe <filename> command,
 <filename> is the filename of the state file to be loaded under the current directory of the external
 memory and it can include English characters and numbers.
 Besides, you can replace the parameters in many commands with MINimum or MAXimum to set the
-parameters to their minimum or maximum value. 
+parameters to their minimum or maximum value.
 RIGOL Chapter 1 Programming Overview
 1-6 DG800 Programming Guide
 For example, MINimum and MAXimum in the :DISPlay:BRIGhtness {<brightness>|MINimum|MAXimum}
@@ -401,7 +401,7 @@ USER1 USER2 USER3 USER4 USER5 USER6
 1.048ms 8.389 ms 134.218 ms 1.074 s 8.590 s >8.590 s
  For low-frequency signals (for example, the frequency is lower than 5 Hz), you are recommended to
 set the gate time to USER6.
- Send the :COUNter:AUTO command and the instrument will select a proper gate time automatically 
+ Send the :COUNter:AUTO command and the instrument will select a proper gate time automatically
 RIGOL Chapter 2 Command System
 2-4 DG800 Programming Guide
 according to the characteristics of the signal under test. During this process, "AUTO" is displayed in the gate
@@ -640,7 +640,7 @@ Remarks
  When [<n>] is omitted, the commands set and query the related parameters of CH1 by default.
  Amplitude deviation mode: the amplitudes of CH1 and CH2 have a certain deviation relation. The
 parameter relations are ACH2=ACH1+ADev (the reference source is CH1); ACH1=ACH2-ADev (the reference
-source is CH2). Wherein, ACH1 is the amplitude of CH1, ACH2 is the amplitude of CH2 and ADev is the set 
+source is CH2). Wherein, ACH1 is the amplitude of CH1, ACH2 is the amplitude of CH2 and ADev is the set
 RIGOL Chapter 2 Command System
 2-10 DG800 Programming Guide
 amplitude deviation.
@@ -735,7 +735,7 @@ Remarks
  When [<n>] is omitted, the commands set and query the related parameters of CH1 by default.
  Select the desired frequency coupling mode (:COUPling[<n>]:FREQuency:MODE) and set the
 corresponding frequency deviation or frequency ratio (:COUPling[<n>]:FREQuency:RATio) before
-enabling the frequency coupling function (:COUPling[<n>]:FREQuency[:STATe]). You cannot set the 
+enabling the frequency coupling function (:COUPling[<n>]:FREQuency[:STATe]). You cannot set the
 RIGOL Chapter 2 Command System
 2-12 DG800 Programming Guide
 frequency coupling mode and frequency deviation/ratio after the frequency coupling function is
@@ -964,7 +964,7 @@ Remarks
 When the phase of one channel (this channel is taken as the reference source) is modified, the phase
 of the other channel is automatically modified accordingly and always keeps the specified phase
 deviation or ratio with that of the reference channel.
- Select the desired phase coupling mode (:COUPling[<n>]:PHASe:MODE) and set the corresponding 
+ Select the desired phase coupling mode (:COUPling[<n>]:PHASe:MODE) and set the corresponding
 Chapter 2 Command System RIGOL
 DG800 Programming Guide 2-17
 phase deviation (:COUPling[<n>]:PHASe:DEViation) or phase ratio (:COUPling[<n>]:PHASe:RATio)
@@ -1158,7 +1158,7 @@ Name Type Range Default
 Remarks
  The parameter <value> is a decimal value. It corresponds to the binary-weighted sum of the bits to be
 reported to the status byte register in the standard event register.
- When the parameter <value> is set to 0, you can run the command to clear the enable register part of 
+ When the parameter <value> is set to 0, you can run the command to clear the enable register part of
 Chapter 2 Command System RIGOL
 DG800 Programming Guide 2-23
 the standard event register.
@@ -1328,7 +1328,7 @@ Parameter
 Name Type Range Default
 <value> Integer Refer to "Remarks". None
 Remarks
- The parameter <value> is a decimal value corresponding to the binary-weighted sum of the bits 
+ The parameter <value> is a decimal value corresponding to the binary-weighted sum of the bits
 Chapter 2 Command System RIGOL
 DG800 Programming Guide 2-27
 enabled in the status byte register. The selected bits are summarized in the "master summary" bit (bit6)
@@ -1602,7 +1602,7 @@ double quotation marks. For example, "C:\" and "D:\Rigol".
 Return Format
 The query returns a string in the following format: space used,space available,"size,property,name",……;
 wherein, the units of the space used and space available are byte, the property of the file is empty and the
-size is the space that it occupies, the property of the folder is DIR and the size is the sum of the number of 
+size is the space that it occupies, the property of the folder is DIR and the size is the sum of the number of
 Chapter 2 Command System RIGOL
 DG800 Programming Guide 2-35
 the files and folders in the folder plus 1. For example,
@@ -1646,7 +1646,7 @@ Parameter
 Name Type Range Default
 <folder> ASCII String Valid directory None
 Remarks
-The parameter <folder> is a valid directory in the internal or external memory. It is a string enclosed by 
+The parameter <folder> is a valid directory in the internal or external memory. It is a string enclosed by
 RIGOL Chapter 2 Command System
 2-36 DG800 Programming Guide
 double quotation marks. For example, "C:\" and "D:\Rigol".
@@ -2269,7 +2269,7 @@ SIN SQU RAMP PULSE NOISE DC USER
 Return Format
 The query returns a string enclosed by double quotation marks. The returned value consists of 5 parts
 separated by commas. Wherein, the first part is the waveform name of the specified channel and the rest 4
-parts are the frequency, amplitude, offset, and phase (expressed in scientific notation, with 7 effective 
+parts are the frequency, amplitude, offset, and phase (expressed in scientific notation, with 7 effective
 RIGOL Chapter 2 Command System
 2-52 DG800 Programming Guide
 digits and the default units are Hz, Vpp, Vdc and ° respectively; the absent item is replaced by DEF) of the
@@ -2314,7 +2314,7 @@ Name Type Range Default
 Remarks
  When [:SOURce[<n>]] or [<n>] is omitted, the system sets the related parameters of CH1 by default.
  The range of <amp> is limited by the "Impedance" (:OUTPut[<n>]:IMPedance
-or :OUTPut[<n>]:LOAD) and "Frequency/Period" settings. The range of <offset> is limited by the 
+or :OUTPut[<n>]:LOAD) and "Frequency/Period" settings. The range of <offset> is limited by the
 Chapter 2 Command System RIGOL
 DG800 Programming Guide 2-53
 "Impedance" and "Amplitude/High Level" settings.
@@ -2805,7 +2805,7 @@ Name Type Range Default
 [<n>] Discrete 1|2 1
 {POSitive|NEGative} Discrete POSitive|NEGative POSitive
 Remarks
- This command is only applicable to the burst mode (N cycle, Infinite, or Gated) in external trigger 
+ This command is only applicable to the burst mode (N cycle, Infinite, or Gated) in external trigger
 RIGOL Chapter 2 Command System
 2-64 DG800 Programming Guide
 ([:SOURce[<n>]]:BURSt:TRIGger:SOURce). In the External trigger, the signal generator receives the
@@ -3084,7 +3084,7 @@ corresponding frequency deviation ([:SOURce[<n>]]:FREQuency:COUPle:OFFSet) or fr
 ([:SOURce[<n>]]:FREQuency:COUPle:RATio) before enabling the frequency coupling function. You
 cannot set the frequency coupling mode and frequency deviation/ratio after the frequency coupling
 function is enabled.
- You can also send the :COUPling[<n>]:FREQuency[:STATe] command to set and query the on/off 
+ You can also send the :COUPling[<n>]:FREQuency[:STATe] command to set and query the on/off
 RIGOL Chapter 2 Command System
 2-70 DG800 Programming Guide
 status of the frequency coupling function.
@@ -3222,7 +3222,7 @@ Remarks
 limits of the frequency for frequency sweep. The generator always sweeps from the start frequency to
 the stop frequency, and then returns back to the start frequency. When the start frequency is smaller
 than the stop frequency, the signal generator sweeps from the low frequency to high frequency; when
-the start frequency is greater than the stop frequency, the signal generator sweeps from high 
+the start frequency is greater than the stop frequency, the signal generator sweeps from high
 Chapter 2 Command System RIGOL
 DG800 Programming Guide 2-73
 frequency to low frequency. When the start frequency is equal to the stop frequency, the signal
@@ -4209,7 +4209,7 @@ Remarks
  DG800 supports two types of amplitude modulation: normal amplitude modulation and double
 sideband suppressed carrier (DSB-SC) amplitude modulation. In the normal amplitude modulation, the
 modulated waveform contains carrier waveform components. Because carrier waveform components
-carry no information, the modulation is less efficient. In order to improve the modulation efficiency, 
+carry no information, the modulation is less efficient. In order to improve the modulation efficiency,
 RIGOL Chapter 2 Command System
 2-96 DG800 Programming Guide
 the carrier waveform components are suppressed on the basis of the normal amplitude modulation. At
@@ -4461,7 +4461,7 @@ Remarks
 amplitudes (the carrier amplitude and modulation amplitude).
  The AM carrier waveform can be Sine, Square, Ramp, or Arbitrary waveform. The default is Sine. Pulse,
 Noise, and DC cannot be used as carrier waveform. The different settings of various parameters (e.g.
-frequency, amplitude, offset, and start phase) of the carrier waveform will affect the output ASK 
+frequency, amplitude, offset, and start phase) of the carrier waveform will affect the output ASK
 RIGOL Chapter 2 Command System
 2-102 DG800 Programming Guide
 modulated waveform.
@@ -4506,7 +4506,7 @@ carrier frequency must be smaller than or equal to the upper limit of the curren
 the sum of the frequency deviation and the carrier frequency is greater than the frequency upper limit
 of the current carrier.
  When the external modulation source ([:SOURce[<n>]][:MOD]:FM:SOURce) is selected, the
-frequency deviation is controlled by the ±5 V signal level on the rear-panel [Sync/Ext 
+frequency deviation is controlled by the ±5 V signal level on the rear-panel [Sync/Ext
 Chapter 2 Command System RIGOL
 DG800 Programming Guide 2-103
 Mod/Trig/FSK] connector. Positive signal level corresponds to frequency increase, and negative
@@ -4757,7 +4757,7 @@ Remarks
 frequencies (the carrier frequency and hop frequency).
  The FSK carrier waveform can be Sine, Square, Ramp, or Arbitrary waveform. The default is Sine. Pulse,
 Noise, and DC cannot be used as carrier waveform. The different settings of various parameters (e.g.
-frequency, amplitude, offset, and start phase) of the carrier waveform will affect the output FSK 
+frequency, amplitude, offset, and start phase) of the carrier waveform will affect the output FSK
 Chapter 2 Command System RIGOL
 DG800 Programming Guide 2-109
 modulated waveform.
@@ -5768,7 +5768,7 @@ Name Type Range Default
 <n> Integer 2 to 1024 2
 Remarks
  Step: sets the number of steps required for the
-sweep to move from the start frequency ([:SOURce[<n>]]:FREQuency:STARt) to the 
+sweep to move from the start frequency ([:SOURce[<n>]]:FREQuency:STARt) to the
 Chapter 2 Command System RIGOL
 DG800 Programming Guide 2-133
 stop frequency ([:SOURce[<n>]]:FREQuency:STOP). It is only available in step sweep
@@ -5997,7 +5997,7 @@ value in the command is greater than the corresponding amplitude upper limit or 
 corresponding amplitude lower limit, the waveform amplitude of the specified channel will be set to
 the amplitude upper limit or lower limit.
  The current amplitude of the instrument is the default value or the one previously set. When the
-instrument configuration (e.g. frequency) is changed, if this amplitude is valid, the instrument will still 
+instrument configuration (e.g. frequency) is changed, if this amplitude is valid, the instrument will still
 Chapter 2 Command System RIGOL
 DG800 Programming Guide 2-139
 use this amplitude; otherwise, the instrument would display a prompt message and set the amplitude
@@ -6654,7 +6654,7 @@ connector for other devices.
 the rear-panel [10MHz In/Out] connector. If no valid clock source is detected, a prompt message is
 displayed, and the clock source will be switched to Internal.
  You can synchronize two or multiple instruments by setting the clock source.
- Synchronization between two instruments: 
+ Synchronization between two instruments:
 Chapter 2 Command System RIGOL
 DG800 Programming Guide 2-155
 Connect the [10MHz In/Out] connector of Generator A ("Internal" clock) to the [10MHz In/Out]
@@ -7151,7 +7151,7 @@ Chapter 4 Programming Examples RIGOL
 DG800 Programming Guide 4-13
 (4) Exit:
 5. Run the program, and then the following interface is displayed below. Click the VISA resource name
-from the drop-down list under Address, and click Connect to connect the instrument. Then, input 
+from the drop-down list under Address, and click Connect to connect the instrument. Then, input
 RIGOL Chapter 4 Programming Examples
 4-14 DG800 Programming Guide
 *IDN? in the Command field. Click Write to write the command to the instrument. If it is a query
@@ -7210,7 +7210,7 @@ Dim defrm As Long
  Label1(0).ForeColor = &HFFFF& 'Yellow
 
  End If
- 
+
 Chapter 4 Programming Examples RIGOL
 DG800 Programming Guide 4-17
  ' Close the resource
@@ -7377,7 +7377,7 @@ MessageBox("Didn't find any DG!");
 UpdateData(false);
 }
 2) Write Operation
-void CDG800_Demo_VCDlg::OnSend() 
+void CDG800_Demo_VCDlg::OnSend()
 RIGOL Chapter 4 Programming Examples
 4-24 DG800 Programming Guide
 {

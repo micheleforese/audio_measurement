@@ -12,4 +12,3 @@ SENSe:<function>:RANGe      # Sets fixed range measurements
 :SAMP:SOUR TIM              # Immmediate Mode on sampling
 :SAMP:TIM <value>           # Seets te interval of the measurement
 :SAMP:COUN +2               # Number of Samples
-
