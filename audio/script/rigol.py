@@ -1,4 +1,3 @@
-
 import click
 from rich.panel import Panel
 from usbtmc import Instrument
@@ -8,7 +7,12 @@ from audio.usb.usbtmc import UsbTmc
 from audio.utility.scpi import SCPI, Switch
 
 
-@click.command(help="Turn On the Rigol Instrument.")
+@click.group()
+def rigol():
+    pass
+
+
+@rigol.command(help="Turn On the Rigol Instrument.")
 @click.option(
     "--debug",
     is_flag=True,
@@ -36,7 +40,7 @@ def turn_on(debug: bool):
     console.print(Panel("[blue]Rigol Turned ON[/]"))
 
 
-@click.command(help="Turn Off the Rigol Instrument.")
+@rigol.command(help="Turn Off the Rigol Instrument.")
 @click.option(
     "--debug",
     is_flag=True,
@@ -64,7 +68,7 @@ def turn_off(debug: bool):
     console.print(Panel("[blue]Rigol Turned OFF[/]"))
 
 
-@click.command(help="Sets the Amplitude peak-to-peak.")
+@rigol.command(help="Sets the Amplitude peak-to-peak.")
 @click.argument(
     "amplitude",
     type=float,
@@ -97,7 +101,7 @@ def set_amplitude(amplitude: float, debug: bool):
     console.print(Panel(f"[blue]Rigol Amplitude {amplitude}[/]"))
 
 
-@click.command()
+@rigol.command()
 @click.argument(
     "frequency",
     type=float,

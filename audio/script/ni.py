@@ -12,7 +12,12 @@ from audio.utility import trim_value
 from audio.utility.scpi import SCPI, Bandwidth, Switch
 
 
-@click.command()
+@click.group()
+def ni():
+    pass
+
+
+@ni.command()
 @click.option(
     "--frequency",
     type=float,
@@ -96,7 +101,7 @@ def read_rms(frequency, amplitude, n_sample_cli: int, debug: bool):
     console.print(Panel(f"[blue]RMS {rms_value}[/]"))
 
 
-@click.command()
+@ni.command()
 @click.option(
     "--frequency",
     type=float,
@@ -176,7 +181,7 @@ def read_rms_loop(frequency, amplitude, n_sample_cli: int, debug: bool):
         console.print(Panel(f"[blue]RMS {rms_value}[/]"))
 
 
-@click.command()
+@ni.command()
 # @click.option(
 #     "--frequency",
 #     type=float,
