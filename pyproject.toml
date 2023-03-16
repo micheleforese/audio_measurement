@@ -106,4 +106,20 @@ target-version = "py310"
 
 [tool.ruff.mccabe]
 # Unlike Flake8, default to a complexity level of 10.
-max-complexity = 10
+max-complexity = 5
+
+[tool.mypy]
+exclude = [
+    "build",
+    "*.egg-info",
+    "audio-test",
+    "cfg",
+    "data",
+    "doc",
+    "docs",
+    "driver",
+    "logging",
+    "pb_data",
+    "pd_migrations",
+    "web",
+]
