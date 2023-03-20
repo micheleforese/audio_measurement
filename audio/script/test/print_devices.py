@@ -6,7 +6,6 @@ from audio.usb.usbtmc import UsbTmc
 
 @click.command()
 def print_devices():
-
     list = UsbTmc.search_devices()
 
     instr = list[-1]

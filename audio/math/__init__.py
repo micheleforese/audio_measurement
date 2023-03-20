@@ -7,20 +7,19 @@ def unit_normalization(value: float) -> int:
     return int(value / abs(value))
 
 
-def sinc(x: float):
+def sinc(x: float) -> float:
     return math.sin(math.pi * x) / (math.pi * x)
 
 
-def decimal_decompose(x) -> tuple[float, int]:
-    exponent = int(math.floor(np.log10(abs(x)))) if x != 0 else 0
-    mantissa = float(x / 10**exponent)
+def decimal_decompose(x: float) -> tuple[float, int]:
+    exponent: int = int(math.floor(np.log10(abs(x)))) if x != 0 else 0
+    mantissa: float = float(x / 10**exponent)
     return mantissa, exponent
 
 
 def trim_sin_zero_offset(
     sample: list[float],
 ) -> tuple[list[float], int, int] | None:
-
     zero_index_intersections: list[tuple[float, float]] = []
 
     index_start: int = 0
@@ -28,13 +27,13 @@ def trim_sin_zero_offset(
 
     # From start to end
     for n in range(1, len(sample)):
-        samp_curr_index = n
-        samp_prev_index = n - 1
-        samp_curr = sample[samp_curr_index]
-        samp_prev = sample[samp_prev_index]
+        samp_curr_index: int = n
+        samp_prev_index: int = n - 1
+        samp_curr: float = sample[samp_curr_index]
+        samp_prev: float = sample[samp_prev_index]
 
         slope_normalized: float = (samp_prev * samp_curr) / np.abs(
-            samp_prev * samp_curr
+            samp_prev * samp_curr,
         )
 
         if slope_normalized < 0:
@@ -47,7 +46,6 @@ def trim_sin_zero_offset(
         ) = zero_index_intersections[0]
 
         if (len(zero_index_intersections) % 2) == 0:
-
             (
                 zero_intersection_end_first,
                 zero_intersection_end_second,
@@ -63,7 +61,7 @@ def trim_sin_zero_offset(
             zero_intersection_start_first
             if np.abs(
                 sample[zero_intersection_start_first]
-                < sample[zero_intersection_start_second]
+                < sample[zero_intersection_start_second],
             )
             else zero_intersection_start_second
         )
@@ -72,14 +70,14 @@ def trim_sin_zero_offset(
             zero_intersection_end_first
             if np.abs(
                 sample[zero_intersection_end_first]
-                < sample[zero_intersection_end_second]
+                < sample[zero_intersection_end_second],
             )
             else zero_intersection_end_second
         )
 
         return sample[index_start:index_end], index_start, index_end
-    else:
-        return None
+
+    return None
 
 
 def rms_full_cycle(sample: list[float]) -> list[float]:
@@ -87,23 +85,23 @@ def rms_full_cycle(sample: list[float]) -> list[float]:
 
     rms_fft_cycle_list: list[float] = []
 
-    start_slope = sample[1] - sample[0]
+    start_slope: float = sample[1] - sample[0]
     last_slope = 0
 
     # From start to end
     for n in range(2, len(sample)):
-        samp_curr_index = n
-        samp_prev_index = n - 1
-        samp_curr = sample[samp_curr_index]
-        samp_prev = sample[samp_prev_index]
+        samp_curr_index: int = n
+        samp_prev_index: int = n - 1
+        samp_curr: float = sample[samp_curr_index]
+        samp_prev: float = sample[samp_prev_index]
 
-        slope = samp_curr - samp_prev
+        slope: float = samp_curr - samp_prev
 
         norm: float = (samp_prev * samp_curr) / np.abs(samp_prev * samp_curr)
 
         if norm < 0 and start_slope * slope > 0:
-            last_slope = slope
-            index = (
+            last_slope: float = slope
+            index: int = (
                 samp_curr_index
                 if np.abs(samp_curr) < np.abs(samp_prev)
                 else samp_prev_index
@@ -124,36 +122,32 @@ def transfer_function(rms: float, input_rms: float) -> float:
     return 20 * np.log10(rms / input_rms)
 
 
-def integrate(y_values: list[float], delta) -> float:
-
+def integrate(y_values: list[float], delta: float) -> float:
     volume: float = 0.0
 
     for idx, y in enumerate(y_values):
         # If it's the last element then exit the loop
         if idx + 1 == len(y_values):
             break
+
+        y_plus: float = y_values[idx + 1]
+
+        # Make the calculations
+        if y * y_plus < 0:
+            r_rec: float = abs(y) * delta / 4
+            l_rec: float = abs(y_plus) * delta / 4
+            volume += r_rec + l_rec
         else:
-            y_plus = y_values[idx + 1]
+            r_rec: float = abs(y) * delta
+            l_rec: float = abs(y_plus) * delta
+            triangle: float = abs(r_rec - l_rec) / 2
 
-            # Make the calculations
-            if y * y_plus < 0:
-                r_rec: float = abs(y) * delta / 4
-                l_rec: float = abs(y_plus) * delta / 4
-                volume += r_rec + l_rec
-                # console.print("Volume: {}".format(round(volume, 9)))
-            else:
-                r_rec: float = abs(y) * delta
-                l_rec: float = abs(y_plus) * delta
-                triangle: float = abs(r_rec - l_rec) / 2
-
-                volume += min([r_rec, l_rec]) + triangle
-
-                # console.print("Volume: {}".format(round(volume, 9)))
+            volume += min([r_rec, l_rec]) + triangle
 
     return volume
 
 
-def dBV(V_in: float, V_out: float) -> float:
+def calculate_voltage_decibel(input_voltage: float, output_voltage: float) -> float:
     """Returns the dBV value.
 
     Args:
@@ -163,4 +157,4 @@ def dBV(V_in: float, V_out: float) -> float:
     Returns:
         float: dBV value.
     """
-    return 20 * math.log10(V_out / V_in)
+    return 20 * math.log10(output_voltage / input_voltage)

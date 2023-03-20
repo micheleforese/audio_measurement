@@ -1,7 +1,7 @@
 import time
 from pathlib import Path
 
-import matplotlib.ticker as ticker
+from matplotlib import ticker
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from rich.prompt import Prompt
@@ -20,8 +20,10 @@ def phase_sweep(
     name: str,
     folder_path: Path,
     graph_path: Path,
-    config: SweepConfig,
+    config: SweepConfig | None,
 ):
+    if config is None:
+        raise Exception("Config must be provided.")
 
     with InterruptHandler() as h:
         # Asks for the 2 instruments
@@ -47,7 +49,8 @@ def phase_sweep(
             SCPI.set_function_voltage_ac(),
             SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
             SCPI.set_source_voltage_amplitude(
-                1, round(config.rigol.amplitude_peak_to_peak, 5)
+                1,
+                round(config.rigol.amplitude_peak_to_peak, 5),
             ),
             SCPI.set_source_frequency(1, round(config.sampling.frequency_min, 5)),
         ]
@@ -67,9 +70,9 @@ def phase_sweep(
             config.sampling.points_per_decade,
         )
 
-        from audio.device.cDAQ import ni9223
+        from audio.device.cDAQ import Ni9223
 
-        nidaq = ni9223(config.sampling.number_of_samples)
+        nidaq = Ni9223(config.sampling.number_of_samples)
 
         nidaq.create_task("Test")
         channels = config.nidaq.channels
@@ -91,7 +94,8 @@ def phase_sweep(
 
             SCPI.exec_commands(generator, generator_configs)
             Fs = trim_value(
-                frequency * config.sampling.Fs_multiplier, max_value=1000000
+                frequency * config.sampling.Fs_multiplier,
+                max_value=1000000,
             )
             nidaq.set_sampling_clock_timing(Fs)
 
@@ -131,7 +135,6 @@ def phase_sweep(
             APP_TEST.mkdir(exist_ok=True, parents=True)
 
             if phase_offset is None:
-
                 voltages_sampling_0.save(APP_TEST / f"{frequency:.5f}_0.csv")
                 voltages_sampling_1.save(APP_TEST / f"{frequency:.5f}_1.csv")
 
@@ -197,7 +200,6 @@ def phase_sweep(
         logMinorFormat = ticker.FuncFormatter(logMinorFormatFunc)
 
         # X Axis - Major
-        # axes.xaxis.set_major_locator(logLocator)
         axes.xaxis.set_major_formatter(logMinorFormat)
 
         folder_path.mkdir(exist_ok=True, parents=True)

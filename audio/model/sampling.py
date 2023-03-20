@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Self
 
-import numpy as np
 import pandas as pd
 from pandas import DataFrame
 
@@ -20,23 +20,23 @@ class VoltageSampling:
 
     @classmethod
     def from_list(
-        cls,
+        cls: type[Self],
         voltages: list[float],
         input_frequency: float,
         sampling_frequency: float,
-    ):
+    ) -> Self:
         return cls(
             DataFrame(voltages, columns=["voltage"]),
             input_frequency,
             sampling_frequency,
         )
 
-    def save(self, file: Path) -> bool:
+    def save(self: Self, file: Path) -> bool:
         if self.data is None:
             return False
 
         try:
-            with open(file, mode="w", encoding="utf-8") as f:
+            with Path.open(file, mode="w", encoding="utf-8") as f:
                 f.write(f"# frequency: {self.input_frequency:.5}")
                 f.write(f"# Fs: {self.sampling_frequency:.5}")
                 self.data.to_csv(f, header=["voltage"])
@@ -46,7 +46,7 @@ class VoltageSampling:
             return False
 
     @property
-    def voltages(self):
+    def voltages(self: Self):
         return self.data["voltage"]
 
 
@@ -61,8 +61,7 @@ class VoltageSamplingV2:
         voltages: list[float],
         sampling_frequency: float,
     ) -> pd.DataFrame:
-
-        time_in_seconds_x = [
+        time_in_seconds_x: list[float] = [
             n * (1 / sampling_frequency) for n in range(0, len(voltages))
         ]
         return DataFrame(
@@ -87,13 +86,12 @@ class VoltageSamplingV2:
         )
 
     def augment_interpolation(
-        self: VoltageSamplingV2,
+        self: Self,
         interpolation_rate: int,
         interpolation_mode: INTERPOLATION_KIND,
-    ) -> VoltageSamplingV2:
-
-        voltages_len = len(self.voltages)
-        n_points = int(voltages_len * interpolation_rate)
+    ) -> Self:
+        voltages_len: int = len(self.voltages)
+        n_points: int = int(voltages_len * interpolation_rate)
 
         x_interpolated, y_interpolated = interpolation_model(
             self.times,
@@ -101,26 +99,25 @@ class VoltageSamplingV2:
             n_points,
             kind=interpolation_mode,
         )
-        sampling_frequency = self.input_frequency * interpolation_rate
+        sampling_frequency: float = self.sampling_frequency * interpolation_rate
 
-        new_data = DataFrame(
+        new_data: DataFrame = DataFrame(
             zip(x_interpolated, y_interpolated, strict=True),
             columns=["time", "voltage"],
         )
 
-        return VoltageSamplingV2(
+        return type[self](
             data=new_data,
             input_frequency=self.input_frequency,
             sampling_frequency=sampling_frequency,
         )
 
     def save(self: VoltageSamplingV2, file: Path) -> bool:
-
         if self.data is None:
             return False
 
         try:
-            with open(file, mode="w", encoding="utf-8") as f:
+            with Path.open(file, mode="w", encoding="utf-8") as f:
                 self.data.to_csv(f, header=["voltage"])
                 return True
         except Exception as e:
@@ -128,9 +125,9 @@ class VoltageSamplingV2:
             return False
 
     @property
-    def voltages(self: VoltageSamplingV2):
+    def voltages(self: Self):
         return self.data["voltage"]
 
     @property
-    def times(self: VoltageSamplingV2):
+    def times(self: Self):
         return self.data["time"]

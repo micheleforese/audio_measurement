@@ -184,23 +184,11 @@ def read_rms_loop(frequency, amplitude, n_sample_cli: int, debug: bool):
 @ni.command()
 # @click.option(
 #     "--frequency",
-#     type=float,
-#     help="Frequency.",
-#     required=True,
-# )
 # @click.option(
 #     "--amplitude",
-#     type=float,
-#     help="Amplitude.",
-#     required=True,
-# )
 # @click.option(
 #     "--n_sample",
 #     "n_sample_cli",
-#     type=int,
-#     help="Amplitude.",
-#     required=True,
-# )
 @click.option(
     "--debug",
     is_flag=True,
@@ -254,9 +242,9 @@ def read_rms_v2(
 
     Confirm.ask()
 
-    from audio.device.cDAQ import ni9223
+    from audio.device.cDAQ import Ni9223
 
-    nidaq = ni9223(n_sample)
+    nidaq = Ni9223(n_sample)
 
     nidaq.create_task("Test")
     channels = [
@@ -293,4 +281,3 @@ def read_rms_v2(
 
     plt.plot(result_1.voltages, color="#00ff00")
     plt.plot(result_2.voltages, color="#3050ff")
-    # plt.show()

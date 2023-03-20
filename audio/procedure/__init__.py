@@ -15,7 +15,6 @@ from audio.procedure.step import DefaultSweepConfig, ProcedureStep
 
 @rich.repr.auto
 class Procedure(DecoderXML):
-
     name: str
     comment: str | None
     steps: list[ProcedureStep]
@@ -64,7 +63,6 @@ class Procedure(DecoderXML):
         steps: list[ProcedureStep] = []
 
         for idx, step in enumerate(step_nodes):
-
             procedure = ProcedureStep.proc_type_to_procedure(step)
             if procedure is not None:
                 steps.append(procedure)
@@ -83,9 +81,9 @@ class Procedure(DecoderXML):
 class DataProcedure:
     name: str
     root: Path
-    data: dict = field(default_factory=lambda: dict())
+    data: dict = field(default_factory=lambda: {})
     cache_csv_data: CacheCsvData = field(default_factory=lambda: CacheCsvData())
     cache_file: CacheFile = field(default_factory=lambda: CacheFile())
     default_sweep_config: DefaultSweepConfig = field(
-        default_factory=lambda: DefaultSweepConfig()
+        default_factory=lambda: DefaultSweepConfig(),
     )

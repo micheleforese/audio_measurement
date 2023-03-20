@@ -80,7 +80,6 @@ def turn_off(debug: bool):
     default=False,
 )
 def set_amplitude(amplitude: float, debug: bool):
-
     # Asks for the 2 instruments
     list_devices: list[Instrument] = UsbTmc.search_devices()
     if debug:
@@ -113,7 +112,6 @@ def set_amplitude(amplitude: float, debug: bool):
     default=False,
 )
 def set_frequency(frequency, debug: bool):
-
     # Asks for the 2 instruments
     list_devices: list[Instrument] = UsbTmc.search_devices()
     if debug:

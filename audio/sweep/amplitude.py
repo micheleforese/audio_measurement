@@ -18,7 +18,7 @@ from rich.table import Column, Table
 
 from audio.config.sweep import SweepConfig
 from audio.console import console
-from audio.device.cDAQ import ni9223
+from audio.device.cDAQ import Ni9223
 from audio.math.algorithm import LogarithmicScale
 from audio.math.rms import RMS, RMSResult
 from audio.math.voltage import Vpp_to_Vrms
@@ -108,7 +108,7 @@ def amplitude_sweep(
         "•",
         MofNCompleteColumn(),
         TextColumn(
-            " - Frequency: [bold green]{task.fields[frequency]} - RMS: {task.fields[rms]}"
+            " - Frequency: [bold green]{task.fields[frequency]} - RMS: {task.fields[rms]}",
         ),
         console=console,
         transient=True,
@@ -131,7 +131,7 @@ def amplitude_sweep(
                 progress_list_task,
                 progress_sweep,
                 progress_task,
-            )
+            ),
         ),
     )
     live = Live(
@@ -143,7 +143,9 @@ def amplitude_sweep(
     live.start()
 
     task_sampling = progress_list_task.add_task(
-        "Sampling", start=False, task="Retrieving Devices"
+        "Sampling",
+        start=False,
+        task="Retrieving Devices",
     )
     progress_list_task.start_task(task_sampling)
 
@@ -168,17 +170,17 @@ def amplitude_sweep(
         generator.open()
 
     if config.rigol.amplitude_peak_to_peak > 12:
-        generator.exec(
+        generator.execute(
             [
                 SCPI.set_output(1, Switch.OFF),
-            ]
+            ],
         )
         generator.close()
         console.print("[ERROR] - Voltage Input > 12.", style="error")
         exit()
 
     # Sets the Configuration for the Voltmeter
-    generator.exec(
+    generator.execute(
         [
             SCPI.reset(),
             SCPI.clear(),
@@ -193,12 +195,12 @@ def amplitude_sweep(
                 ),
             ),
             SCPI.set_source_frequency(1, round(config.sampling.frequency_min, 5)),
-        ]
+        ],
     )
-    generator.exec(
+    generator.execute(
         [
             SCPI.set_output(1, Switch.ON),
-        ]
+        ],
     )
 
     sleep(2)
@@ -233,10 +235,11 @@ def amplitude_sweep(
     progress_sweep.start_task(task_sweep)
 
     Fs = trim_value(
-        frequency * config.sampling.Fs_multiplier, max_value=config.nidaq.Fs_max
+        frequency * config.sampling.Fs_multiplier,
+        max_value=config.nidaq.Fs_max,
     )
 
-    nidaq = ni9223(
+    nidaq = Ni9223(
         config.sampling.number_of_samples,
         input_channel=[config.nidaq.input_channel],
     )
@@ -246,34 +249,31 @@ def amplitude_sweep(
     nidaq.set_sampling_clock_timing(Fs)
 
     for frequency in log_scale.f_list:
-
         # Sets the Frequency
         generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
 
         sleep(
             config.sampling.delay_measurements
             if config.sampling.delay_measurements is not None
-            else DEFAULT.get("delay")
+            else DEFAULT.get("delay"),
         )
 
         # Trim number_of_samples to MAX value
         Fs = trim_value(
-            frequency * config.sampling.Fs_multiplier, max_value=config.nidaq.Fs_max
+            frequency * config.sampling.Fs_multiplier,
+            max_value=config.nidaq.Fs_max,
         )
 
         # Trim number_of_samples to MAX value
-        if config.sampling.number_of_samples_max is not None:
-            if (
-                config.sampling.number_of_samples
-                > config.sampling.number_of_samples_max
-            ):
-
-                config.sampling.number_of_samples = int(
-                    trim_value(
-                        config.sampling.number_of_samples,
-                        config.sampling.number_of_samples_max,
-                    )
-                )
+        if config.sampling.number_of_samples_max is not None and (
+            config.sampling.number_of_samples > config.sampling.number_of_samples_max
+        ):
+            config.sampling.number_of_samples = int(
+                trim_value(
+                    config.sampling.number_of_samples,
+                    config.sampling.number_of_samples_max,
+                ),
+            )
 
         oversampling_ratio = Fs / frequency
         n_periods = config.sampling.number_of_samples / oversampling_ratio
@@ -288,7 +288,7 @@ def amplitude_sweep(
         time.start()
 
         sweep_frequency_path = measurements_path / "{}".format(
-            round(frequency, 5)
+            round(frequency, 5),
         ).replace(".", "_", 1)
         sweep_frequency_path.mkdir(parents=True, exist_ok=True)
 
@@ -330,21 +330,12 @@ def amplitude_sweep(
             from audio.math.voltage import calculate_gain_dB
 
             gain_bBV = calculate_gain_dB(
-                Vin=Vpp_to_Vrms(config.rigol.amplitude_peak_to_peak), Vout=result.rms
+                Vin=Vpp_to_Vrms(config.rigol.amplitude_peak_to_peak),
+                Vout=result.rms,
             )
             # gain_bBV: float = dBV(
-            #     V_in=Vpp_to_Vrms(config.rigol.amplitude_peak_to_peak),
-            #     V_out=result.rms,
-            # )
 
-            # transfer_func_dB = transfer_function(
-            #     result.rms, Vpp_to_Vrms(config.rigol.amplitude_peak_to_peak)
-            # )
-
-            if max_dB:
-                max_dB = max(abs(max_dB), abs(gain_bBV))
-            else:
-                max_dB = gain_bBV
+            max_dB = max(abs(max_dB), abs(gain_bBV)) if max_dB else gain_bBV
 
             amplitude_sweep_table.add_data(
                 frequency=frequency,
@@ -374,7 +365,7 @@ def amplitude_sweep(
                 oversampling_ratio_list,
                 n_periods_list,
                 n_samples_list,
-            )
+            ),
         ),
         columns=[
             "frequency",
@@ -401,7 +392,7 @@ def amplitude_sweep(
 
     progress_list_task.update(task_sampling, task="Shutting down the Channel 1")
 
-    generator.exec(
+    generator.execute(
         [
             SCPI.set_output(1, Switch.OFF),
             SCPI.clear(),
@@ -415,8 +406,8 @@ def amplitude_sweep(
 
     console.print(
         Panel(
-            f'[bold][[blue]FILE[/blue] - [cyan]CSV[/cyan]][/bold] - "[bold green]{sweep_file_path.absolute()}[/bold green]"'
-        )
+            f'[bold][[blue]FILE[/blue] - [cyan]CSV[/cyan]][/bold] - "[bold green]{sweep_file_path.absolute()}[/bold green]"',
+        ),
     )
 
     live.stop()

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import xml.etree.ElementTree as ET
+import typing
 from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
+from typing import Self
+from xml.etree import ElementTree
 
 import rich
 
@@ -12,6 +13,9 @@ from audio.config.type import Range
 from audio.console import console
 from audio.decoder.xml import DecoderXML
 from audio.encoder.yaml import EncoderYAML
+
+if typing.TYPE_CHECKING:
+    from pathlib import Path
 
 
 class PlotConfigOptions(Enum):
@@ -32,7 +36,7 @@ class PlotConfigOptions(Enum):
     LEGEND = "legend"
     TITLE = "title"
 
-    def __str__(self) -> str:
+    def __str__(self: Self) -> str:
         return str(self.value)
 
 
@@ -53,7 +57,7 @@ class PlotConfigOptionsXPATH(Enum):
     LEGEND = f"./{PlotConfigOptions.LEGEND}"
     TITLE = f"./{PlotConfigOptions.TITLE}"
 
-    def __str__(self) -> str:
+    def __str__(self: Self) -> str:
         return str(self.value)
 
 
@@ -69,7 +73,7 @@ class PlotConfig(Config, DecoderXML, EncoderYAML):
     legend: str | None = None
     title: str | None = None
 
-    def merge(self, other: PlotConfig | None):
+    def merge(self: Self, other: PlotConfig | None) -> None:
         if other is None:
             return
 
@@ -90,7 +94,7 @@ class PlotConfig(Config, DecoderXML, EncoderYAML):
         if self.title is None:
             self.title = other.title
 
-    def override(self, other: PlotConfig | None):
+    def override(self: Self, other: PlotConfig | None) -> None:
         if other is None:
             return
 
@@ -111,7 +115,7 @@ class PlotConfig(Config, DecoderXML, EncoderYAML):
         if other.title is not None:
             self.title = other.title
 
-    def print(self):
+    def print_object(self: Self) -> None:
         console.print(self)
 
     #########################
@@ -119,20 +123,23 @@ class PlotConfig(Config, DecoderXML, EncoderYAML):
     #########################
 
     @classmethod
-    def from_xml_file(cls, file: Path):
+    def from_xml_file(cls: type[Self], file: Path) -> Self | None:
         if not file.exists() or not file.is_file():
             return None
 
         return cls.from_xml_string(file.read_text(encoding="utf-8"))
 
     @classmethod
-    def from_xml_string(cls, data: str):
-        tree = ET.ElementTree(ET.fromstring(data))
+    def from_xml_string(cls: type[Self], data: str) -> Self | None:
+        tree = ElementTree.ElementTree(ElementTree.fromstring(data))
         return cls.from_xml_object(tree)
 
     @classmethod
-    def from_xml_object(cls, xml: ET.ElementTree | None):
-        if xml is None or not cls.xml_is_valid(xml):
+    def from_xml_object(
+        cls: type[Self],
+        xml: ElementTree.ElementTree | None,
+    ) -> Self | None:
+        if xml is None or not cls.xml_is_valid(xml.getroot()):
             return None
 
         return cls(
@@ -147,117 +154,152 @@ class PlotConfig(Config, DecoderXML, EncoderYAML):
         )
 
     @staticmethod
-    def xml_is_valid(xml: ET.Element) -> bool:
+    def xml_is_valid(xml: ElementTree.Element) -> bool:
         return xml.tag == PlotConfigOptions.ROOT.value
 
     @staticmethod
-    def _get_x_limit_min_from_xml(xml: ET.ElementTree | None):
-        Ex_limit_min = xml.find(PlotConfigOptionsXPATH.X_LIMIT_MIN.value)
-        if Ex_limit_min is not None:
-            return float(Ex_limit_min.text)
+    def _get_x_limit_min_from_xml(xml: ElementTree.ElementTree | None) -> float | None:
+        if xml is None:
+            return None
+
+        elem_x_limit_min = xml.find(PlotConfigOptionsXPATH.X_LIMIT_MIN.value)
+        if elem_x_limit_min is not None and elem_x_limit_min.text is not None:
+            return float(elem_x_limit_min.text)
 
         return None
 
     @staticmethod
-    def _get_x_limit_max_from_xml(xml: ET.ElementTree | None):
-        Ex_limit_max = xml.find(PlotConfigOptionsXPATH.X_LIMIT_MAX.value)
-        if Ex_limit_max is not None:
-            return float(Ex_limit_max.text)
+    def _get_x_limit_max_from_xml(xml: ElementTree.ElementTree | None) -> float | None:
+        if xml is None:
+            return None
+        elem_x_limit_max = xml.find(PlotConfigOptionsXPATH.X_LIMIT_MAX.value)
+        if elem_x_limit_max is not None and elem_x_limit_max.text is not None:
+            return float(elem_x_limit_max.text)
 
         return None
 
     @staticmethod
-    def _get_x_limit_from_xml(xml: ET.ElementTree | None):
+    def _get_x_limit_from_xml(
+        xml: ElementTree.ElementTree | None,
+    ) -> Range[float] | None:
         x_limit_min: float | None = PlotConfig._get_x_limit_min_from_xml(xml)
         x_limit_max: float | None = PlotConfig._get_x_limit_max_from_xml(xml)
 
-        x_limit_range: Range[float] | None = None
         if x_limit_min is not None and x_limit_max is not None:
-            x_limit_range = Range.from_list([x_limit_min, x_limit_max])
-
-        return x_limit_range
-
-    @staticmethod
-    def _get_y_limit_min_from_xml(xml: ET.ElementTree | None):
-        Ey_limit_min = xml.find(PlotConfigOptionsXPATH.Y_LIMIT_MIN.value)
-        if Ey_limit_min is not None:
-            return float(Ey_limit_min.text)
+            return Range.from_list((x_limit_min, x_limit_max))
 
         return None
 
     @staticmethod
-    def _get_y_limit_max_from_xml(xml: ET.ElementTree | None):
-        Ey_limit_max = xml.find(PlotConfigOptionsXPATH.Y_LIMIT_MAX.value)
-        if Ey_limit_max is not None:
-            return float(Ey_limit_max.text)
+    def _get_y_limit_min_from_xml(xml: ElementTree.ElementTree | None) -> float | None:
+        if xml is None:
+            return None
+
+        elem_y_limit_min = xml.find(PlotConfigOptionsXPATH.Y_LIMIT_MIN.value)
+        if elem_y_limit_min is not None and elem_y_limit_min.text is not None:
+            return float(elem_y_limit_min.text)
 
         return None
 
     @staticmethod
-    def _get_y_limit_from_xml(xml: ET.ElementTree | None):
+    def _get_y_limit_max_from_xml(xml: ElementTree.ElementTree | None) -> float | None:
+        if xml is None:
+            return None
+
+        elem_y_limit_max = xml.find(PlotConfigOptionsXPATH.Y_LIMIT_MAX.value)
+        if elem_y_limit_max is not None and elem_y_limit_max.text is not None:
+            return float(elem_y_limit_max.text)
+
+        return None
+
+    @staticmethod
+    def _get_y_limit_from_xml(
+        xml: ElementTree.ElementTree | None,
+    ) -> Range[float] | None:
         y_limit_min: float | None = PlotConfig._get_y_limit_min_from_xml(xml)
         y_limit_max: float | None = PlotConfig._get_y_limit_max_from_xml(xml)
 
-        y_limit_range: Range[float] | None = None
-
         if y_limit_min is not None and y_limit_max is not None:
-            y_limit_range = Range.from_list([y_limit_min, y_limit_max])
-
-        return y_limit_range
-
-    @staticmethod
-    def _get_y_offset_from_xml(xml: ET.ElementTree | None):
-        Ey_offset = xml.find(PlotConfigOptionsXPATH.Y_OFFSET.value)
-        if Ey_offset is not None:
-            return float(Ey_offset.text)
+            return Range.from_list((y_limit_min, y_limit_max))
 
         return None
 
     @staticmethod
-    def _get_interpolation_rate_from_xml(xml: ET.ElementTree | None):
-        Einterpolation_rate = xml.find(PlotConfigOptionsXPATH.INTERPOLATION_RATE.value)
-        if Einterpolation_rate is not None:
-            return float(Einterpolation_rate.text)
+    def _get_y_offset_from_xml(xml: ElementTree.ElementTree | None) -> float | None:
+        if xml is None:
+            return None
+
+        elem_y_offset = xml.find(PlotConfigOptionsXPATH.Y_OFFSET.value)
+        if elem_y_offset is not None and elem_y_offset.text is not None:
+            return float(elem_y_offset.text)
 
         return None
 
     @staticmethod
-    def _get_dpi_from_xml(xml: ET.ElementTree | None):
-        Edpi = xml.find(PlotConfigOptionsXPATH.DPI.value)
-        if Edpi is not None:
-            return float(Edpi.text)
+    def _get_interpolation_rate_from_xml(
+        xml: ElementTree.ElementTree | None,
+    ) -> float | None:
+        if xml is None:
+            return None
+
+        elem_interpolation_rate = xml.find(
+            PlotConfigOptionsXPATH.INTERPOLATION_RATE.value,
+        )
+        if (
+            elem_interpolation_rate is not None
+            and elem_interpolation_rate.text is not None
+        ):
+            return float(elem_interpolation_rate.text)
 
         return None
 
     @staticmethod
-    def _get_color_from_xml(xml: ET.ElementTree | None):
-        Ecolor = xml.find(PlotConfigOptionsXPATH.COLOR.value)
-        if Ecolor is not None:
-            return Ecolor.text
+    def _get_dpi_from_xml(xml: ElementTree.ElementTree | None) -> int | None:
+        if xml is None:
+            return None
+
+        elem_dpi = xml.find(PlotConfigOptionsXPATH.DPI.value)
+        if elem_dpi is not None and elem_dpi.text is not None:
+            return int(elem_dpi.text)
+
         return None
 
     @staticmethod
-    def _get_legend_from_xml(xml: ET.ElementTree | None):
-        Elegend = xml.find(PlotConfigOptionsXPATH.LEGEND.value)
-        if Elegend is not None:
-            return Elegend.text
+    def _get_color_from_xml(xml: ElementTree.ElementTree | None) -> str | None:
+        if xml is None:
+            return None
+        elem_color = xml.find(PlotConfigOptionsXPATH.COLOR.value)
+        if elem_color is not None and elem_color.text is not None:
+            return elem_color.text
         return None
 
     @staticmethod
-    def _get_title_from_xml(xml: ET.ElementTree | None):
-        Etitle = xml.find(PlotConfigOptionsXPATH.TITLE.value)
-        if Etitle is not None:
-            return Etitle.text
+    def _get_legend_from_xml(xml: ElementTree.ElementTree | None) -> str | None:
+        if xml is None:
+            return None
+
+        elem_legend = xml.find(PlotConfigOptionsXPATH.LEGEND.value)
+        if elem_legend is not None and elem_legend.text is not None:
+            return elem_legend.text
+        return None
+
+    @staticmethod
+    def _get_title_from_xml(xml: ElementTree.ElementTree | None) -> str | None:
+        if xml is None:
+            return None
+        elem_title = xml.find(PlotConfigOptionsXPATH.TITLE.value)
+        if elem_title is not None and elem_title.text is not None:
+            return elem_title.text
         return None
 
     #########################
     # Encoder YAML
     #########################
 
-    def to_yaml_file(self, file: Path):
+    def to_yaml_file(self: Self, file: Path) -> None:
         file.write_text(self.to_yaml_string())
 
-    def to_yaml_string(self):
+    def to_yaml_string(self: Self) -> str:
         yaml_string_data: str = ""
 
         yaml_string_list: list[str] = []
@@ -294,44 +336,37 @@ class PlotConfig(Config, DecoderXML, EncoderYAML):
 
         return yaml_string_data
 
-    def _y_offset_to_yaml(self) -> str | None:
+    def _y_offset_to_yaml(self: Self) -> str | None:
         if self.y_offset is not None:
             return f"{PlotConfigOptions.Y_OFFSET.value}: {self.y_offset}"
-        else:
-            return None
+        return None
 
-    def _x_limit_to_yaml(self) -> str | None:
+    def _x_limit_to_yaml(self: Self) -> str | None:
         if self.x_limit is not None:
-            return f"{PlotConfigOptions.X_LIMIT.value}: [{self.x_limit.min}, {self.x_limit.max}]"
-        else:
-            return None
+            return f"{PlotConfigOptions.X_LIMIT.value}: [{self.x_limit.min_value}, {self.x_limit.max_value}]"
+        return None
 
-    def _y_limit_to_yaml(self) -> str | None:
+    def _y_limit_to_yaml(self: Self) -> str | None:
         if self.y_limit is not None:
-            return f"{PlotConfigOptions.Y_LIMIT.value}: [{self.y_limit.min}, {self.y_limit.max}]"
-        else:
-            return None
+            return f"{PlotConfigOptions.Y_LIMIT.value}: [{self.y_limit.min_value}, {self.y_limit.max_value}]"
+        return None
 
-    def _interpolation_rate_to_yaml(self) -> str | None:
+    def _interpolation_rate_to_yaml(self: Self) -> str | None:
         if self.interpolation_rate is not None:
             return f"{PlotConfigOptions.INTERPOLATION_RATE.value}: {self.interpolation_rate}"
-        else:
-            return None
+        return None
 
-    def _dpi_to_yaml(self) -> str | None:
+    def _dpi_to_yaml(self: Self) -> str | None:
         if self.dpi is not None:
             return f"{PlotConfigOptions.DPI.value}: {self.dpi}"
-        else:
-            return None
+        return None
 
-    def _color_to_yaml(self) -> str | None:
+    def _color_to_yaml(self: Self) -> str | None:
         if self.color is not None:
             return f"{PlotConfigOptions.COLOR.value}: '{self.color}'"
-        else:
-            return None
+        return None
 
-    def _legend_to_yaml(self) -> str | None:
+    def _legend_to_yaml(self: Self) -> str | None:
         if self.legend is not None:
             return f"{PlotConfigOptions.LEGEND.value}: '{self.legend}'"
-        else:
-            return None
+        return None

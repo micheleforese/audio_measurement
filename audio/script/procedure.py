@@ -1,8 +1,9 @@
 import copy
+import sys
+from collections.abc import Callable
 from enum import Enum, auto
 from math import log10
 from pathlib import Path
-from collections.abc import Callable
 
 import click
 from rich.panel import Panel
@@ -10,8 +11,6 @@ from rich.prompt import Confirm, Prompt
 
 from audio.config.sweep import SweepConfig
 from audio.console import console
-from audio.model.file import File
-from audio.model.insertion_gain import InsertionGain
 from audio.model.set_level import SetLevel
 from audio.plot import multiplot
 from audio.procedure import DataProcedure, Procedure
@@ -30,7 +29,7 @@ from audio.procedure.step import (
     ProcedureTask,
     ProcedureText,
 )
-from audio.sampling import config_set_level, plot_from_csv, sampling_curve
+from audio.sampling import config_set_level
 
 
 @click.command()
@@ -46,10 +45,9 @@ def procedure(
     procedure_name: Path,
     home: Path,
 ):
-
     if not procedure_name.exists() or not procedure_name.is_file():
         console.print(
-            Panel(f"[ERROR] - Procedure file: {procedure_name} does not exists.")
+            Panel(f"[ERROR] - Procedure file: {procedure_name} does not exists."),
         )
 
     proc = Procedure.from_xml_file(file=procedure_name)
@@ -65,11 +63,12 @@ class AppAction(Enum):
     EXIT_TASK = auto()
 
 
-def exec_proc(data: DataProcedure, list_step: list[ProcedureStep]):
+def exec_proc(data: DataProcedure, list_step: list[ProcedureStep]) -> None:
     idx_tot = len(list_step)
 
     procedure_step_dict: dict[
-        type, Callable[[DataProcedure, ProcedureStep], AppAction | None]
+        type,
+        Callable[[DataProcedure, ProcedureStep], AppAction | None],
     ] = {
         ProcedureText: step_procedure_text,
         ProcedureAsk: step_procedure_ask,
@@ -89,28 +88,27 @@ def exec_proc(data: DataProcedure, list_step: list[ProcedureStep]):
         console.print(Panel(f"{idx}/{idx_tot}: {step.__class__.__name__}()"))
 
         app_action: AppAction | None = procedure_step_dict.get(
-            type(step), step_not_implemented
+            type(step),
+            step_not_implemented,
         )(data, step)
 
         if app_action is not None:
             if app_action == AppAction.EXIT_APP:
-                exit()
+                sys.exit()
             elif app_action == AppAction.EXIT_TASK:
-                return None
-
-    return None
+                return
 
 
 def step_not_implemented(_: DataProcedure, step: ProcedureStep):
     console.print("[STEP] - Unknown.")
 
-    return None
+    return
 
 
 def step_procedure_text(_: DataProcedure, step: ProcedureText):
     console.print(step.text)
 
-    return None
+    return
 
 
 def step_procedure_ask(_: DataProcedure, step: ProcedureAsk):
@@ -119,7 +117,7 @@ def step_procedure_ask(_: DataProcedure, step: ProcedureAsk):
     while not confirm:
         confirm = Confirm.ask(step.text)
 
-    return None
+    return
 
 
 def step_procedure_default(data: DataProcedure, step: ProcedureDefault):
@@ -127,12 +125,12 @@ def step_procedure_default(data: DataProcedure, step: ProcedureDefault):
     data.default_sweep_config.offset = copy.deepcopy(step.sweep_file_offset)
     data.default_sweep_config.offset_sweep = copy.deepcopy(step.sweep_file_offset_sweep)
     data.default_sweep_config.insertion_gain = copy.deepcopy(
-        step.sweep_file_insertion_gain
+        step.sweep_file_insertion_gain,
     )
 
     data.default_sweep_config.config = step.sweep_config
 
-    return None
+    return
 
 
 def step_procedure_file(data: DataProcedure, step: ProcedureFile):
@@ -142,55 +140,30 @@ def step_procedure_file(data: DataProcedure, step: ProcedureFile):
     else:
         console.log(f"[FILE] - File added: '{step.key}' - '{step.path}'")
 
-    return None
+    return
 
 
 def step_procedure_set_level(data: DataProcedure, step: ProcedureSetLevel):
     sampling_config = step.config
-    sampling_config.print()
+    if sampling_config is None:
+        return
+    sampling_config.print_object()
 
     file_set_level_path: Path | None = None
     file_sweep_plot_path: Path | None = None
 
-    if step.file_set_level_key is not None:
-        file_set_level_path = data.cache_file.get(step.file_set_level_key)
+    # TODO: create the
 
-        if file_set_level_path is None:
-            console.log(
-                f"[FILE] - key '{step.file_set_level_key}' not found.",
-                style="error",
-            )
-
-            console.log(data.cache_file.database)
-    elif step.file_set_level_name is not None:
-        file_set_level_path = Path(data.root / step.file_set_level_name)
-    else:
-        console.log("[FILE] - File not present.", style="error")
-
-    if step.file_plot_key is not None:
-        file_sweep_plot_path = data.cache_file.get(step.file_plot_key)
-
-        if file_sweep_plot_path is None:
-            console.log(
-                f"[FILE] - key '{step.file_plot_key}' not found.",
-                style="error",
-            )
-
-            console.log(data.cache_file.database)
-    elif step.file_plot_name is not None:
-        file_sweep_plot_path = Path(data.root / step.file_plot_name)
-    else:
-        console.log("[FILE] - File not present.", style="error")
-
-    if not step.override:
-        if file_set_level_path.exists() and file_set_level_path.is_file():
-            console.log(f"[FILE] - File '{file_set_level_path}' already exists.")
-            return
-
-    dBu = 0
+    dBu: float = 0.0
 
     if step.dBu is not None:
         dBu = step.dBu
+
+    if sampling_config is None:
+        return
+
+    if file_sweep_plot_path is None:
+        return
 
     config_set_level(
         dBu=dBu,
@@ -200,7 +173,7 @@ def step_procedure_set_level(data: DataProcedure, step: ProcedureSetLevel):
         debug=True,
     )
 
-    return None
+    return
 
 
 def step_procedure_serial_number(data: DataProcedure, step: ProcedureSerialNumber):
@@ -209,7 +182,7 @@ def step_procedure_serial_number(data: DataProcedure, step: ProcedureSerialNumbe
     confirm: bool = False
 
     while not confirm:
-        serial_number = Prompt.ask("Inserisci il serial-number")
+        serial_number = Prompt.ask("Insert il serial-number")
 
         confirm = Confirm.ask(f"The serial-number is: '[blue bold]{serial_number}[/]'")
 
@@ -218,7 +191,7 @@ def step_procedure_serial_number(data: DataProcedure, step: ProcedureSerialNumbe
     data.root.mkdir(parents=True, exist_ok=True)
     console.print(f"Created Dir at: '{data.root}'")
 
-    return None
+    return
 
 
 def step_procedure_insertion_gain(data: DataProcedure, step: ProcedureInsertionGain):
@@ -244,13 +217,13 @@ def step_procedure_insertion_gain(data: DataProcedure, step: ProcedureInsertionG
             console.log(f"[FILE] - key: {step.file_gain_key} not present.")
             console.log(data.cache_file)
 
-    calibration: float = SetLevel(file_calibration_path).set_level
-    set_level: float = SetLevel(file_set_level).set_level
+    calibration: float = SetLevel.from_file(file_calibration_path).set_level
+    set_level: float = SetLevel.from_file(file_set_level).set_level
     gain: float = 20 * log10(calibration / set_level)
 
     file_gain_path.write_text(f"{gain:.5}", encoding="utf-8")
 
-    return None
+    return
 
 
 def step_procedure_print(data: DataProcedure, step: ProcedurePrint):
@@ -258,188 +231,87 @@ def step_procedure_print(data: DataProcedure, step: ProcedurePrint):
         variable: str | None = data.data.get(var, None)
         if variable is not None:
             console.print(
-                "{}: {}".format(var, Path(variable).read_text(encoding="utf-8"))
+                "{}: {}".format(var, Path(variable).read_text(encoding="utf-8")),
             )
 
-    return None
+    return
 
 
 def step_procedure_sweep(data: DataProcedure, step: ProcedureSweep):
-    file_set_level_path: Path | None = None
-    file_offset_path: Path | None = None
-    file_offset_sweep_path: Path | None = None
-    file_insertion_gain_path: Path | None = None
+    if data.default_sweep_config.config is None:
+        # TODO: decide if config must be None
+        return
 
     config: SweepConfig = copy.deepcopy(data.default_sweep_config.config)
 
     config.override(step.config)
 
-    config.print()
+    config.print_object()
 
     if config is None:
         console.print("config is None.", style="error")
-        exit()
+        sys.exit()
 
+    # TODO: retrieve Set Level from somewhere
     # Set Level
-    file_set_level: File = File()
-    if data.default_sweep_config.set_level is not None:
-        file_set_level = data.default_sweep_config.set_level
+    # if data.default_sweep_config.set_level is not None:
 
-    if step.file_set_level is not None:
-        file_set_level.overload(
-            key=step.file_set_level.key, path=step.file_set_level.path
-        )
-    console.print(file_set_level)
+    # if step.file_set_level is not None:
+    #     file_set_level.overload(
 
-    if file_set_level.key is not None:
-        file_set_level_path = data.cache_file.get(file_set_level.key)
+    # if file_set_level.key is not None:
 
-        if file_set_level_path is None:
-            console.log(
-                f"[FILE] - key '{file_set_level.key}' not found.",
-                style="error",
-            )
+    #     if file_set_level_path is None:
+    #         console.log(
 
-            console.log(data.cache_file.database)
-
-    elif file_set_level.path is not None:
-        file_set_level_path = Path(data.root / file_set_level.path)
-    else:
-        console.log("[FILE] - File not present.", style="error")
-        console.log(data.cache_file.database)
-        exit()
-
+    # TODO: retrieve Y Offset dB value from somewhere
     # Y Offset dB
-    file_offset: File = File()
-    if data.default_sweep_config.offset is not None:
-        file_offset = data.default_sweep_config.offset
+    # if data.default_sweep_config.offset is not None:
 
-    if step.file_offset is not None:
-        file_offset.overload(key=step.file_offset.key, path=step.file_offset.path)
-    console.print(file_offset)
+    # if step.file_offset is not None:
 
-    if file_offset.key is not None:
-        file_offset_path = data.cache_file.get(file_offset.key)
+    # if file_offset.key is not None:
 
-        if file_offset_path is None:
-            console.log(
-                f"[FILE] - key '{file_offset.key}' not found.",
-                style="error",
-            )
+    #     if file_offset_path is None:
+    #         console.log(
 
-            console.log(data.cache_file.database)
-
-    elif file_offset.path is not None:
-        file_offset_path = Path(data.root / file_offset.path)
-    else:
-        console.log("[FILE] - File not present.", style="error")
-        console.log(data.cache_file.database)
-        exit()
-
+    # TODO: retrieve Y Offset dB - file_offset_sweep_path value from somewhere
     # Y Offset dB - file_offset_sweep_path
-    file_offset_sweep: File = File()
-    if data.default_sweep_config.offset_sweep is not None:
-        file_offset_sweep = data.default_sweep_config.offset_sweep
+    #
+    # if data.default_sweep_config.offset_sweep is not None:
 
-    console.log(["file_offset_sweep", step.file_offset_sweep])
-    console.log(["STP", step])
+    # if step.file_offset_sweep is not None:
+    #     file_offset_sweep.overload(
 
-    if step.file_offset_sweep is not None:
-        file_offset_sweep.overload(
-            key=step.file_offset_sweep.key, path=step.file_offset_sweep.path
-        )
+    # if file_offset_sweep.key is not None:
 
-    console.print(file_offset_sweep)
+    #     if file_offset_sweep_path is None:
+    #         console.log(
 
-    console.log(file_offset_sweep.key)
-    if file_offset_sweep.key is not None:
-        file_offset_sweep_path = data.cache_file.get(file_offset_sweep.key)
-
-        if file_offset_sweep_path is None:
-            console.log(
-                f"[FILE] - key '{file_offset_sweep.key}' not found.",
-                style="error",
-            )
-
-            console.log(data.cache_file.database)
-
-    elif file_offset_sweep.path is not None:
-        file_offset_sweep_path = Path(data.root / file_offset_sweep.path)
-    else:
-        file_offset_sweep_path = None
-
+    # TODO: retrieve Insertion Gain value from somewhere
     # Insertion Gain
-    file_insertion_gain: File = File()
-    if data.default_sweep_config.insertion_gain is not None:
-        file_insertion_gain = data.default_sweep_config.insertion_gain
+    #
+    # if data.default_sweep_config.insertion_gain is not None:
 
-    if step.file_insertion_gain is not None:
-        file_insertion_gain.overload(
-            key=step.file_insertion_gain.key, path=step.file_insertion_gain.path
-        )
-    console.print(file_insertion_gain)
+    # if step.file_insertion_gain is not None:
+    #     file_insertion_gain.overload(
 
-    if file_insertion_gain.key is not None:
-        file_insertion_gain_path = data.cache_file.get(file_insertion_gain.key)
+    # if file_insertion_gain.key is not None:
 
-        if file_insertion_gain_path is None:
-            console.log(
-                f"[FILE] - key '{file_insertion_gain.key}' not found.",
-                style="error",
-            )
-            console.log(data.cache_file.database)
-    elif file_insertion_gain.path is not None:
-        file_insertion_gain_path = Path(data.root / file_insertion_gain.path)
-    else:
-        console.log("[FILE] - File not present.", style="error")
-        console.log(data.cache_file.database)
-        exit()
+    #     if file_insertion_gain_path is None:
+    #         console.log(
 
+    # TODO: retrieve all above object value from somewhere
     # Retrieving the data
-    set_level = SetLevel(file_set_level_path).set_level
-    y_offset_dB = SetLevel(file_offset_path).y_offset_dB
-    insertion_gain = InsertionGain(file_insertion_gain_path).insertion_gain_dB
+    #
 
-    config.rigol.amplitude_peak_to_peak = set_level
-    config.plot.y_offset = y_offset_dB
-    config.plot.legend = (
-        f"{config.plot.legend}, Vpp IN={set_level:.2f} V, G={insertion_gain} dB"
-    )
-    config.print()
+    # config.plot.legend = (
 
-    home_dir_path: Path = data.root / step.name_folder
-    measurement_file: Path = home_dir_path / (step.name_folder + ".csv")
-    file_sweep_plot: Path = home_dir_path / (step.name_folder + ".png")
+    # TODO: rewrite the sweep process with the new Database
 
-    console.print(f"[FILE] - Measurement: '{measurement_file}'")
-    console.print(f"[FILE] - Sweep plot: '{file_sweep_plot}'")
+    # sampling_curve(
 
-    if not step.override:
-        if measurement_file.exists() and measurement_file.is_file():
-            console.log(f"[FILE] - File '{measurement_file}' already exists.")
-            return
-
-    sampling_curve(
-        config=config,
-        sweep_home_path=home_dir_path,
-        sweep_file_path=measurement_file,
-        debug=True,
-    )
-
-    if not step.override:
-        if file_sweep_plot.exists() and file_sweep_plot.is_file():
-            console.log(f"[FILE] - File '{file_sweep_plot}' already exists.")
-            return
-
-    plot_from_csv(
-        measurements_file_path=measurement_file,
-        plot_config=config.plot,
-        file_offset_sweep_path=file_offset_sweep_path,
-        plot_file_path=file_sweep_plot,
-        debug=True,
-    )
-
-    return None
+    # plot_from_csv(
 
 
 def step_procedure_multiplot(data: DataProcedure, step: ProcedureMultiPlot):
@@ -455,14 +327,14 @@ def step_procedure_multiplot(data: DataProcedure, step: ProcedureMultiPlot):
         step.config,
     )
 
-    return None
+    return
 
 
 def step_procedure_task(data: DataProcedure, step: ProcedureTask):
     console.print(Panel.fit(f"[TASK] - [green]{step.text}[/]"), justify="center")
 
     exec_proc(data, list_step=step.steps)
-    return None
+    return
 
 
 def step_procedure_phase_sweep(data: DataProcedure, step: ProcedurePhaseSweep):

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import enum
 
 import numpy as np
@@ -21,7 +23,6 @@ def interpolation_model(
     n_points: int,
     kind: INTERPOLATION_KIND = INTERPOLATION_KIND.LINEAR,
 ):
-
     intrp_model = interp1d(xx, yy, kind=kind.value)
 
     x_interpolated = np.linspace(
@@ -58,7 +59,7 @@ def logx_interpolation_model(
     return x_interpolated, y_interpolated
 
 
-def logx_interpolation_model_Bspline(
+def logx_interpolation_model_smoothing_spline(
     x_log: list[float],
     yy: list[float],
     interpolation_rate: int,

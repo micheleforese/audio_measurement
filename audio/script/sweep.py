@@ -127,7 +127,6 @@ def sweep(
     simulate: bool,
     pdf: bool,
 ):
-
     HOME_PATH = home.absolute().resolve()
 
     datetime_now = datetime.now().strftime(r"%Y-%m-%d--%H-%M-%f")
@@ -139,7 +138,7 @@ def sweep(
         raise Exception("Configurations not loaded correctly.")
 
     if debug:
-        cfg.print()
+        cfg.print_object()
 
     # Override Configurations
     cfg.rigol.override(amplitude_pp)
@@ -155,7 +154,7 @@ def sweep(
     amplitude_peak_to_peak: float | None = None
 
     if set_level_file:
-        amplitude_peak_to_peak = SetLevel(set_level_file).set_level
+        amplitude_peak_to_peak = SetLevel.from_file(set_level_file).set_level
     else:
         set_level_data = SetLevel.from_most_recent(
             HOME_PATH,
@@ -169,13 +168,13 @@ def sweep(
     )
 
     cfg.plot.override(
-        y_offset=set_level_data.y_offset_dB,
+        y_offset=set_level_data.y_offset_db,
         x_limit=Range.from_list(x_lim),
         y_limit=Range.from_list(y_lim),
     )
 
     if debug:
-        cfg.print()
+        cfg.print_object()
 
     home_measurements_dir_path: pathlib.Path = pathlib.Path(
         HOME_PATH / f"{datetime_now}",
@@ -204,7 +203,6 @@ def sweep(
             console.log(f"Sweep time: {time_execution}")
 
     if not simulate:
-
         plot_from_csv(
             plot_config=cfg.plot,
             measurements_file_path=measurements_file_path,

@@ -5,7 +5,6 @@ theme:
   palette:
     scheme: slate
 
-
 nav:
   - Home: index.md
   - Install: install.md
@@ -22,7 +21,7 @@ markdown_extensions:
       custom_fences:
         - name: mermaid
           class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_code_format
+          # format: !!python/name:pymdownx.superfences.fence_code_format
 
 extra_javascript:
   - javascripts/mathjax.js

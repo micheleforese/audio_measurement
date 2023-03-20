@@ -82,7 +82,6 @@ def sweep_debug(
             figsize=(30, 20),
             dpi=300,
         )
-        # plt.tight_layout()
 
         fig, axd = plot
 
@@ -114,11 +113,10 @@ def sweep_debug(
             label=f"Voltage Sample - rms={rms_samp:.5}",
         )
         ax_time_domain_samples.set_title(
-            f"Samples on Time Domain - Frequency: {round(single_sweep_data.frequency, 5)}"
+            f"Samples on Time Domain - Frequency: {round(single_sweep_data.frequency, 5)}",
         )
         ax_time_domain_samples.set_ylabel("Voltage [$V$]")
         ax_time_domain_samples.set_xlabel("Time [$s$]")
-        # ax_time_domain_samples.legend(bbox_to_anchor=(1, 0.5), loc="center left")
         ax_time_domain_samples.legend(loc="best")
 
         # PLOT: RMS iterating every 5 values
@@ -127,7 +125,7 @@ def sweep_debug(
             rms_samp_iter_list: list[float] = [0]
             for n in range(5, len(single_sweep_data.voltages.values), 5):
                 rms_samp_iter_list.append(
-                    RMS.fft(single_sweep_data.voltages.values[0:n])
+                    RMS.fft(single_sweep_data.voltages.values[0:n]),
                 )
 
             plot_rms_samp.plot(

@@ -145,7 +145,6 @@ def plot(
         is_most_recent_file = True
 
     if is_most_recent_file:
-
         measurement_dirs: list[pathlib.Path] = get_subfolder(HOME_PATH)
 
         if len(measurement_dirs) > 0:
@@ -167,11 +166,12 @@ def plot(
                 plot_config=sweep_config.plot,
                 debug=debug,
             )
-            if plot_file_format == "png":
-                if pdf:
-                    create_latex_file(
-                        plot_file_path, home=HOME_PATH, latex_home=latex_home
-                    )
+            if plot_file_format == "png" and pdf:
+                create_latex_file(
+                    plot_file_path,
+                    home=HOME_PATH,
+                    latex_home=latex_home,
+                )
     else:
         console.print("Cannot create a plot file.", style="error")
         console.print("Cannot create a plot file.", style="error")

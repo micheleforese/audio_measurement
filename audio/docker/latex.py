@@ -1,34 +1,39 @@
 import os
-import pathlib
+from pathlib import Path
+from typing import Self
 
 from rich.console import Group
 from rich.live import Live
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import Progress, SpinnerColumn, TaskID, TextColumn
 
 from audio.console import console
-from audio.docker import Docker_CLI, User, Volume
+from audio.docker import DockerCLI, User, Volume
 from audio.docker.utility import exec_command
 
 
 class Package:
-
     package_name: str
     config: list[str] | None
 
-    def __init__(self, package_name: str, config: list[str] | None = None) -> None:
+    def __init__(
+        self: Self,
+        package_name: str,
+        config: list[str] | None = None,
+    ) -> None:
         self.package_name = package_name
         self.config = config
 
 
-def use_package(packages: list[Package]):
+def use_package(packages: list[Package]) -> str:
     latex_packages: str = ""
 
     for p in packages:
         latex_packages = "{}{}".format(
             latex_packages,
             "\\usepackage{}{{{}}}\n".format(
-                "[{}]".format(",".join(p.config)) if p.config else "", p.package_name
+                "[{}]".format(",".join(p.config)) if p.config else "",
+                p.package_name,
             ),
         )
 
@@ -36,13 +41,13 @@ def use_package(packages: list[Package]):
 
 
 def create_latex_file(
-    image_file: pathlib.Path,
-    home: pathlib.Path,
-    latex_home: pathlib.Path,
+    image_file: Path,
+    home: Path,
+    latex_home: Path,
+    *,
     debug: bool = False,
-):
-
-    progress_list_task = Progress(
+) -> None:
+    progress_list_task: Progress = Progress(
         SpinnerColumn(),
         "•",
         TextColumn(
@@ -51,23 +56,26 @@ def create_latex_file(
         transient=True,
     )
 
-    live_group = Group(Panel(progress_list_task))
+    live_group: Group = Group(Panel(progress_list_task))
 
-    live = Live(
+    live: Live = Live(
         live_group,
         transient=True,
         console=console,
     )
     live.start()
 
-    task_latex = progress_list_task.add_task("Create Latex pdf", task="Configuration")
+    task_latex: TaskID = progress_list_task.add_task(
+        "Create Latex pdf",
+        task="Configuration",
+    )
     progress_list_task.start_task(task_latex)
 
     if debug:
         console.print(f'[PATH - image_file] - "{image_file.absolute()}"')
         console.print(f'[PATH - home] - "{home.absolute()}"')
 
-    latex_packages = use_package(
+    latex_packages: str = use_package(
         [
             Package("tikz"),
             Package("tikz-3dplot"),
@@ -86,43 +94,41 @@ def create_latex_file(
             Package("url"),
             Package("blindtext"),
             Package("tikzpagenodes"),
-        ]
+        ],
     )
 
-    latex_start = (
-        r"\documentclass[a4, landscape]{article}"
-        + "\n"
+    latex_start: str = (
+        "\documentclass[a4, landscape]{article} \n"
         + latex_packages
-        + "\pgfplotsset{compat=1.18}"
-        + "\n"
-        + r"\begin{document}"
-        + "\n"
+        + "\pgfplotsset{compat=1.18}\n"
+        "\begin{document}\n"
     )
 
-    latex_end = "\n" + r"\end{document}"
+    latex_end = "\n\end{document}"
 
-    docker_image_file_path = image_file.name
+    docker_image_file_path: str = image_file.name
     if debug:
         console.print(
-            f'[PATH - docker - image_file] - "{docker_image_file_path}"'
+            f'[PATH - docker - image_file] - "{docker_image_file_path}"',
         )
 
-    latex = (
-        "" + "\n" + r"\null" + "\n" + r"\vfill" + "\n"
-        r"\begin{figure}[h]"
-        + "\centering"
-        + r"\includegraphics[width=.9\paperwidth]{"
-        + f"{docker_image_file_path}"
-        + r"}"
-        + "\n"
-        + r"\end{figure}"
-        + "\n"
-        + r"\vfill"
-        + "\n"
-        + "\n"
-        + r"\begin{tikzpicture}[remember picture,overlay,shift={(current page.north east)}]"
-        + "\n"
-        + r"\node[anchor=north east,xshift=-3cm,yshift=-2.5cm]{\includegraphics[width=2cm]{"
+    latex: str = (
+        "\n\null\n"
+        "\vfill\n"
+        "\begin{figure}[h]"
+        "\centering"
+        r"\includegraphics[width=.9\paperwidth]{"
+        f"{docker_image_file_path}"
+        r"}"
+        "\n"
+        r"\end{figure}"
+        "\n"
+        r"\vfill"
+        "\n"
+        "\n"
+        r"\begin{tikzpicture}[remember picture,overlay,shift={(current page.north east)}]"
+        "\n"
+        r"\node[anchor=north east,xshift=-3cm,yshift=-2.5cm]{\includegraphics[width=2cm]{"
         + "{}".format("../logo-acme_systems.jpeg")
         + "}};"
         + "\n"
@@ -133,29 +139,27 @@ def create_latex_file(
         + r"\node[anchor=north west,xshift=3.5cm,yshift=-1.5cm]{\includegraphics[width=2cm]{"
         + "{}".format("../logo-livio_argentini.jpeg")
         + "}};"
-        + "\n"
-        + r"\end{tikzpicture}"
+        "\n"
+        r"\end{tikzpicture}"
     )
 
-    latex_complete = f"{latex_start}{latex}{latex_end}"
+    latex_complete: str = f"{latex_start}{latex}{latex_end}"
 
-    latex_file_path: pathlib.Path = image_file.with_suffix(".tex")
-    docker_latex_file_path = latex_file_path.name
+    latex_file_path: Path = image_file.with_suffix(".tex")
+    docker_latex_file_path: str = latex_file_path.name
 
-    pdf_file_path: pathlib.Path = latex_file_path.with_suffix(".pdf")
+    pdf_file_path: Path = latex_file_path.with_suffix(".pdf")
 
-    with open(latex_file_path, "w") as f:
+    with Path.open(latex_file_path, "w") as f:
         f.write(latex_complete)
 
     console.print(
         Panel(
             '[bold][[blue]FILE[/blue] - [cyan]LATEX[/cyan]][/bold] - "[bold green]{}[/bold green]"'.format(
-                latex_file_path.absolute().resolve()
-            )
-        )
+                latex_file_path.absolute().resolve(),
+            ),
+        ),
     )
-
-    # out_directory = "build"
 
     progress_list_task.update(task_latex, task="Docker Image Running")
 
@@ -177,15 +181,12 @@ def create_latex_file(
         console.log(user_group)
         console.log(stderr)
 
-    docker_instance = Docker_CLI()
+    docker_instance: DockerCLI = DockerCLI()
 
-    docker_command_run = docker_instance.run(
+    docker_command_run: str = docker_instance.run(
         docker_image,
-        remove_on_exit=True,
         user=User(
-            # id="".join(filter(str.isdigit, user_id)),
-            # group="".join(filter(str.isdigit, user_group)),
-            id=1000,
+            user_id=1000,
             group=1000,
         ),
         volume=Volume(local=home.absolute().resolve(), remote="/data"),
@@ -194,13 +195,14 @@ def create_latex_file(
             latex_home.name,
             docker_latex_file_path,
         ),
+        remove_on_exit=True,
     )
 
     if debug:
         console.print(
             '[DOCKER] - Command: \n "[bold green]{}[/bold green]"'.format(
-                docker_command_run
-            )
+                docker_command_run,
+            ),
         )
 
     stdout, stderr = exec_command(docker_command_run)
@@ -214,9 +216,9 @@ def create_latex_file(
     console.print(
         Panel(
             '[bold][[blue]FILE[/blue] - [cyan]PDF[/cyan]][/bold] - "[bold green]{}[/bold green]"'.format(
-                pdf_file_path.absolute().resolve()
-            )
-        )
+                pdf_file_path.absolute().resolve(),
+            ),
+        ),
     )
 
     progress_list_task.remove_task(task_latex)

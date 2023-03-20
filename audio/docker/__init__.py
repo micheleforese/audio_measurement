@@ -1,45 +1,46 @@
-import pathlib
+from pathlib import Path
+from typing import Self
 
 
 class User:
-    id: int
+    user_id: int
     group: int
 
-    def __init__(self, id: int, group: int) -> None:
-        self.id = id
+    def __init__(self: Self, user_id: int, group: int) -> None:
+        self.user_id = user_id
         self.group = group
 
 
 class Volume:
-    local: pathlib.Path
-    remote: pathlib.Path
+    local: Path
+    remote: str
 
-    def __init__(self, local: pathlib.Path, remote: pathlib.Path) -> None:
+    def __init__(self: Self, local: Path, remote: str) -> None:
         self.local = local
         self.remote = remote
 
 
-class Docker_CLI:
-    def __init__(self) -> None:
+class DockerCLI:
+    def __init__(self: Self) -> None:
         pass
 
     def run(
-        self,
+        self: Self,
         image: str,
-        remove_on_exit: bool = True,
         user: User | None = None,
         volume: Volume | None = None,
         command: str | None = None,
+        *,
+        remove_on_exit: bool = True,
     ) -> str:
-
-        docker_run_command = ["docker", "run"]
+        docker_run_command: list[str] = ["docker", "run"]
 
         if remove_on_exit:
             docker_run_command.append("--rm")
 
         if user is not None:
             docker_run_command.append(
-                f"--user {str(user.id)}:{str(user.group)}"
+                f"--user {str(user.user_id)}:{str(user.group)}",
             )
 
         if volume is not None:

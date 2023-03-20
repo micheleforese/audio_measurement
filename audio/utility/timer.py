@@ -14,7 +14,7 @@ class Timer_Message:
     elapsed_time: timedelta
     message: str
 
-    def __init__(self, elapsed_time, message):
+    def __init__(self, elapsed_time, message) -> None:
         self.elapsed_time = elapsed_time
         self.message = message
 
@@ -23,7 +23,7 @@ class Timer_Message:
 
     def print(self):
         console.print(
-            Panel(f"[green]{self.message}[/green]: [blue]{self.elapsed_time}[/blue]")
+            Panel(f"[green]{self.message}[/green]: [blue]{self.elapsed_time}[/blue]"),
         )
 
 
@@ -46,7 +46,7 @@ class Timer:
             raise TimerError("Timer is not running. Use start() to start it")
 
         elapsed_time: timedelta = timedelta(
-            seconds=time.perf_counter() - self._start_time
+            seconds=time.perf_counter() - self._start_time,
         )
 
         self._start_time = None

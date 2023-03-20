@@ -3,9 +3,9 @@ from pathlib import Path
 from time import sleep
 
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
+from matplotlib import ticker
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from rich.console import Group
@@ -25,14 +25,14 @@ from usbtmc import Instrument
 from audio.config.plot import PlotConfig
 from audio.config.sweep import SweepConfig
 from audio.console import console
-from audio.device.cDAQ import ni9223
-from audio.math import dBV, percentage_error, transfer_function
+from audio.device.cDAQ import Ni9223
+from audio.math import calculate_voltage_decibel, percentage_error, transfer_function
 from audio.math.algorithm import LogarithmicScale
 from audio.math.interpolation import INTERPOLATION_KIND, logx_interpolation_model
-from audio.math.pid import PID_Controller, Timed_Value
-from audio.math.rms import RMS, RMSResult
+from audio.math.pid import PidController, TimedValue
+from audio.math.rms import RMS, RMS_MODE, RMSResult
 from audio.math.voltage import VdBu_to_Vrms, Vpp_to_Vrms, calculate_gain_dB
-from audio.model.sampling import VoltageSampling
+from audio.model.sampling import VoltageSampling, VoltageSamplingV2
 from audio.model.sweep import SweepData
 from audio.usb.usbtmc import ResourceManager, UsbTmc
 from audio.utility import trim_value
@@ -97,7 +97,7 @@ def sampling_curve(
         "•",
         MofNCompleteColumn(),
         TextColumn(
-            " - Frequency: [bold green]{task.fields[frequency]} - RMS: {task.fields[rms]}"
+            " - Frequency: [bold green]{task.fields[frequency]} - RMS: {task.fields[rms]}",
         ),
         console=console,
         transient=True,
@@ -131,7 +131,7 @@ def sampling_curve(
                 progress_list_task,
                 progress_sweep,
                 progress_task,
-            )
+            ),
         ),
     )
     live = Live(
@@ -143,7 +143,9 @@ def sampling_curve(
     live.start()
 
     task_sampling = progress_list_task.add_task(
-        "Sampling", start=False, task="Retrieving Devices"
+        "Sampling",
+        start=False,
+        task="Retrieving Devices",
     )
     progress_list_task.start_task(task_sampling)
 
@@ -168,17 +170,17 @@ def sampling_curve(
         generator.open()
 
     if config.rigol.amplitude_peak_to_peak > 12:
-        generator.exec(
+        generator.execute(
             [
                 SCPI.set_output(1, Switch.OFF),
-            ]
+            ],
         )
         generator.close()
         console.print("[ERROR] - Voltage Input > 12.", style="error")
         exit()
 
     # Sets the Configuration for the Voltmeter
-    generator.exec(
+    generator.execute(
         [
             SCPI.reset(),
             SCPI.clear(),
@@ -193,12 +195,12 @@ def sampling_curve(
                 ),
             ),
             SCPI.set_source_frequency(1, round(config.sampling.frequency_min, 5)),
-        ]
+        ],
     )
-    generator.exec(
+    generator.execute(
         [
             SCPI.set_output(1, Switch.ON),
-        ]
+        ],
     )
 
     sleep(2)
@@ -233,10 +235,11 @@ def sampling_curve(
     progress_sweep.start_task(task_sweep)
 
     Fs = trim_value(
-        frequency * config.sampling.Fs_multiplier, max_value=config.nidaq.Fs_max
+        frequency * config.sampling.Fs_multiplier,
+        max_value=config.nidaq.Fs_max,
     )
 
-    nidaq = ni9223(
+    nidaq = Ni9223(
         config.sampling.number_of_samples,
         input_channel=[config.nidaq.input_channel],
     )
@@ -246,32 +249,29 @@ def sampling_curve(
     nidaq.set_sampling_clock_timing(Fs)
 
     for frequency in log_scale.f_list:
-
         # Sets the Frequency
         generator.write(SCPI.set_source_frequency(1, round(frequency, 5)))
 
         sleep(
             config.sampling.delay_measurements
             if config.sampling.delay_measurements is not None
-            else DEFAULT.get("delay")
+            else DEFAULT.get("delay"),
         )
 
         # Trim number_of_samples to MAX value
         Fs = trim_value(
-            frequency * config.sampling.Fs_multiplier, max_value=config.nidaq.Fs_max
+            frequency * config.sampling.Fs_multiplier,
+            max_value=config.nidaq.Fs_max,
         )
 
         # Trim number_of_samples to MAX value
-        if config.sampling.number_of_samples_max is not None:
-            if (
-                config.sampling.number_of_samples
-                > config.sampling.number_of_samples_max
-            ):
-
-                config.sampling.number_of_samples = trim_value(
-                    config.sampling.number_of_samples,
-                    config.sampling.number_of_samples_max,
-                )
+        if config.sampling.number_of_samples_max is not None and (
+            config.sampling.number_of_samples > config.sampling.number_of_samples_max
+        ):
+            config.sampling.number_of_samples = trim_value(
+                config.sampling.number_of_samples,
+                config.sampling.number_of_samples_max,
+            )
 
         oversampling_ratio = Fs / frequency
         n_periods = config.sampling.number_of_samples / oversampling_ratio
@@ -286,7 +286,7 @@ def sampling_curve(
         time.start()
 
         sweep_frequency_path = measurements_path / "{}".format(
-            round(frequency, 5)
+            round(frequency, 5),
         ).replace(".", "_", 1)
         sweep_frequency_path.mkdir(parents=True, exist_ok=True)
 
@@ -321,13 +321,14 @@ def sampling_curve(
                 rms=f"{round(result.rms, 5)}",
             )
 
-            gain_bBV: float = dBV(
-                V_in=Vpp_to_Vrms(config.rigol.amplitude_peak_to_peak),
-                V_out=result.rms,
+            gain_bBV: float = calculate_voltage_decibel(
+                input_voltage=Vpp_to_Vrms(config.rigol.amplitude_peak_to_peak),
+                output_voltage=result.rms,
             )
 
             transfer_func_dB = transfer_function(
-                result.rms, Vpp_to_Vrms(config.rigol.amplitude_peak_to_peak)
+                result.rms,
+                Vpp_to_Vrms(config.rigol.amplitude_peak_to_peak),
             )
 
             if max_dB:
@@ -342,7 +343,8 @@ def sampling_curve(
                 f"{config.rigol.amplitude_peak_to_peak}",
                 f"{round(result.rms, 5):.5f} ",
                 "[{}]{:.2f}[/]".format(
-                    "red" if gain_bBV <= 0 else "green", transfer_func_dB
+                    "red" if gain_bBV <= 0 else "green",
+                    transfer_func_dB,
                 ),
                 f"[cyan]{message.elapsed_time}[/]",
                 f"{max_voltage:.5f}",
@@ -366,7 +368,7 @@ def sampling_curve(
                 oversampling_ratio_list,
                 n_periods_list,
                 n_samples_list,
-            )
+            ),
         ),
         columns=[
             "frequency",
@@ -393,7 +395,7 @@ def sampling_curve(
 
     progress_list_task.update(task_sampling, task="Shutting down the Channel 1")
 
-    generator.exec(
+    generator.execute(
         [
             SCPI.set_output(1, Switch.OFF),
             SCPI.clear(),
@@ -407,8 +409,8 @@ def sampling_curve(
 
     console.print(
         Panel(
-            f'[bold][[blue]FILE[/blue] - [cyan]CSV[/cyan]][/bold] - "[bold green]{sweep_file_path.absolute()}[/bold green]"'
-        )
+            f'[bold][[blue]FILE[/blue] - [cyan]CSV[/cyan]][/bold] - "[bold green]{sweep_file_path.absolute()}[/bold green]"',
+        ),
     )
 
     live.stop()
@@ -421,7 +423,6 @@ def plot_from_csv(
     plot_config: PlotConfig | None = None,
     debug: bool = False,
 ):
-
     progress_list_task = Progress(
         SpinnerColumn(),
         "•",
@@ -453,7 +454,6 @@ def plot_from_csv(
     cfg = sweep_data.config
 
     if file_offset_sweep_path is not None:
-
         balancer = SweepData.from_csv_file(file_offset_sweep_path)
 
         sweep_data.data["dBV"] = sweep_data.data["dBV"] - balancer.data["dBV"]
@@ -475,14 +475,15 @@ def plot_from_csv(
             Panel(
                 f"min dB: {min(y_dBV)}\n"
                 + f"max dB: {max(y_dBV)}\n"
-                + f"diff dB: {abs(max(y_dBV) - min(y_dBV))}"
-            )
+                + f"diff dB: {abs(max(y_dBV) - min(y_dBV))}",
+            ),
         )
 
     progress_list_task.update(task_plotting, task="Interpolate")
 
     plot: tuple[Figure, Axes] = plt.subplots(
-        figsize=(16 * 2, 9 * 2), dpi=cfg.dpi if cfg.dpi else 300
+        figsize=(16 * 2, 9 * 2),
+        dpi=cfg.dpi if cfg.dpi else 300,
     )
 
     fig: Figure
@@ -495,7 +496,7 @@ def plot_from_csv(
         y_dBV,
         int(
             len(x_frequency)
-            * (cfg.interpolation_rate if cfg.interpolation_rate is not None else 5)
+            * (cfg.interpolation_rate if cfg.interpolation_rate is not None else 5),
         ),
         kind=INTERPOLATION_KIND.CUBIC,
     )
@@ -512,8 +513,6 @@ def plot_from_csv(
         color=cfg.color if cfg.color is not None else "yellow",
         label=cfg.legend,
     )
-
-    # line.set_label(f"{cfg.legend}")
 
     axes.legend(
         loc="best",
@@ -532,7 +531,7 @@ def plot_from_csv(
     )
     axes.set_ylabel(
         "Amplitude ($dB$) ($0 \, dB = {} \, Vpp$)".format(
-            round(cfg.y_offset, 5) if cfg.y_offset else 0
+            round(cfg.y_offset, 5) if cfg.y_offset else 0,
         ),
         fontsize=40,
     )
@@ -562,16 +561,13 @@ def plot_from_csv(
     axes.grid(True, linestyle="-", which="both", color="0.7")
 
     if cfg.y_limit:
-        axes.set_ylim(cfg.y_limit.min, cfg.y_limit.max)
+        axes.set_ylim(cfg.y_limit.min_value, cfg.y_limit.max_value)
     else:
         pass
         # TODO: Check for Nan or Inf Values
-        # min_y_dBV = min(y_interpolated)
-        # max_y_dBV = max(y_interpolated)
         # axes.set_ylim(
         #     min_y_dBV - 1,
         #     max_y_dBV + 1,
-        # )
 
     plt.tight_layout()
 
@@ -580,9 +576,9 @@ def plot_from_csv(
     console.print(
         Panel(
             '[bold][[blue]FILE[/blue] - [cyan]GRAPH[/cyan]][/bold] - "[bold green]{}[/bold green]"'.format(
-                plot_file_path.absolute().resolve()
-            )
-        )
+                plot_file_path.absolute().resolve(),
+            ),
+        ),
     )
 
     progress_list_task.remove_task(task_plotting)
@@ -593,16 +589,16 @@ def plot_from_csv(
 def config_set_level(
     dBu: float,
     config: SweepConfig,
-    plot_file_path: Path,
+    plot_file_path: Path | None,
     set_level_file_path: Path | None = None,
     debug: bool = False,
 ):
-
     voltage_amplitude_start: float = 0.1
     voltage_amplitude = voltage_amplitude_start
     frequency = 1000
     Fs = trim_value(
-        frequency * config.sampling.Fs_multiplier, max_value=config.nidaq.Fs_max
+        frequency * config.sampling.Fs_multiplier,
+        max_value=config.nidaq.Fs_max,
     )
     diff_voltage = 0.001
     target_Vrms = VdBu_to_Vrms(dBu)
@@ -644,7 +640,7 @@ def config_set_level(
         "•",
         MofNCompleteColumn(),
         TextColumn(
-            " - Frequency: [bold green]{task.fields[frequency]} - RMS: {task.fields[rms]}"
+            " - Frequency: [bold green]{task.fields[frequency]} - RMS: {task.fields[rms]}",
         ),
         console=console,
         transient=True,
@@ -666,7 +662,7 @@ def config_set_level(
                 progress_list_task,
                 progress_sweep,
                 progress_task,
-            )
+            ),
         ),
     )
 
@@ -679,7 +675,9 @@ def config_set_level(
     live.start()
 
     task_sampling = progress_list_task.add_task(
-        "CONFIGURING", start=False, task="Retrieving Devices"
+        "CONFIGURING",
+        start=False,
+        task="Retrieving Devices",
     )
     progress_list_task.start_task(task_sampling)
 
@@ -697,7 +695,6 @@ def config_set_level(
     generator.open()
 
     # Sets the Configuration for the Voltmeter
-    # Frequency: 1000
     generator_configs: list = [
         SCPI.clear(),
         SCPI.set_output(1, Switch.OFF),
@@ -721,11 +718,11 @@ def config_set_level(
 
     Vpp_found: bool = False
     iteration: int = 0
-    pid = PID_Controller(
+    pid = PidController(
         set_point=target_Vrms,
         controller_gain=1.5,
-        tauI=1,
-        tauD=0.5,
+        tau_integral=1,
+        tau_derivative=0.5,
         controller_output_zero=voltage_amplitude_start,
     )
 
@@ -734,9 +731,7 @@ def config_set_level(
     k_tot = 0.2745
     gain_apparato: float | None = None
 
-    level_offset: float | None = None
-
-    nidaq = ni9223(
+    nidaq = Ni9223(
         config.sampling.number_of_samples,
         Fs,
         input_channel=[config.nidaq.input_channel],
@@ -747,7 +742,6 @@ def config_set_level(
     nidaq.set_sampling_clock_timing(Fs)
 
     while not Vpp_found:
-
         # GET MEASUREMENTS
         nidaq.task_start()
         voltages = nidaq.read_single_voltages()
@@ -758,7 +752,6 @@ def config_set_level(
         )
 
         if result.rms is not None:
-
             if not gain_apparato:
                 gain_apparato = result.rms / voltage_amplitude_start
                 pid.controller_gain = k_tot / gain_apparato
@@ -767,14 +760,16 @@ def config_set_level(
 
             error: float = target_Vrms - result.rms
 
-            pid.add_error(Timed_Value(error))
+            pid.add_error(TimedValue(error))
 
             error_percentage: float = percentage_error(
-                exact=target_Vrms, approx=result.rms
+                exact=target_Vrms,
+                approx=result.rms,
             )
 
             gain_dB: float = calculate_gain_dB(
-                result.rms, Vpp_to_Vrms(voltage_amplitude)
+                result.rms,
+                Vpp_to_Vrms(voltage_amplitude),
             )
 
             gain_dB_list.append(gain_dB)
@@ -803,7 +798,6 @@ def config_set_level(
 
             if pid.check_limit_diff(error, diff_voltage):
                 Vpp_found = True
-                level_offset = voltage_amplitude
 
                 table_result = Table(
                     "Gain Apparato",
@@ -816,25 +810,14 @@ def config_set_level(
                 table_result.add_row(
                     f"{result.rms / voltage_amplitude:.8f}",
                     f"{pid.controller_gain}",
-                    f"{pid.tauI}",
-                    f"{pid.tauD}",
+                    f"{pid.tau_integral}",
+                    f"{pid.tau_derivative}",
                     f"{iteration}",
                 )
 
                 console.print(Panel(table_result))
 
-                if set_level_file_path is None:
-                    set_level_file_path = plot_file_path.with_suffix(".offset")
-
-                f = open(set_level_file_path, "w", encoding="utf-8")
-                f.write(f"{level_offset}\n")
-                f.write(f"{gain_dB}\n")
-                f.close()
-
-                console.print(Panel(f"[PATH] - {set_level_file_path}"))
-
             else:
-
                 pid.term.add_proportional(pid.proportional_term)
                 pid.term.add_integral(pid.integral_term)
                 pid.term.add_derivative(pid.derivative_term)
@@ -852,7 +835,7 @@ def config_set_level(
                     console.print("[ERROR] - Voltage Input > 11.", style="error")
 
                 generator_configs: list = [
-                    SCPI.set_source_voltage_amplitude(1, voltage_amplitude)
+                    SCPI.set_source_voltage_amplitude(1, voltage_amplitude),
                 ]
 
                 SCPI.exec_commands(generator, generator_configs)
@@ -875,8 +858,6 @@ def config_set_level(
     live.stop()
 
     console.print(Panel(f"Generator Voltage to obtain +4dBu: {voltage_amplitude}"))
-
-    console.print(plot_file_path)
 
     sp = np.full(iteration, target_Vrms)
 
@@ -945,7 +926,10 @@ def config_set_level(
     plt.grid(True)
     plt.legend(loc="best")
 
-    plt.savefig(plot_file_path)
+    if plot_file_path is not None:
+        plt.savefig(plot_file_path)
+    else:
+        plt.show()
 
 
 @dataclass
@@ -971,7 +955,8 @@ def config_set_level_v2(
     voltage_amplitude = voltage_amplitude_start
     frequency = 1000
     Fs = trim_value(
-        frequency * config.sampling.Fs_multiplier, max_value=config.nidaq.Fs_max
+        frequency * config.sampling.Fs_multiplier,
+        max_value=config.nidaq.Fs_max,
     )
     diff_voltage = 0.0005
     target_Vrms = VdBu_to_Vrms(dBu)
@@ -1014,7 +999,7 @@ def config_set_level_v2(
         "•",
         MofNCompleteColumn(),
         TextColumn(
-            " - Frequency: [bold green]{task.fields[frequency]} - RMS: {task.fields[rms]}"
+            " - Frequency: [bold green]{task.fields[frequency]} - RMS: {task.fields[rms]}",
         ),
         console=console,
         transient=True,
@@ -1036,7 +1021,7 @@ def config_set_level_v2(
                 progress_list_task,
                 progress_sweep,
                 progress_task,
-            )
+            ),
         ),
     )
 
@@ -1049,7 +1034,9 @@ def config_set_level_v2(
     live.start()
 
     task_sampling = progress_list_task.add_task(
-        "CONFIGURING", start=False, task="Retrieving Devices"
+        "CONFIGURING",
+        start=False,
+        task="Retrieving Devices",
     )
     progress_list_task.start_task(task_sampling)
 
@@ -1075,7 +1062,6 @@ def config_set_level_v2(
     generator.open()
 
     # Sets the Configuration for the Voltmeter
-    # Frequency: 1000
     generator_configs: list = [
         SCPI.clear(),
         SCPI.set_output(1, Switch.OFF),
@@ -1099,11 +1085,11 @@ def config_set_level_v2(
 
     Vpp_found: bool = False
     iteration: int = 0
-    pid = PID_Controller(
+    pid = PidController(
         set_point=target_Vrms,
         controller_gain=1.5,
-        tauI=1,
-        tauD=0.5,
+        tau_integral=1,
+        tau_derivative=0.5,
         controller_output_zero=voltage_amplitude_start,
     )
 
@@ -1114,7 +1100,7 @@ def config_set_level_v2(
 
     level_offset: float | None = None
 
-    nidaq = ni9223(
+    nidaq = Ni9223(
         config.sampling.number_of_samples,
         Fs,
         input_channel=[ch.name for ch in config.nidaq.channels],
@@ -1125,7 +1111,6 @@ def config_set_level_v2(
     nidaq.set_sampling_clock_timing(Fs)
 
     while not Vpp_found:
-
         # GET MEASUREMENTS
         nidaq.task_start()
 
@@ -1157,7 +1142,6 @@ def config_set_level_v2(
             console.log("[ERROR]: rms_not calculated")
 
         if rms_dut.rms is not None:
-
             if not gain_apparato:
                 gain_apparato = rms_dut.rms / voltage_amplitude_start
                 pid.controller_gain = k_tot / gain_apparato
@@ -1166,10 +1150,11 @@ def config_set_level_v2(
 
             error: float = target_Vrms - rms_dut.rms
 
-            pid.add_error(Timed_Value(error))
+            pid.add_error(TimedValue(error))
 
             error_percentage: float = percentage_error(
-                exact=target_Vrms, approx=rms_dut.rms
+                exact=target_Vrms,
+                approx=rms_dut.rms,
             )
 
             gain_dB: float = calculate_gain_dB(rms_ref.rms, rms_dut.rms)
@@ -1213,8 +1198,8 @@ def config_set_level_v2(
                 table_result.add_row(
                     f"{rms_dut.rms / voltage_amplitude:.8f}",
                     f"{pid.controller_gain}",
-                    f"{pid.tauI}",
-                    f"{pid.tauD}",
+                    f"{pid.tau_integral}",
+                    f"{pid.tau_derivative}",
                     f"{iteration}",
                 )
 
@@ -1223,7 +1208,6 @@ def config_set_level_v2(
                 data_set_level = DataSetLevel(volts=level_offset, dB=gain_dB)
 
             else:
-
                 pid.term.add_proportional(pid.proportional_term)
                 pid.term.add_integral(pid.integral_term)
                 pid.term.add_derivative(pid.derivative_term)
@@ -1241,7 +1225,7 @@ def config_set_level_v2(
                     console.print("[ERROR] - Voltage Input > 11.", style="error")
 
                 generator_configs: list = [
-                    SCPI.set_source_voltage_amplitude(1, voltage_amplitude)
+                    SCPI.set_source_voltage_amplitude(1, voltage_amplitude),
                 ]
 
                 SCPI.exec_commands(generator, generator_configs)
@@ -1259,22 +1243,17 @@ def config_set_level_v2(
         SCPI.set_output(1, Switch.OFF),
     ]
 
-    # from rich.prompt import Confirm
-
-    # response = Confirm.ask("Continue?")
-
     SCPI.exec_commands(generator, generator_ac_curves)
     generator.close()
 
     np.full(iteration, target_Vrms)
-    # plot_config_set_level_v2(sp, pid, plot_file_path)
 
     return data_set_level
 
 
 def plot_config_set_level_v2(
     sp: np.ndarray,
-    pid: PID_Controller,
+    pid: PidController,
     plot_file_path: Path,
 ):
     plt.figure(1, figsize=(16, 9))
@@ -1343,3 +1322,361 @@ def plot_config_set_level_v2(
     plt.legend(loc="best")
 
     plt.savefig(plot_file_path)
+
+
+def config_balanced_set_level_v2(
+    dBu: float,
+    config: SweepConfig,
+):
+    data_set_level: DataSetLevel | None = None
+
+    voltage_amplitude_start: float = 0.01
+    voltage_amplitude = voltage_amplitude_start
+    frequency = 1000
+    Fs = trim_value(
+        frequency * config.sampling.Fs_multiplier,
+        max_value=config.nidaq.Fs_max,
+    )
+    diff_voltage = 0.0005
+    target_Vrms = VdBu_to_Vrms(dBu)
+    interpolation_rate_rms: float = 50
+
+    table = Table(
+        Column("Iteration", justify="right"),
+        Column(f"{dBu:.1f} dBu [Vrms]", justify="right"),
+        Column("Vpp [Vpp]", justify="right"),
+        Column("Rms Value [V]", justify="right"),
+        Column("Diff Vpp [V]", justify="right"),
+        Column("Gain [dB]", justify="right"),
+        Column("Proportional Term [V]", justify="right"),
+        Column("Integral Term [V]", justify="right"),
+        Column("Differential Term [V]", justify="right"),
+        Column("Error [%]", justify="right"),
+        title="[blue]Configuration.",
+    )
+
+    progress_list_task = Progress(
+        SpinnerColumn(),
+        "•",
+        TextColumn(
+            "[bold blue]{task.description}[/] - [bold green]{task.fields[task]}[/]",
+        ),
+        transient=True,
+    )
+
+    progress_sweep = Progress(
+        SpinnerColumn(),
+        "•",
+        TextColumn(
+            "[bold blue]{task.description}",
+            justify="right",
+        ),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        "•",
+        TimeElapsedColumn(),
+        "•",
+        MofNCompleteColumn(),
+        TextColumn(
+            " - Frequency: [bold green]{task.fields[frequency]} - RMS: {task.fields[rms]}",
+        ),
+        console=console,
+        transient=True,
+    )
+
+    progress_task = Progress(
+        SpinnerColumn(),
+        "•",
+        TextColumn(
+            "[bold blue]{task.description}",
+        ),
+        transient=True,
+    )
+
+    live_group = Group(
+        table,
+        Panel(
+            Group(
+                progress_list_task,
+                progress_sweep,
+                progress_task,
+            ),
+        ),
+    )
+
+    live = Live(
+        live_group,
+        transient=False,
+        console=console,
+        vertical_overflow="visible",
+    )
+    live.start()
+
+    task_sampling = progress_list_task.add_task(
+        "CONFIGURING",
+        start=False,
+        task="Retrieving Devices",
+    )
+    progress_list_task.start_task(task_sampling)
+
+    # Asks for the 2 instruments
+    isSwitchedOn: bool = False
+    rm = ResourceManager()
+
+    while not isSwitchedOn:
+        devices = rm.search_resources()
+        if len(devices) == 0:
+            live.console.log("RIGOL NOT FOUND")
+            live.console.log("Connect Rigol.")
+            sleep(3)
+        else:
+            isSwitchedOn = True
+
+    generator = rm.open_resource(device=devices[0])
+
+    progress_list_task.update(task_sampling, task="Setting Devices")
+
+    # Open the Instruments interfaces
+    # Auto Close with the destructor
+    generator.open()
+
+    # Sets the Configuration for the Voltmeter
+    generator_configs: list = [
+        SCPI.clear(),
+        SCPI.set_output(1, Switch.OFF),
+        SCPI.set_function_voltage_ac(),
+        SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
+        SCPI.set_source_voltage_amplitude(1, voltage_amplitude),
+        SCPI.set_source_frequency(1, frequency),
+    ]
+
+    SCPI.exec_commands(generator, generator_configs)
+
+    sleep(2)
+
+    generator_ac_curves: list[str] = [
+        SCPI.set_output(1, Switch.ON),
+    ]
+
+    SCPI.exec_commands(generator, generator_ac_curves)
+
+    progress_list_task.update(task_sampling, task="Searching for Voltage offset")
+
+    Vpp_found: bool = False
+    iteration: int = 0
+    pid = PidController(
+        set_point=target_Vrms,
+        controller_gain=1.5,
+        tau_integral=1,
+        tau_derivative=0.5,
+        controller_output_zero=voltage_amplitude_start,
+    )
+
+    gain_dB_list: list[float] = []
+
+    k_tot = 0.2745
+    gain_apparato: float | None = None
+
+    level_offset: float | None = None
+
+    nidaq = Ni9223(
+        config.sampling.number_of_samples,
+        Fs,
+        input_channel=[ch.name for ch in config.nidaq.channels],
+    )
+
+    nidaq.create_task()
+    nidaq.add_ai_channel([ch.name for ch in config.nidaq.channels])
+    nidaq.set_sampling_clock_timing(Fs)
+
+    while not Vpp_found:
+        # GET MEASUREMENTS
+        nidaq.task_start()
+
+        isVoltagesRetrievingOk = False
+        while isVoltagesRetrievingOk is not True:
+            voltages = nidaq.read_multi_voltages()
+            if voltages is None:
+                console.log("[ERROR]: Error in retrieving Samples.")
+            else:
+                isVoltagesRetrievingOk = True
+
+        nidaq.task_stop()
+
+        voltages_sampling_ref_plus = VoltageSamplingV2.from_list(
+            voltages[0],
+            frequency,
+            Fs,
+        )
+        voltages_sampling_ref_minus = VoltageSamplingV2.from_list(
+            voltages[1],
+            frequency,
+            Fs,
+        )
+        voltages_sampling_dut_plus = VoltageSamplingV2.from_list(
+            voltages[2],
+            frequency,
+            Fs,
+        )
+        voltages_sampling_dut_minus = VoltageSamplingV2.from_list(
+            voltages[3],
+            frequency,
+            Fs,
+        )
+
+        voltages_sampling_ref_raw: list[float] = []
+        for plus, minus in zip(
+            voltages_sampling_ref_plus.voltages,
+            voltages_sampling_ref_minus.voltages,
+            strict=True,
+        ):
+            voltages_sampling_ref_raw.append(plus - minus)
+
+        voltages_sampling_ref: VoltageSamplingV2 = VoltageSamplingV2.from_list(
+            voltages=voltages_sampling_ref_raw,
+            input_frequency=frequency,
+            sampling_frequency=Fs,
+        ).augment_interpolation(
+            interpolation_rate_rms,
+            interpolation_mode=INTERPOLATION_KIND.CUBIC,
+        )
+
+        voltages_sampling_dut_raw: list[float] = []
+        for plus, minus in zip(
+            voltages_sampling_dut_plus.voltages,
+            voltages_sampling_dut_minus.voltages,
+            strict=True,
+        ):
+            voltages_sampling_dut_raw.append(plus - minus)
+
+        voltages_sampling_dut: VoltageSamplingV2 = VoltageSamplingV2.from_list(
+            voltages=voltages_sampling_dut_raw,
+            input_frequency=frequency,
+            sampling_frequency=Fs,
+        ).augment_interpolation(
+            interpolation_rate_rms,
+            interpolation_mode=INTERPOLATION_KIND.CUBIC,
+        )
+
+        rms_ref: float = RMS.rms_v3(
+            voltages_sampling_ref,
+            trim=True,
+            rms_mode=RMS_MODE.FFT,
+        )
+        rms_dut: float = RMS.rms_v3(
+            voltages_sampling_dut,
+            trim=True,
+            rms_mode=RMS_MODE.FFT,
+        )
+
+        if rms_ref is None or rms_dut is None:
+            console.log("[ERROR]: rms_not calculated")
+
+        if rms_dut is not None:
+            if not gain_apparato:
+                gain_apparato = rms_dut / voltage_amplitude_start
+                pid.controller_gain = k_tot / gain_apparato
+
+            pid.add_process_variable(rms_dut)
+
+            error: float = target_Vrms - rms_dut
+
+            pid.add_error(TimedValue(error))
+
+            error_percentage: float = percentage_error(
+                exact=target_Vrms,
+                approx=rms_dut,
+            )
+
+            gain_dB: float = calculate_gain_dB(rms_ref, rms_dut)
+
+            gain_dB_list.append(gain_dB)
+
+            table.add_row(
+                f"{iteration}",
+                f"{target_Vrms:.8f}",
+                f"{voltage_amplitude:.8f}",
+                f"{rms_dut:.8f}",
+                "[{}]{:+.8f}[/]".format(
+                    "red" if error > diff_voltage else "green",
+                    error,
+                ),
+                "[{}]{:+.8f}[/]".format(
+                    "red" if gain_dB < 0 else "green",
+                    gain_dB,
+                ),
+                f"{pid.term.proportional[-1]:+.8f}",
+                f"{pid.term.integral[-1]:+.8f}",
+                f"{pid.term.derivative[-1]:+.8f}",
+                "[{}]{:+.5%}[/]".format(
+                    "red" if error > diff_voltage else "green",
+                    error_percentage,
+                ),
+            )
+
+            if pid.check_limit_diff(error, diff_voltage):
+                Vpp_found = True
+                level_offset = voltage_amplitude
+
+                table_result = Table(
+                    "Gain Apparato",
+                    "Kc",
+                    "tauI",
+                    "tauD",
+                    "steps",
+                )
+
+                table_result.add_row(
+                    f"{rms_dut / voltage_amplitude:.8f}",
+                    f"{pid.controller_gain}",
+                    f"{pid.tau_integral}",
+                    f"{pid.tau_derivative}",
+                    f"{iteration}",
+                )
+
+                console.print(Panel(table_result))
+
+                data_set_level = DataSetLevel(volts=level_offset, dB=gain_dB)
+
+            else:
+                pid.term.add_proportional(pid.proportional_term)
+                pid.term.add_integral(pid.integral_term)
+                pid.term.add_derivative(pid.derivative_term)
+
+                output_variable: float = pid.output_process
+
+                pid.add_process_output(output_variable)
+
+                voltage_amplitude = output_variable
+
+                # Apply new Amplitude
+
+                if voltage_amplitude > 11:
+                    voltage_amplitude = 11
+                    console.print("[ERROR] - Voltage Input > 11.", style="error")
+
+                generator_configs: list = [
+                    SCPI.set_source_voltage_amplitude(1, voltage_amplitude),
+                ]
+
+                SCPI.exec_commands(generator, generator_configs)
+
+                sleep(0.4)
+
+                iteration += 1
+        else:
+            console.print("[SAMPLING] - Error retrieving rms_value.")
+
+    nidaq.task_close()
+    live.stop()
+
+    generator_ac_curves: list[str] = [
+        SCPI.set_output(1, Switch.OFF),
+    ]
+
+    SCPI.exec_commands(generator, generator_ac_curves)
+    generator.close()
+
+    np.full(iteration, target_Vrms)
+
+    return data_set_level

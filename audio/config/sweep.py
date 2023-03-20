@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import xml.etree.ElementTree as ET
+import typing
 from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
+from typing import Self
+from xml.etree import ElementTree
 
 import rich
 
@@ -16,6 +17,9 @@ from audio.config.sampling import SamplingConfig, SamplingConfigOptions
 from audio.console import console
 from audio.decoder.xml import DecoderXML
 
+if typing.TYPE_CHECKING:
+    from pathlib import Path
+
 
 class SweepConfigOptions(Enum):
     ROOT = "config"
@@ -24,7 +28,7 @@ class SweepConfigOptions(Enum):
     SAMPLING = f"{SamplingConfigOptions.ROOT.value}"
     PLOT = f"{PlotConfigOptions.ROOT.value}"
 
-    def __str__(self) -> str:
+    def __str__(self: Self) -> str:
         return str(self.value)
 
 
@@ -34,46 +38,47 @@ class SweepConfigOptionsXPATH(Enum):
     SAMPLING = f"./{SweepConfigOptions.SAMPLING.value}"
     PLOT = f"./{SweepConfigOptions.PLOT.value}"
 
-    def __str__(self) -> str:
+    def __str__(self: Self) -> str:
         return str(self.value)
 
 
 @dataclass
 @rich.repr.auto
 class SweepConfig(Config, DecoderXML):
-
     rigol: RigolConfig | None = None
     nidaq: NiDaqConfig | None = None
     sampling: SamplingConfig | None = None
     plot: PlotConfig | None = None
 
     @classmethod
-    def from_xml_file(cls, file: Path):
+    def from_xml_file(cls: type[Self], file: Path) -> Self | None:
         if not file.exists() or not file.is_file():
             return None
 
         return cls.from_xml_string(file.read_text(encoding="utf-8"))
 
     @classmethod
-    def from_xml_string(cls, data: str):
-        tree = ET.ElementTree(ET.fromstring(data))
-        root = tree.getroot()
-        return cls.from_xml_object(root)
+    def from_xml_string(cls: type[Self], data: str) -> Self | None:
+        tree = ElementTree.ElementTree(ElementTree.fromstring(data))
+        return cls.from_xml_object(tree)
 
     @classmethod
-    def from_xml_object(cls, xml: ET.Element | None):
+    def from_xml_object(
+        cls: type[Self],
+        xml: ElementTree.ElementTree | None,
+    ) -> Self | None:
         if xml is None or not cls.xml_is_valid(xml):
             return None
 
-        Erigol = SweepConfig.get_rigol_from_xml(xml)
-        Enidaq = SweepConfig.get_nidaq_from_xml(xml)
-        Esampling = SweepConfig.get_sampling_from_xml(xml)
-        Eplot = SweepConfig.get_plot_from_xml(xml)
+        elem_rigol = SweepConfig.get_rigol_from_xml(xml)
+        elem_nidaq = SweepConfig.get_nidaq_from_xml(xml)
+        elem_sampling = SweepConfig.get_sampling_from_xml(xml)
+        elem_plot = SweepConfig.get_plot_from_xml(xml)
 
-        rigol_config = RigolConfig.from_xml_object(Erigol)
-        nidaq_config = NiDaqConfig.from_xml_object(Enidaq)
-        sampling_config = SamplingConfig.from_xml_object(Esampling)
-        plot_config = PlotConfig.from_xml_object(Eplot)
+        rigol_config = RigolConfig.from_xml_object(elem_rigol)
+        nidaq_config = NiDaqConfig.from_xml_object(elem_nidaq)
+        sampling_config = SamplingConfig.from_xml_object(elem_sampling)
+        plot_config = PlotConfig.from_xml_object(elem_plot)
 
         return cls(
             rigol=rigol_config,
@@ -83,10 +88,10 @@ class SweepConfig(Config, DecoderXML):
         )
 
     @staticmethod
-    def xml_is_valid(xml: ET.Element) -> bool:
+    def xml_is_valid(xml: ElementTree.ElementTree) -> bool:
         return xml.tag == SweepConfigOptions.ROOT.value
 
-    def merge(self, other: SweepConfig | None):
+    def merge(self: Self, other: Self | None) -> None:
         if other is None:
             return
 
@@ -110,7 +115,7 @@ class SweepConfig(Config, DecoderXML):
         else:
             self.plot = deepcopy(other.plot)
 
-    def override(self, other: SweepConfig | None):
+    def override(self: Self, other: SweepConfig | None) -> None:
         if other is None:
             return
 
@@ -134,25 +139,29 @@ class SweepConfig(Config, DecoderXML):
         else:
             self.plot = deepcopy(other.plot)
 
-    def print(self):
+    def print_object(self: Self) -> None:
         console.print(self)
 
     @staticmethod
-    def get_rigol_from_xml(xml: ET.ElementTree):
-        rigol = xml.find(SweepConfigOptionsXPATH.RIGOL.value)
-        return rigol
+    def get_rigol_from_xml(
+        xml: ElementTree.ElementTree,
+    ) -> ElementTree.ElementTree | None:
+        return ElementTree.ElementTree(xml.find(SweepConfigOptionsXPATH.RIGOL.value))
 
     @staticmethod
-    def get_nidaq_from_xml(xml: ET.ElementTree):
-        nidaq = xml.find(SweepConfigOptionsXPATH.NIDAQ.value)
-        return nidaq
+    def get_nidaq_from_xml(
+        xml: ElementTree.ElementTree,
+    ) -> ElementTree.ElementTree | None:
+        return ElementTree.ElementTree(xml.find(SweepConfigOptionsXPATH.NIDAQ.value))
 
     @staticmethod
-    def get_sampling_from_xml(xml: ET.ElementTree):
-        sampling = xml.find(SweepConfigOptionsXPATH.SAMPLING.value)
-        return sampling
+    def get_sampling_from_xml(
+        xml: ElementTree.ElementTree,
+    ) -> ElementTree.ElementTree | None:
+        return ElementTree.ElementTree(xml.find(SweepConfigOptionsXPATH.SAMPLING.value))
 
     @staticmethod
-    def get_plot_from_xml(xml: ET.ElementTree):
-        plot = xml.find(SweepConfigOptionsXPATH.PLOT.value)
-        return plot
+    def get_plot_from_xml(
+        xml: ElementTree.ElementTree,
+    ) -> ElementTree.ElementTree | None:
+        return ElementTree.ElementTree(xml.find(SweepConfigOptionsXPATH.PLOT.value))

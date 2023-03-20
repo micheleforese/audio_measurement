@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import signal
 from typing import Any
 
@@ -10,7 +11,7 @@ class InterruptHandler:
     released: bool
     interrupted: bool
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.sig = signal.SIGINT
 
     def __enter__(self):

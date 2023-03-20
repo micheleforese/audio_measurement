@@ -1,25 +1,24 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
 import numpy as np
+from matplotlib import ticker
 from rich.progress import track
 
 from audio.config.sweep import SweepConfig
-
+from audio.console import console
 from audio.math.interpolation import INTERPOLATION_KIND, logx_interpolation_model
 from audio.model.sweep import SweepData
-import hashlib
-from audio.console import console
 
 
 class CacheCsvData:
     _csvData: dict[str, SweepData]
 
     def __init__(self) -> None:
-        self._csvData = dict()
+        self._csvData = {}
 
     def _create_hash(self, csv_path: Path) -> str:
         path = csv_path.absolute().resolve().as_uri().encode("utf-8")
@@ -27,7 +26,6 @@ class CacheCsvData:
         return path_hash
 
     def add_csv_file(self, csv_path: Path):
-
         path_hash = self._create_hash(csv_path)
 
         if self._csvData.get(path_hash, None) is None:
@@ -46,7 +44,6 @@ def multiplot(
     cache_csv_data: CacheCsvData,
     sweep_config: SweepConfig | None = None,
 ) -> bool:
-
     # Check for Files validity
     for csv in csv_files_paths:
         if not csv.exists() or not csv.is_file():
@@ -75,7 +72,6 @@ def multiplot(
     )
     axes.set_ylabel(
         # "Amplitude ($dB$) ($0 \, dB = {} \, Vpp$)".format(
-        #     round(cfg.y_offset, 5) if cfg.y_offset else 0
         # ),
         "Amplitude ($dB$)",
         fontsize=40,
@@ -106,7 +102,6 @@ def multiplot(
         transient=True,
         description="Sweep Data Plotting...",
     ):
-
         sweep_data: SweepData = cache_csv_data.get_csv_file_data(csv_file)
         if sweep_data is None:
             console.log(f"[ERROR] - data Not found at csv_file: {csv_file}")
@@ -130,7 +125,7 @@ def multiplot(
                     cfg.interpolation_rate
                     if cfg.interpolation_rate is not None
                     else DEFAULT.get("interpolation_rate")
-                )
+                ),
             ),
             kind=INTERPOLATION_KIND.CUBIC,
         )
@@ -139,9 +134,8 @@ def multiplot(
 
         legend: str | None = None
 
-        if cfg is not None:
-            if cfg.legend is not None:
-                legend = cfg.legend
+        if cfg is not None and cfg.legend is not None:
+            legend = cfg.legend
 
         axes.semilogx(
             *xy_sampled,
@@ -153,12 +147,12 @@ def multiplot(
 
         axes.legend(loc="best")
 
-    if sweep_config is not None:
-        if sweep_config.plot is not None:
-            if sweep_config.plot.y_limit is not None:
-                axes.set_ylim(
-                    sweep_config.plot.y_limit.min, sweep_config.plot.y_limit.max
-                )
+    if sweep_config is not None and sweep_config.plot is not None:
+        if sweep_config.plot.y_limit is not None:
+            axes.set_ylim(
+                sweep_config.plot.y_limit.min_value,
+                sweep_config.plot.y_limit.max_value,
+            )
 
     plt.tight_layout()
 
@@ -168,3 +162,4 @@ def multiplot(
     plt.close("all")
 
     console.print(f"[PLOT] - Graph: [blue]{output_file_path}[/blue]")
+    return None

@@ -10,7 +10,6 @@ from audio.model.sampling import VoltageSampling
 
 
 def test_database():
-
     db = Database()
     db.create_database()
 
@@ -36,7 +35,10 @@ def test_database():
     channel_id = db.insert_channel(sweep_id, 0, "ch/1", "Test Database - CHannel")
 
     def generate_sine_wave(
-        freq: float, amplitude: float, sample_rate: float, number_of_sample: int
+        freq: float,
+        amplitude: float,
+        sample_rate: float,
+        number_of_sample: int,
     ):
         duration = number_of_sample / sample_rate
         time_sampling = 1 / sample_rate
@@ -61,7 +63,10 @@ def test_database():
 
     # SWEEP
     sweep_id = db.insert_sweep(
-        test_id, "Sweep bello", datetime.now(), comment="Uno a caso per prova"
+        test_id,
+        "Sweep bello",
+        datetime.now(),
+        comment="Uno a caso per prova",
     )
     sweeps = db.get_sweeps()
     console.print(sweeps)
@@ -74,7 +79,9 @@ def test_database():
     console.print(channels)
 
     log_scale: LogarithmicScale = LogarithmicScale(
-        min_Hz=20, max_Hz=10000, points_per_decade=10
+        min_hertz=20,
+        max_hertz=10000,
+        points_per_decade=10,
     )
 
     Fs_multiplier = 20
@@ -99,7 +106,10 @@ def test_database():
     console.print(view_sweep)
 
     def generate_sine_wave(
-        freq: float, amplitude: float, sample_rate: float, number_of_sample: int
+        freq: float,
+        amplitude: float,
+        sample_rate: float,
+        number_of_sample: int,
     ):
         duration = number_of_sample / sample_rate
         time_sampling = 1 / sample_rate
@@ -114,7 +124,6 @@ def test_database():
         return (x, y)
 
     for freq_id, (freq, Fs) in enumerate(zip(log_scale.f_list, Fs_list)):
-
         freq_id = db.insert_frequency(sweep_id, freq_id, freq, Fs)
 
         data_x, data_y = generate_sine_wave(freq, 1.5, Fs, 800)

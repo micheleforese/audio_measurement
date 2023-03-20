@@ -1,19 +1,21 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
-from typing import Any
+import typing
+from typing import Any, Self
 
 import pandas as pd
 import yaml
-from pandas import DataFrame, Series
+from pandas import DataFrame
 
 from audio.config.plot import PlotConfig
 from audio.console import console
 
+if typing.TYPE_CHECKING:
+    from pathlib import Path
+
 
 class SingleSweepData:
-
     path: Path
 
     # Meta Information
@@ -24,7 +26,6 @@ class SingleSweepData:
     data: DataFrame
 
     def __init__(self: SingleSweepData, path: Path) -> None:
-
         self.frequency = None
         self.Fs = None
 
@@ -46,20 +47,19 @@ class SingleSweepData:
             console.print(f"Error: {e}")
             sys.exit()
 
-    def _yaml_extract_from_comments(self, data: str) -> dict:
-        data_yaml = "\n".join(
-            [line[2:] for line in data.split("\n") if line.find("#") == 0]
+    def _yaml_extract_from_comments(self: Self, data: str) -> dict:
+        data_yaml: str = "\n".join(
+            [line[2:] for line in data.split("\n") if line.find("#") == 0],
         )
         return dict(yaml.safe_load(data_yaml))
 
-    def _load_yaml_comments(self):
-
+    def _load_yaml_comments(self: Self) -> None:
         yaml_dict = self._yaml_extract_from_comments(self.path.read_text())
 
         self.frequency = self.get_frequency_from_dictionary(yaml_dict)
         self.Fs = self.get_Fs_from_dictionary(yaml_dict)
 
-    def _meta_info(self, name: str, value: Any):
+    def _meta_info(self: Self, name: str, value: Any) -> str:
         return f"# {name}: {value}\n"
 
     @staticmethod
@@ -81,12 +81,11 @@ class SingleSweepData:
         return Fs
 
     @property
-    def voltages(self) -> Series:
+    def voltages(self: Self):
         return self.data["voltages"]
 
 
 class SweepData:
-
     path: Path
 
     # Meta Information
@@ -107,11 +106,11 @@ class SweepData:
         self.config = config
 
     @classmethod
-    def from_csv_file(cls, path: Path):
+    def from_csv_file(cls: type[Self], path: Path) -> Self:
         if not path.exists() or not path.is_file():
             raise Exception
 
-        data = pd.read_csv(
+        data: DataFrame = pd.read_csv(
             path,
             header=0,
             comment="#",
@@ -128,17 +127,14 @@ class SweepData:
 
         yaml_dict = SweepData._yaml_extract_from_comments(path.read_text())
 
-        amplitude = SweepData.get_amplitude_from_dictionary(yaml_dict)
+        amplitude: float | None = SweepData.get_amplitude_from_dictionary(yaml_dict)
         # TODO: Implement PlotConfig.from_dict() version to PlotConfigXML. from_dict()
-        # plotConfigXML = PlotConfigXML.from_dict(yaml_dict)
-        # plotConfigXML = PlotConfig.from_dict(yaml_dict)
-        plotConfigXML = PlotConfig()
+        plotConfigXML: PlotConfig = PlotConfig()
 
         return cls(data, amplitude, plotConfigXML)
 
-    def save(self, path: Path):
-        with open(path, "w", encoding="utf-8") as file:
-
+    def save(self: Self, path: Path) -> None:
+        with Path.open(path, "w", encoding="utf-8") as file:
             file.write(
                 self._meta_info(
                     "amplitude",
@@ -146,8 +142,8 @@ class SweepData:
                 ),
             )
             if self.config is not None:
-                config_yaml = self.config.to_yaml_string()
-                yaml_str = self._yaml_string_to_yaml_comment(config_yaml)
+                config_yaml: str = self.config.to_yaml_string()
+                yaml_str: str = self._yaml_string_to_yaml_comment(config_yaml)
                 console.print(yaml_str)
                 file.write(yaml_str)
 
@@ -159,15 +155,15 @@ class SweepData:
 
     @staticmethod
     def _yaml_extract_from_comments(data: str) -> dict:
-        data_yaml = "\n".join(
-            [line[2:] for line in data.splitlines() if line.find("#") == 0]
+        data_yaml: str = "\n".join(
+            [line[2:] for line in data.splitlines() if line.find("#") == 0],
         )
         return dict(yaml.safe_load(data_yaml))
 
-    def _meta_info(self, name: str, value: Any):
+    def _meta_info(self: Self, name: str, value: Any) -> str:
         return f"# {name}: {value}\n"
 
-    def _yaml_string_to_yaml_comment(self, yaml_string: str):
+    def _yaml_string_to_yaml_comment(self: Self, yaml_string: str) -> str:
         return "\n".join([f"# {line}" for line in yaml_string.splitlines()]) + "\n"
 
     @staticmethod
@@ -180,30 +176,29 @@ class SweepData:
         return amplitude
 
     @property
-    def frequency(self):
+    def frequency(self: Self):
         return self.data.get("frequency")
 
     @property
-    def rms(self):
+    def rms(self: Self):
         return self.data.get("rms")
 
     @property
-    def dBV(self):
+    def dBV(self: Self):
         return self.data.get("dBV")
 
     @property
-    def Fs(self):
+    def Fs(self: Self):
         return self.data.get("Fs")
 
     @property
-    def oversampling_ratio(self):
+    def oversampling_ratio(self: Self):
         return self.data.get("oversampling_ratio")
 
     @property
-    def n_periods(self):
+    def n_periods(self: Self):
         return self.data.get("n_periods")
 
     @property
-    def n_samples(self):
-        return self.data.get("n_samples")
+    def n_samples(self: Self):
         return self.data.get("n_samples")

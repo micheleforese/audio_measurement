@@ -2,24 +2,23 @@ from enum import Enum, auto
 from math import log10, sqrt
 
 
-
-def Vrms_to_Vpp(Vrms: float):
+def Vrms_to_Vpp(Vrms: float) -> float:
     return Vrms * 2 * sqrt(2)
 
 
-def Vrms_to_VdBu(Vrms: float):
+def Vrms_to_VdBu(Vrms: float) -> float:
     return 20 * log10(Vrms / 0.77459667)
 
 
-def Vpp_to_Vrms(Vpp: float):
+def Vpp_to_Vrms(Vpp: float) -> float:
     return Vpp / (2 * sqrt(2))
 
 
-def Vpp_to_VdBu(Vpp: float):
+def Vpp_to_VdBu(Vpp: float) -> float:
     return Vrms_to_VdBu(Vpp_to_Vrms(Vpp))
 
 
-def VdBu_to_Vrms(VdBu: float):
+def VdBu_to_Vrms(VdBu: float) -> float:
     return pow(10, VdBu / 20) * 0.77459667
 
 
@@ -29,11 +28,15 @@ class VoltageMode(Enum):
     VdBu = auto()
 
 
-def VdBu_to_Vpp(VdBu: float):
+def VdBu_to_Vpp(VdBu: float) -> float:
     return Vrms_to_Vpp(VdBu_to_Vrms(VdBu))
 
 
-def voltage_converter(voltage: float, frm: VoltageMode, to: VoltageMode):
+def voltage_converter(
+    voltage: float,
+    frm: VoltageMode,
+    to: VoltageMode,
+) -> float | None:
     if frm == to:
         return voltage
 
@@ -52,7 +55,8 @@ def voltage_converter(voltage: float, frm: VoltageMode, to: VoltageMode):
             return VdBu_to_Vrms(voltage)
         elif to == VoltageMode.Vpp:
             return VdBu_to_Vpp(voltage)
+    return None
 
 
-def calculate_gain_dB(Vin: float, Vout: float):
+def calculate_gain_dB(Vin: float, Vout: float) -> float:
     return 20 * log10(Vout / Vin)

@@ -1,7 +1,7 @@
 import time
 
 import click
-import matplotlib.ticker as ticker
+from matplotlib import ticker
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from rich.prompt import Prompt
@@ -18,28 +18,27 @@ from audio.utility.scpi import SCPI, Bandwidth, Switch
 
 @click.command()
 def phase_analysis():
-
     freq_min: float = float(
-        Prompt.ask("Frequency Min (Hz) [10]", show_default=True, default=10)
+        Prompt.ask("Frequency Min (Hz) [10]", show_default=True, default=10),
     )
     freq_max: float = float(
-        Prompt.ask("Frequency Max (Hz) [200_000]", show_default=True, default=200_000)
+        Prompt.ask("Frequency Max (Hz) [200_000]", show_default=True, default=200_000),
     )
     frequency_range = Range[float](freq_min, freq_max)
     amplitude: float = float(
-        Prompt.ask("Amplitude (Vpp) [1]", show_default=True, default=1.0)
+        Prompt.ask("Amplitude (Vpp) [1]", show_default=True, default=1.0),
     )
     points_per_decade: int = int(
-        Prompt.ask("Points per decade [10]", show_default=True, default=10)
+        Prompt.ask("Points per decade [10]", show_default=True, default=10),
     )
     n_sample: int = int(
-        Prompt.ask("Sample per point [200]", show_default=True, default=200)
+        Prompt.ask("Sample per point [200]", show_default=True, default=200),
     )
     Fs_multiplier: int = int(
-        Prompt.ask("Fs multiplier [50]", show_default=True, default=50)
+        Prompt.ask("Fs multiplier [50]", show_default=True, default=50),
     )
     interpolation_rate: int = int(
-        Prompt.ask("interpolation rate [20]", show_default=True, default=20)
+        Prompt.ask("interpolation rate [20]", show_default=True, default=20),
     )
 
     with InterruptHandler() as h:
@@ -60,7 +59,7 @@ def phase_analysis():
             SCPI.set_function_voltage_ac(),
             SCPI.set_voltage_ac_bandwidth(Bandwidth.MIN),
             SCPI.set_source_voltage_amplitude(1, round(amplitude, 5)),
-            SCPI.set_source_frequency(1, round(frequency_range.min, 5)),
+            SCPI.set_source_frequency(1, round(frequency_range.min_value, 5)),
         ]
 
         SCPI.exec_commands(generator, generator_configs)
@@ -73,14 +72,14 @@ def phase_analysis():
         time.sleep(1)
 
         log_scale: LogarithmicScale = LogarithmicScale(
-            frequency_range.min,
-            frequency_range.max,
+            frequency_range.min_value,
+            frequency_range.max_value,
             points_per_decade,
         )
 
-        from audio.device.cDAQ import ni9223
+        from audio.device.cDAQ import Ni9223
 
-        nidaq = ni9223(n_sample)
+        nidaq = Ni9223(n_sample)
 
         nidaq.create_task("Test")
         channels = [
@@ -111,10 +110,14 @@ def phase_analysis():
             voltages = nidaq.read_multi_voltages()
             nidaq.task_stop()
             voltages_sampling_0 = VoltageSampling.from_list(
-                voltages[0][100:], frequency, Fs
+                voltages[0][100:],
+                frequency,
+                Fs,
             )
             voltages_sampling_1 = VoltageSampling.from_list(
-                voltages[1][100:], frequency, Fs
+                voltages[1][100:],
+                frequency,
+                Fs,
             )
 
             result_0: RMSResult = RMS.rms_v2(
@@ -147,7 +150,6 @@ def phase_analysis():
             APP_TEST.mkdir(exist_ok=True, parents=True)
 
             if phase_offset is None:
-
                 voltages_sampling_0.save(APP_TEST / f"{frequency:.5f}_0.csv")
                 voltages_sampling_1.save(APP_TEST / f"{frequency:.5f}_1.csv")
 
@@ -211,7 +213,6 @@ def phase_analysis():
         logMinorFormat = ticker.FuncFormatter(logMinorFormatFunc)
 
         # X Axis - Major
-        # axes.xaxis.set_major_locator(logLocator)
         axes.xaxis.set_major_formatter(logMinorFormat)
 
         from audio.constant import APP_AUDIO_TEST

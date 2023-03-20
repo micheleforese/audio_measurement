@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Self
 
 import nidaqmx
 import nidaqmx.constants
@@ -9,159 +10,75 @@ import nidaqmx.stream_writers
 import nidaqmx.system
 import numpy
 import numpy as np
-from nidaqmx._task_modules.channels.ao_channel import AOChannel
-from nidaqmx.system import Device, System
-from nidaqmx.system._collections.device_collection import DeviceCollection
+from nidaqmx.system import Device
 from nidaqmx.utils import flatten_channel_string
-from rich.panel import Panel
-from rich.table import Column, Table
-from rich.tree import Tree
 
 from audio.config.type import Range
 from audio.console import console
 
 
-class cDAQ:
-    """
-    Class for Initialize the nidaqmx driver connection
-    """
-
-    system: System
-
-    def __init__(self) -> None:
-
-        # Get the system instance for the nidaqmx-driver
-        self.system = System.local()
-
-    def print_driver_version(self, debug: bool = False):
-        """Prints the Version for the nidaqmx driver
-
-        Args:
-            debug (bool): if true, prints the versions divided in a table
-        """
-
-        if not debug:
-            console.print(
-                Panel.fit(
-                    "Version: [blue]{}[/].[blue]{}[/].[blue]{}[/]".format(
-                        self.system.driver_version.major_version,
-                        self.system.driver_version.minor_version,
-                        self.system.driver_version.update_version,
-                    )
-                )
-            )
-        else:
-            table = Table(
-                Column(justify="left"),
-                Column(justify="right"),
-                title="cDAQ Driver info",
-                show_header=False,
-            )
-
-            # Major Version
-            table.add_row(
-                "Major Version", f"{self.system.driver_version.major_version}"
-            )
-
-            # Minor Version
-            table.add_row(
-                "Minor Version", f"{self.system.driver_version.minor_version}"
-            )
-
-            # Update Version
-            table.add_row(
-                "Update Version", f"{self.system.driver_version.update_version}"
-            )
-            console.print(table)
-
-    def _list_devices(self) -> DeviceCollection:
-        """Returns the Device connected to the machine
-
-        Returns:
-            DeviceCollection: Device List
-        """
-
-        return self.system.devices
-
-    def print_list_devices(self):
-        """Prints the Devices connected to the machine"""
-
-        table = Table(title="Device List")
-        table.add_column("[yellow]Name[/]", justify="left", style="blue", no_wrap=True)
-
-        for device in self._list_devices():
-            table.add_row(device.name)
-        console.print(table)
-
-
-def print_supported_output_types(channel: AOChannel):
-    supported_types: Tree = Tree(
-        "[yellow]Supported Types[/]",
-    )
-
-    for t in channel.physical_channel.ao_output_types:
-        supported_types.add(f"[green]{t.name}[/green]: [blue]{int(t.value)}[/blue]")
-
-    console.print(Panel.fit(supported_types))
-
-
-class cDAQAIDevice:
+class CDAQAIDevice:
     pass
 
 
-class ni9251(cDAQAIDevice):
-
-    Fs: float | None = None
-    max_Fs: float = 102000
+class Ni9251(CDAQAIDevice):
+    sampling_frequency: float | None = None
+    max_sampling_frequency: float = 102000
     min_voltage: float = -4
     max_voltage: float = 4
     number_of_samples: float | None
     ch_input: str | None
 
     def __init__(
-        self,
-        Fs: float,
+        self: Self,
+        sampling_frequency: float,
         number_of_samples: int | None = None,
         ch_input: str | None = None,
     ) -> None:
-
-        self.Fs = Fs
+        self.sampling_frequency = sampling_frequency
         self.number_of_samples = number_of_samples
         self.ch_input = ch_input
 
-    def set_Fs(self, Fs: float):
-        self.Fs = Fs
+    def set_sampling_frequency(self: Self, sampling_frequency: float) -> None:
+        self.sampling_frequency = sampling_frequency
 
     def read_voltage(
-        self,
+        self: Self,
         number_of_samples: int,
         frequency: float | None = None,
-        # Example: "cDAQ9189-1CDBE0AMod1/ai1"
         ch_input: str | None = None,
     ) -> np.ndarray:
-
-        if frequency and self.Fs and frequency > self.Fs / 2:
+        if (
+            frequency
+            and self.sampling_frequency
+            and frequency > self.sampling_frequency / 2
+        ):
             raise ValueError("The Sampling rate is low: Fs / 2 > frequency.")
 
-        task = nidaqmx.Task("Input Voltage")
+        task: nidaqmx.Task = nidaqmx.Task("Input Voltage")
         task.ai_channels.add_ai_voltage_chan(
-            ch_input, min_val=self.min_voltage, max_val=self.max_voltage
+            ch_input,
+            min_val=self.min_voltage,
+            max_val=self.max_voltage,
         )
 
         # Sets the Clock sampling rate
-        task.timing.cfg_samp_clk_timing(self.Fs)
+        task.timing.cfg_samp_clk_timing(self.sampling_frequency)
 
         # Pre allocate the array
-        voltages = np.ndarray(shape=number_of_samples)
+        voltages: np.ndarray = np.ndarray(shape=number_of_samples)
 
         # Sets the task for the stream_reader
-        channel1_stream_reader = nidaqmx.stream_readers.AnalogSingleChannelReader(
-            task.in_stream
+        channel1_stream_reader: nidaqmx.stream_readers.AnalogSingleChannelReader = (
+            nidaqmx.stream_readers.AnalogSingleChannelReader(
+                task.in_stream,
+            )
         )
 
         # Sampling the voltages
         channel1_stream_reader.read_many_sample(
-            voltages, number_of_samples_per_channel=number_of_samples
+            voltages,
+            number_of_samples_per_channel=number_of_samples,
         )
         task.close()
 
@@ -169,29 +86,32 @@ class ni9251(cDAQAIDevice):
 
 
 @dataclass
-class ni9223(cDAQAIDevice):
+class Ni9223(CDAQAIDevice):
     number_of_samples: int
-    sampling_frequency: float = None
-    input_channel: list[str] = None
+    sampling_frequency: float | None = None
+    input_channel: list[str] = field(default=list)
     task: nidaqmx.Task = None
     device: Device | None = None
 
-    def init_device(self):
+    def init_device(self: Self) -> None:
         self.device = Device(self.input_channel)
 
     @property
-    def device_voltage_ranges(self) -> Range[float]:
+    def device_voltage_ranges(self: Self) -> Range[float] | None:
+        if self.device is None:
+            return None
+
         ranges: tuple[float, float] = self.device.ai_voltage_rngs
         range_min, range_max = ranges
-        r: Range[float] = Range(range_min, range_max)
-        return r
+        return Range[float](range_min, range_max)
 
     @property
-    def device_Fs_max(self) -> float:
-        self.device.anlg_trig_supported
+    def device_sampling_frequency_max(self: Self) -> float | None:
+        if self.device is None:
+            return None
         return self.device.ai_max_single_chan_rate
 
-    def create_task(self, name: str = ""):
+    def create_task(self: Self, name: str = "") -> None:
         try:
             # 1. Create a NidaqMX Task
             self.task = nidaqmx.Task(name)
@@ -199,51 +119,56 @@ class ni9223(cDAQAIDevice):
             console.print(f"[EXCEPTION] - {e}")
             self.task_close()
 
-    def set_sampling_clock_timing(self, sampling_frequency: float):
+    def set_sampling_clock_timing(self: Self, sampling_frequency: float) -> None:
         self.task.timing.cfg_samp_clk_timing(sampling_frequency)
         self.sampling_frequency = sampling_frequency
 
-    def add_ai_channel(self, input_channel: list[str]):
+    def add_ai_channel(self: Self, input_channel: list[str]) -> None:
         # 2. Add the AI Voltage Channel
         self.task.ai_channels.add_ai_voltage_chan(
             flatten_channel_string(input_channel),
         )
         self.input_channel = input_channel
 
-    def add_rms_channel(self):
+    def add_rms_channel(self: Self) -> None:
         self.task.ai_channels.add_ai_voltage_rms_chan(
             physical_channel=self.input_channel,
         )
 
-    def task_start(self):
+    def task_start(self: Self) -> None:
         self.task.start()
 
-    def task_stop(self):
+    def task_stop(self: Self) -> None:
         # while not self.task.is_task_done():
         #     pass
         self.task.stop()
 
-    def task_close(self):
+    def task_close(self: Self) -> None:
         self.task.close()
 
-    def read_single_voltages(self):
+    def read_single_voltages(self: Self) -> np.ndarray:
         # 4. Pre allocate the array
-        voltages = np.ndarray(self.number_of_samples, dtype=float)
+        voltages: np.ndarray = np.ndarray(self.number_of_samples, dtype=float)
 
         # 6. Sets the task for the stream_reader
-        channel1_stream_reader = nidaqmx.stream_readers.AnalogSingleChannelReader(
-            self.task.in_stream
+        channel1_stream_reader: nidaqmx.stream_readers.AnalogSingleChannelReader = (
+            nidaqmx.stream_readers.AnalogSingleChannelReader(
+                self.task.in_stream,
+            )
         )
 
         # 7. Sampling the voltages
         channel1_stream_reader.read_many_sample(
-            voltages, number_of_samples_per_channel=self.number_of_samples
+            voltages,
+            number_of_samples_per_channel=self.number_of_samples,
         )
 
         return voltages
 
-    def read_multi_voltages(self):
-        reader = nidaqmx.stream_readers.AnalogMultiChannelReader(self.task.in_stream)
+    def read_multi_voltages(self: Self) -> list[float] | None:
+        reader: nidaqmx.stream_readers.AnalogMultiChannelReader = (
+            nidaqmx.stream_readers.AnalogMultiChannelReader(self.task.in_stream)
+        )
 
         values_read = numpy.zeros(
             (len(self.input_channel), self.number_of_samples),
@@ -251,7 +176,8 @@ class ni9223(cDAQAIDevice):
         )
         try:
             reader.read_many_sample(
-                values_read, number_of_samples_per_channel=self.number_of_samples
+                values_read,
+                number_of_samples_per_channel=self.number_of_samples,
             )
         except Exception as e:
             console.log(f"[EXCEPTION]: {e}")

@@ -1,14 +1,20 @@
 from __future__ import annotations
 
-import xml.etree.ElementTree as ET
+import typing
 from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
+from typing import Self
+from xml.etree import ElementTree
 
+import rich
 import rich.repr
+
 from audio.config import Config
 from audio.console import console
 from audio.decoder.xml import DecoderXML
+
+if typing.TYPE_CHECKING:
+    from pathlib import Path
 
 
 class SamplingConfigOptions(Enum):
@@ -23,7 +29,7 @@ class SamplingConfigOptions(Enum):
     INTERPOLATION_RATE = "interpolation_rate"
     DELAY_MEASUREMENTS = "delay_measurements"
 
-    def __str__(self) -> str:
+    def __str__(self: Self) -> str:
         return str(self.value)
 
 
@@ -37,7 +43,7 @@ class SamplingConfigOptionsXPATH(Enum):
     INTERPOLATION_RATE = f"./{SamplingConfigOptions.INTERPOLATION_RATE.value}"
     DELAY_MEASUREMENTS = f"./{SamplingConfigOptions.DELAY_MEASUREMENTS.value}"
 
-    def __str__(self) -> str:
+    def __str__(self: Self) -> str:
         return str(self.value)
 
 
@@ -53,7 +59,7 @@ class SamplingConfig(Config, DecoderXML):
     interpolation_rate: float | None = None
     delay_measurements: float | None = None
 
-    def merge(self, other: SamplingConfig | None):
+    def merge(self: Self, other: SamplingConfig | None) -> None:
         if other is None:
             return
 
@@ -74,7 +80,7 @@ class SamplingConfig(Config, DecoderXML):
         if self.delay_measurements is None:
             self.delay_measurements = other.delay_measurements
 
-    def override(self, other: SamplingConfig | None):
+    def override(self: Self, other: SamplingConfig | None) -> None:
         if other is None:
             return
 
@@ -95,32 +101,37 @@ class SamplingConfig(Config, DecoderXML):
         if other.delay_measurements is not None:
             self.delay_measurements = other.delay_measurements
 
-    def print(self):
+    def print_object(self: Self) -> None:
         console.print(self)
 
     @classmethod
-    def from_xml_file(cls, file: Path):
+    def from_xml_file(cls: type[Self], file: Path) -> Self | None:
         if not file.exists() or not file.is_file():
             return None
 
         return cls.from_xml_string(file.read_text(encoding="utf-8"))
 
     @classmethod
-    def from_xml_string(cls, data: str):
-        tree = ET.ElementTree(ET.fromstring(data))
+    def from_xml_string(cls: type[Self], data: str) -> Self | None:
+        tree = ElementTree.ElementTree(ElementTree.fromstring(data))
         return cls.from_xml_object(tree)
 
     @classmethod
-    def from_xml_object(cls, xml: ET.ElementTree | None):
+    def from_xml_object(
+        cls: type[Self],
+        xml: ElementTree.ElementTree | None,
+    ) -> Self | None:
         if xml is None or not cls.xml_is_valid(xml):
             return None
 
         return cls(
-            Fs_multiplier=SamplingConfig._get_Fs_multiplier_from_xml(xml),
+            Fs_multiplier=SamplingConfig._get_sampling_frequency_multiplier_from_xml(
+                xml,
+            ),
             points_per_decade=SamplingConfig._get_points_per_decade_from_xml(xml),
             number_of_samples=SamplingConfig._get_number_of_samples_from_xml(xml),
             number_of_samples_max=SamplingConfig._get_number_of_samples_max_from_xml(
-                xml
+                xml,
             ),
             frequency_min=SamplingConfig._get_frequency_min_from_xml(xml),
             frequency_max=SamplingConfig._get_frequency_max_from_xml(xml),
@@ -129,79 +140,132 @@ class SamplingConfig(Config, DecoderXML):
         )
 
     @staticmethod
-    def xml_is_valid(xml: ET.Element) -> bool:
-        return xml.tag == SamplingConfigOptions.ROOT.value
+    def xml_is_valid(xml: ElementTree.ElementTree) -> bool:
+        return xml.getroot().tag == SamplingConfigOptions.ROOT.value
 
     @staticmethod
-    def _get_Fs_multiplier_from_xml(xml: ET.ElementTree | None):
-        EFs_multiplier = xml.find(SamplingConfigOptionsXPATH.FS_MULTIPLIER.value)
-        if EFs_multiplier is not None:
-            return float(EFs_multiplier.text)
+    def _get_sampling_frequency_multiplier_from_xml(
+        xml: ElementTree.ElementTree | None,
+    ) -> float | None:
+        if xml is None:
+            return None
 
-        return None
-
-    @staticmethod
-    def _get_points_per_decade_from_xml(xml: ET.ElementTree | None):
-        Epoints_per_decade = xml.find(
-            SamplingConfigOptionsXPATH.POINTS_PER_DECADE.value
+        elem_sampling_frequency_multiplier = xml.find(
+            SamplingConfigOptionsXPATH.FS_MULTIPLIER.value,
         )
-        if Epoints_per_decade is not None:
-            return float(Epoints_per_decade.text)
+        if (
+            elem_sampling_frequency_multiplier is not None
+            and elem_sampling_frequency_multiplier.text is not None
+        ):
+            return float(elem_sampling_frequency_multiplier.text)
 
         return None
 
     @staticmethod
-    def _get_number_of_samples_from_xml(xml: ET.ElementTree | None):
-        Enumber_of_samples = xml.find(
-            SamplingConfigOptionsXPATH.NUMBER_OF_SAMPLES.value
+    def _get_points_per_decade_from_xml(
+        xml: ElementTree.ElementTree | None,
+    ) -> float | None:
+        elem_points_per_decade = xml.find(
+            SamplingConfigOptionsXPATH.POINTS_PER_DECADE.value,
         )
-        if Enumber_of_samples is not None:
-            return int(Enumber_of_samples.text)
+        if (
+            elem_points_per_decade is not None
+            and elem_points_per_decade.text is not None
+        ):
+            return float(elem_points_per_decade.text)
 
         return None
 
     @staticmethod
-    def _get_number_of_samples_max_from_xml(xml: ET.ElementTree | None):
-        Enumber_of_samples_max = xml.find(
-            SamplingConfigOptionsXPATH.NUMBER_OF_SAMPLES_MAX.value
+    def _get_number_of_samples_from_xml(
+        xml: ElementTree.ElementTree | None,
+    ) -> int | None:
+        if xml is None:
+            return None
+
+        elem_number_of_samples = xml.find(
+            SamplingConfigOptionsXPATH.NUMBER_OF_SAMPLES.value,
         )
-        if Enumber_of_samples_max is not None:
-            return int(Enumber_of_samples_max.text)
+        if (
+            elem_number_of_samples is not None
+            and elem_number_of_samples.text is not None
+        ):
+            return int(elem_number_of_samples.text)
 
         return None
 
     @staticmethod
-    def _get_frequency_min_from_xml(xml: ET.ElementTree | None):
-        Efrequency_min = xml.find(SamplingConfigOptionsXPATH.FREQUENCY_MIN.value)
-        if Efrequency_min is not None:
-            return float(Efrequency_min.text)
+    def _get_number_of_samples_max_from_xml(
+        xml: ElementTree.ElementTree | None,
+    ) -> int | None:
+        if xml is None:
+            return None
 
-        return None
-
-    @staticmethod
-    def _get_frequency_max_from_xml(xml: ET.ElementTree | None):
-        Efrequency_max = xml.find(SamplingConfigOptionsXPATH.FREQUENCY_MAX.value)
-        if Efrequency_max is not None:
-            return float(Efrequency_max.text)
-
-        return None
-
-    @staticmethod
-    def _get_interpolation_rate_from_xml(xml: ET.ElementTree | None):
-        Einterpolation_rate = xml.find(
-            SamplingConfigOptionsXPATH.INTERPOLATION_RATE.value
+        elem_number_of_samples_max = xml.find(
+            SamplingConfigOptionsXPATH.NUMBER_OF_SAMPLES_MAX.value,
         )
-        if Einterpolation_rate is not None:
-            return float(Einterpolation_rate.text)
+        if (
+            elem_number_of_samples_max is not None
+            and elem_number_of_samples_max.text is not None
+        ):
+            return int(elem_number_of_samples_max.text)
 
         return None
 
     @staticmethod
-    def _get_delay_measurements_from_xml(xml: ET.ElementTree | None):
-        Edelay_measurements = xml.find(
-            SamplingConfigOptionsXPATH.DELAY_MEASUREMENTS.value
+    def _get_frequency_min_from_xml(
+        xml: ElementTree.ElementTree | None,
+    ) -> float | None:
+        if xml is None:
+            return None
+
+        elem_frequency_min = xml.find(SamplingConfigOptionsXPATH.FREQUENCY_MIN.value)
+        if elem_frequency_min is not None and elem_frequency_min.text is not None:
+            return float(elem_frequency_min.text)
+
+        return None
+
+    @staticmethod
+    def _get_frequency_max_from_xml(
+        xml: ElementTree.ElementTree | None,
+    ) -> float | None:
+        if xml is None:
+            return None
+        elem_frequency_max = xml.find(SamplingConfigOptionsXPATH.FREQUENCY_MAX.value)
+        if elem_frequency_max is not None and elem_frequency_max.text is not None:
+            return float(elem_frequency_max.text)
+
+        return None
+
+    @staticmethod
+    def _get_interpolation_rate_from_xml(
+        xml: ElementTree.ElementTree | None,
+    ) -> float | None:
+        if xml is None:
+            return None
+
+        elem_interpolation_rate = xml.find(
+            SamplingConfigOptionsXPATH.INTERPOLATION_RATE.value,
         )
-        if Edelay_measurements is not None:
-            return float(Edelay_measurements.text)
+        if (
+            elem_interpolation_rate is not None
+            and elem_interpolation_rate.text is not None
+        ):
+            return float(elem_interpolation_rate.text)
+
+        return None
+
+    @staticmethod
+    def _get_delay_measurements_from_xml(
+        xml: ElementTree.ElementTree | None,
+    ) -> float | None:
+        elem_delay_measurements = xml.find(
+            SamplingConfigOptionsXPATH.DELAY_MEASUREMENTS.value,
+        )
+        if (
+            elem_delay_measurements is not None
+            and elem_delay_measurements.text is not None
+        ):
+            return float(elem_delay_measurements.text)
 
         return None

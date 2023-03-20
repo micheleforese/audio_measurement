@@ -18,5 +18,3 @@ def test_sweep_amplitude_phase():
 
     # sweep_amplitude_phase(
     #     config,
-    #     sweep_home_path=HOME / "sweep",
-    # )

@@ -1,9 +1,10 @@
 from __future__ import annotations
+
+import abc
 from enum import Enum
 
 from audio.console import console
 from audio.usb.usbtmc import UsbTmc
-import abc
 
 
 class Switch(Enum):
@@ -213,7 +214,6 @@ class SCPI_voltage(SCPI_Command):
     _cmd: str = "VOLTage"
 
     # def __call__(self, function: Function) -> str:
-    #     return f"{self._cmd} {function.value}"
 
     @property
     def dc(self):
@@ -227,7 +227,6 @@ class SCPI_current(SCPI_Command):
     _cmd: str = "CURRent"
 
     # def __call__(self, function: Function) -> str:
-    #     return f"{self._cmd} {function.value}"
 
     @property
     def dc(self):
@@ -246,7 +245,6 @@ class SCPI_sense(SCPI_Command):
 
 
 class SCPI_trace(SCPI_Command):
-
     _cmd: str = "TRACe"
 
     @property

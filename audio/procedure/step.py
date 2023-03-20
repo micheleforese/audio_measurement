@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 from abc import ABC
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Self
 
 from rich.repr import auto as rich_repr
 
@@ -64,6 +65,7 @@ class ProcedureText(ProcedureStep, DecoderXML):
 
         if text is not None:
             return cls(text=text.strip())
+        return None
 
     @staticmethod
     def xml_is_valid(xml: ET.Element):
@@ -94,6 +96,7 @@ class ProcedureAsk(ProcedureStep, DecoderXML):
 
         if text is not None:
             return cls(text=text.strip())
+        return None
 
     @staticmethod
     def xml_is_valid(xml: ET.Element):
@@ -181,17 +184,18 @@ class ProcedureDefault(ProcedureStep, DecoderXML):
             Esweep_config = Esweep.find("./config")
             if Esweep_config is not None:
                 sweep_config = SweepConfig.from_xml_object(
-                    ET.ElementTree(Esweep_config)
+                    ET.ElementTree(Esweep_config),
                 )
                 if sweep_config is not None:
-                    sweep_config.print()
+                    sweep_config.print_object()
 
             Efile_set_level = Esweep.find("./file_set_level")
             if Efile_set_level is not None:
                 sweep_file_set_level_key = Efile_set_level.get("key")
                 sweep_file_set_level_path = Efile_set_level.find("path")
                 sweep_file_set_level = File(
-                    sweep_file_set_level_key, sweep_file_set_level_path
+                    sweep_file_set_level_key,
+                    sweep_file_set_level_path,
                 )
 
             Efile_offset = Esweep.find("./file_offset")
@@ -205,7 +209,8 @@ class ProcedureDefault(ProcedureStep, DecoderXML):
                 sweep_file_offset_sweep_key = Efile_offset_sweep.get("key")
                 sweep_file_offset_sweep_path = Efile_offset_sweep.find("path")
                 sweep_file_offset_sweep = File(
-                    sweep_file_offset_sweep_key, sweep_file_offset_sweep_path
+                    sweep_file_offset_sweep_key,
+                    sweep_file_offset_sweep_path,
                 )
 
             Efile_insertion_gain = Esweep.find("./file_insertion_gain")
@@ -213,7 +218,8 @@ class ProcedureDefault(ProcedureStep, DecoderXML):
                 sweep_file_insertion_gain_key = Efile_insertion_gain.get("key")
                 sweep_file_insertion_gain_path = Efile_insertion_gain.find("path")
                 sweep_file_insertion_gain = File(
-                    sweep_file_insertion_gain_key, sweep_file_insertion_gain_path
+                    sweep_file_insertion_gain_key,
+                    sweep_file_insertion_gain_path,
                 )
 
         return cls(
@@ -237,14 +243,9 @@ class ProcedureSetLevel(ProcedureStep, DecoderXML):
     dBu: float | None = None
     dBu_modifier: bool = False
     config: SweepConfig | None = None
-    # file_set_level_key: Optional[str] = None
-    # file_set_level_name: Optional[str] = None
-    # file_plot_key: Optional[str] = None
-    # file_plot_name: Optional[str] = None
-    # override: bool = False
 
     @classmethod
-    def from_xml_file(cls, file: Path):
+    def from_xml_file(cls: type[Self], file: Path):
         return cls.from_xml_string(file.read_text())
 
     @classmethod
@@ -261,11 +262,6 @@ class ProcedureSetLevel(ProcedureStep, DecoderXML):
         dBu: float | None = None
         dBu_modifier: bool = False
         sweep_config_xml: SweepConfig | None = None
-        # file_set_level_key: Optional[str] = None
-        # file_set_level_name: Optional[str] = None
-        # file_plot_key: Optional[str] = None
-        # file_plot_name: Optional[str] = None
-        # override: bool = False
 
         name = xml.get("name")
         comment = xml.get("comment")
@@ -278,18 +274,9 @@ class ProcedureSetLevel(ProcedureStep, DecoderXML):
             if modifier is not None and modifier == "yes":
                 dBu_modifier = True
 
-        # Efile_set_level = xml.find("./file_set_level")
         # if Efile_set_level is not None:
-        #     file_set_level_key = Efile_set_level.get("key")
-        #     file_set_level_name = Efile_set_level.get("path")
 
-        # Efile_plot = xml.find("./file_set_level_plot")
         # if Efile_plot is not None:
-        #     file_plot_key = Efile_plot.get("key")
-        #     file_plot_name = Efile_plot.get("path")
-
-        # override_elem = xml.get("override")
-        # override = override_elem is not None
 
         config = xml.find("./config")
         if config is not None:
@@ -301,11 +288,6 @@ class ProcedureSetLevel(ProcedureStep, DecoderXML):
             dBu=dBu,
             dBu_modifier=dBu_modifier,
             config=sweep_config_xml,
-            # file_set_level_key=file_set_level_key,
-            # file_set_level_name=file_set_level_name,
-            # file_plot_key=file_plot_key,
-            # file_plot_name=file_plot_name,
-            # override=override,
         )
 
     @staticmethod
@@ -316,7 +298,6 @@ class ProcedureSetLevel(ProcedureStep, DecoderXML):
 @dataclass
 @rich_repr
 class ProcedureSweep(ProcedureStep, DecoderXML):
-
     name: str | None = None
     comment: str | None = None
     config: SweepConfig | None = None
@@ -389,7 +370,6 @@ class ProcedureSerialNumber(ProcedureStep, DecoderXML):
 @dataclass
 @rich_repr
 class ProcedureInsertionGain(ProcedureStep, DecoderXML):
-
     file_calibration_key: str | None = None
     file_calibration_path: str | None = None
 
@@ -463,7 +443,6 @@ class ProcedureInsertionGain(ProcedureStep, DecoderXML):
 
 @rich_repr
 class ProcedureTask(ProcedureStep, DecoderXML):
-
     text: str | None
     steps: list[ProcedureStep]
 
@@ -520,7 +499,6 @@ class ProcedureTask(ProcedureStep, DecoderXML):
 
 @rich_repr
 class ProcedurePrint(ProcedureStep, DecoderXML):
-
     variables: list[str]
 
     def __init__(self, variables: list[str] = []) -> None:
@@ -555,7 +533,6 @@ class ProcedurePrint(ProcedureStep, DecoderXML):
 @dataclass
 @rich_repr
 class ProcedureMultiPlot(ProcedureStep, DecoderXML):
-
     name: str
     file_plot: str
     folder_sweep: list[str]
@@ -629,11 +606,11 @@ class ProcedurePhaseSweepData:
 
 @rich_repr
 class ProcedurePhaseSweep(ProcedureStep, DecoderXML):
-
     data: ProcedurePhaseSweepData
 
     def __init__(
-        self, data: ProcedurePhaseSweepData = ProcedurePhaseSweepData()
+        self,
+        data: ProcedurePhaseSweepData = ProcedurePhaseSweepData(),
     ) -> None:
         self.data = data
 
@@ -690,7 +667,6 @@ class ProcedurePhaseSweep(ProcedureStep, DecoderXML):
 
 
 class ProcedureCalculation(ProcedureStep, DecoderXML):
-
     steps: list[ProcedureStep]
 
     def __init__(

@@ -6,7 +6,6 @@ from audio.usb.usbtmc import Instrument, UsbTmc
 
 @click.command()
 def instrument():
-
     from rich import inspect
 
     from audio.usb.usbtmc import ResourceManager

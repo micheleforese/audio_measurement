@@ -16,7 +16,8 @@ def trim_value(value: float, max_value: float):
 
 
 def get_subfolder(
-    home: pathlib.Path, pattern: str = r"%Y-%m-%d--%H-%M-%f"
+    home: pathlib.Path,
+    pattern: str = r"%Y-%m-%d--%H-%M-%f",
 ) -> list[pathlib.Path]:
     measurement_dirs: list[pathlib.Path] = []
 
@@ -42,10 +43,8 @@ def read_voltages(
     max_voltage: float,
     input_frequency: float | None = None,
 ) -> np.ndarray:
-
-    if input_frequency is not None:
-        if input_frequency > sampling_frequency / 2:
-            raise ValueError("The Sampling rate is low: Fs / 2 > frequency.")
+    if input_frequency is not None and input_frequency > sampling_frequency / 2:
+        raise ValueError("The Sampling rate is low: Fs / 2 > frequency.")
 
     try:
         # 1. Create a NidaqMX Task
@@ -53,7 +52,9 @@ def read_voltages(
 
         # 2. Add the AI Voltage Channel
         task.ai_channels.add_ai_voltage_chan(
-            input_channel, min_val=min_voltage, max_val=max_voltage
+            input_channel,
+            min_val=min_voltage,
+            max_val=max_voltage,
         )
 
         # 3. Configure the task
@@ -68,12 +69,13 @@ def read_voltages(
 
         # 6. Sets the task for the stream_reader
         channel1_stream_reader = nidaqmx.stream_readers.AnalogSingleChannelReader(
-            task.in_stream
+            task.in_stream,
         )
 
         # 7. Sampling the voltages
         channel1_stream_reader.read_many_sample(
-            voltages, number_of_samples_per_channel=number_of_samples
+            voltages,
+            number_of_samples_per_channel=number_of_samples,
         )
         task.close()
     except Exception as e:
@@ -92,10 +94,8 @@ def read_voltages_v2(
     max_voltage: float,
     input_frequency: float | None = None,
 ) -> np.ndarray:
-
-    if input_frequency is not None:
-        if input_frequency > sampling_frequency / 2:
-            raise ValueError("The Sampling rate is low: Fs / 2 > frequency.")
+    if input_frequency is not None and input_frequency > sampling_frequency / 2:
+        raise ValueError("The Sampling rate is low: Fs / 2 > frequency.")
 
     try:
         # 1. Create a NidaqMX Task
@@ -103,7 +103,9 @@ def read_voltages_v2(
 
         # 2. Add the AI Voltage Channel
         task.ai_channels.add_ai_voltage_chan(
-            input_channel, min_val=min_voltage, max_val=max_voltage
+            input_channel,
+            min_val=min_voltage,
+            max_val=max_voltage,
         )
 
         # 3. Configure the task
@@ -118,12 +120,13 @@ def read_voltages_v2(
 
         # 6. Sets the task for the stream_reader
         channel1_stream_reader = nidaqmx.stream_readers.AnalogSingleChannelReader(
-            task.in_stream
+            task.in_stream,
         )
 
         # 7. Sampling the voltages
         channel1_stream_reader.read_many_sample(
-            voltages, number_of_samples_per_channel=number_of_samples
+            voltages,
+            number_of_samples_per_channel=number_of_samples,
         )
         task.close()
     except Exception as e:

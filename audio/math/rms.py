@@ -70,7 +70,7 @@ class RMS:
 
         if len(voltages) != number_of_samples:
             console.log(
-                f"Lenght of voltages is {len(voltages)} instead of {number_of_samples}"
+                f"Lenght of voltages is {len(voltages)} instead of {number_of_samples}",
             )
 
         if save_file:
@@ -209,7 +209,6 @@ class RMS:
             trim_response = trim_sin_zero_offset(y_interpolated)
 
             if trim_response is not None:
-
                 voltages_trimmed, _, _ = trim_response
 
                 if len(voltages_trimmed) > 0:
@@ -234,7 +233,7 @@ class RMS:
         if time_report:
             calculation_time = timer.stop()
             console.log(
-                f"[yellow]RMS Calculation Execution time[/]: [blue]{calculation_time}[/]"
+                f"[yellow]RMS Calculation Execution time[/]: [blue]{calculation_time}[/]",
             )
 
         result.voltages = voltages
@@ -248,7 +247,6 @@ class RMS:
         trim: bool,
         rms_mode: RMS_MODE,
     ) -> float | None:
-
         voltages = list(voltages_sampling.voltages)
         voltages_len = len(voltages)
         if voltages_len < 2:
@@ -258,7 +256,6 @@ class RMS:
             trim_response = trim_sin_zero_offset(voltages)
 
             if trim_response is not None:
-
                 voltages_trimmed, _, _ = trim_response
 
                 if len(voltages_trimmed) > 0:
