@@ -1,6 +1,6 @@
 import json
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -48,7 +48,7 @@ def test_v2_procedure():
 
     PB_test_id: str | None = None
     url = "http://127.0.0.1:8090/api/collections/tests/records"
-    response = requests.post(
+    response: requests.Response = requests.post(
         url,
         json={
             "name": "Test v2 Procedure",
@@ -1127,8 +1127,8 @@ def make_balanced_graph_dB_phase(
         linewidth=1,
     )
 
-    data_phase_y_max = max(offset_phase_ref_dut)
-    data_phase_y_min = min(offset_phase_ref_dut)
+    data_phase_y_max: float = max(offset_phase_ref_dut)
+    data_phase_y_min: float = min(offset_phase_ref_dut)
 
     data_phase_y_range_max: int
     data_phase_y_range_min: int
@@ -1184,17 +1184,17 @@ def make_balanced_graph_dB_phase(
     axis_dut_sub_ref_phase_ax1.grid(which="major", color="grey", linestyle="-")
     axis_dut_sub_ref_phase_ax1.grid(which="minor", color="grey", linestyle="--")
 
-    timer_lap = timer.lap()
+    timer_lap: timedelta = timer.lap()
     log.info(f"TIME DUT - REF PHASE PLOT: {timer_lap}")
 
-    elapsed_time = timer.stop()
+    elapsed_time: timedelta = timer.stop()
     log.info(f"TIME TOTAL: {elapsed_time}")
 
-    file = directory / f"{datetime.now().strftime('%Y-%m-%dT%H-%M-%SZ')}.jpeg"
+    file: Path = directory / f"{datetime.now().strftime('%Y-%m-%dT%H-%M-%SZ')}.jpeg"
     plt.savefig(file)
 
-    with open(file, mode="rb") as f:
-        response = requests.post(
+    with Path.open(file, mode="rb") as f:
+        response: requests.Response = requests.post(
             "http://127.0.0.1:8090/api/collections/graphs/records",
             data={
                 "sweep_id": sweep_id,
