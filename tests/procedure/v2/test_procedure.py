@@ -1010,7 +1010,7 @@ def make_balanced_graph_dB_phase(
     axis_dut_sub_ref_dB.grid(which="minor", color="grey", linestyle="--")
 
     timer_lap = timer.lap()
-    log.info(f"TIME DUT - REF dB PLOT: {timer_lap}")
+    log.info("TIME DUT - REF dB PLOT: %", timer_lap)
 
     # DUT - Red [Phase °]
     axis_dut_sub_ref_phase_ax1: Axes = axis[1]
