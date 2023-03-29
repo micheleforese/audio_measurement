@@ -106,7 +106,7 @@ class VoltageSamplingV2:
             columns=["time", "voltage"],
         )
 
-        return type[self](
+        return VoltageSamplingV2(
             data=new_data,
             input_frequency=self.input_frequency,
             sampling_frequency=sampling_frequency,

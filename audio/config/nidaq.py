@@ -45,7 +45,7 @@ class Channel:
 
 @rich.repr.auto
 class NiDaqConfig(Config, DecoderXML):
-    Fs_max: float | None
+    max_frequency_sampling: float | None
     voltage_min: float | None
     voltage_max: float | None
     channels: list[Channel] | None
@@ -58,7 +58,7 @@ class NiDaqConfig(Config, DecoderXML):
         voltage_max: float | None = None,
         channels: list[Channel] | None = None,
     ) -> None:
-        self.Fs_max = max_frequency_sampling
+        self.max_frequency_sampling = max_frequency_sampling
         self.voltage_min = voltage_min
         self.voltage_max = voltage_max
         self.channels = channels
@@ -67,8 +67,8 @@ class NiDaqConfig(Config, DecoderXML):
         if other is None:
             return
 
-        if self.Fs_max is None:
-            self.Fs_max = other.Fs_max
+        if self.max_frequency_sampling is None:
+            self.max_frequency_sampling = other.max_frequency_sampling
 
         if self.voltage_min is None:
             self.voltage_min = other.voltage_min
@@ -83,8 +83,8 @@ class NiDaqConfig(Config, DecoderXML):
         if other is None:
             return
 
-        if other.Fs_max is not None:
-            self.Fs_max = other.Fs_max
+        if other.max_frequency_sampling is not None:
+            self.max_frequency_sampling = other.max_frequency_sampling
 
         if other.voltage_min is not None:
             self.voltage_min = other.voltage_min
@@ -116,10 +116,10 @@ class NiDaqConfig(Config, DecoderXML):
             return None
 
         return cls(
-            Fs_max=NiDaqConfig._get_Fs_max_from_xml(xml),
-            voltage_min=NiDaqConfig._get_voltage_min_from_xml(xml),
-            voltage_max=NiDaqConfig._get_voltage_max_from_xml(xml),
-            channels=NiDaqConfig._get_channels_from_xml(xml),
+            Fs_max=NiDaqConfig.get_Fs_max_from_xml(xml),
+            voltage_min=NiDaqConfig.get_voltage_min_from_xml(xml),
+            voltage_max=NiDaqConfig.get_voltage_max_from_xml(xml),
+            channels=NiDaqConfig.get_channels_from_xml(xml),
         )
 
     @staticmethod
@@ -127,7 +127,7 @@ class NiDaqConfig(Config, DecoderXML):
         return xml.tag == NiDaqConfigOptions.ROOT.value
 
     @staticmethod
-    def _get_Fs_max_from_xml(xml: ElementTree.ElementTree | None) -> float | None:
+    def get_Fs_max_from_xml(xml: ElementTree.ElementTree | None) -> float | None:
         elem_sampling_frequency_max = xml.find(NidaqConfigOptionsXPATH.FS_MAX.value)
         if elem_sampling_frequency_max is not None:
             return float(elem_sampling_frequency_max.text)
@@ -135,7 +135,7 @@ class NiDaqConfig(Config, DecoderXML):
         return None
 
     @staticmethod
-    def _get_voltage_min_from_xml(xml: ElementTree.ElementTree | None) -> float | None:
+    def get_voltage_min_from_xml(xml: ElementTree.ElementTree | None) -> float | None:
         elem_voltage_min = xml.find(NidaqConfigOptionsXPATH.VOLTAGE_MIN.value)
         if elem_voltage_min is not None:
             return float(elem_voltage_min.text)
@@ -143,7 +143,7 @@ class NiDaqConfig(Config, DecoderXML):
         return None
 
     @staticmethod
-    def _get_voltage_max_from_xml(xml: ElementTree.ElementTree | None) -> float | None:
+    def get_voltage_max_from_xml(xml: ElementTree.ElementTree | None) -> float | None:
         elem_voltage_max = xml.find(NidaqConfigOptionsXPATH.VOLTAGE_MAX.value)
         if elem_voltage_max is not None:
             return float(elem_voltage_max.text)
@@ -151,7 +151,7 @@ class NiDaqConfig(Config, DecoderXML):
         return None
 
     @staticmethod
-    def _get_channels_from_xml(
+    def get_channels_from_xml(
         xml: ElementTree.ElementTree | None,
     ) -> list[Channel] | None:
         if xml is None:
@@ -168,3 +168,8 @@ class NiDaqConfig(Config, DecoderXML):
                 channels.append(Channel(name=channel_name, comment=channel_comment))
 
         return channels
+
+
+# TODO: Make a class for Decoding NiDaqConfig object
+class NiDaqConfigDecoderXML:
+    pass

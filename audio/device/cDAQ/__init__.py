@@ -182,4 +182,4 @@ class Ni9223(CDAQAIDevice):
         except Exception as e:
             console.log(f"[EXCEPTION]: {e}")
             return None
-        return values_read
+        return list(values_read.tolist())

@@ -1,10 +1,8 @@
 [tool.ruff]
-# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
 select = [
-    "E",   # pycodestyle "E/W"
-    "F",   # pyflakes
-    "UP",  # pyupgrade
     "F",   # Pyflakes
+    "E",   # pycodestyle
+    "W",   # pycodestyle
     "C90", # mccabe
     "I",   # isort
     "N",   # pep8-naming
@@ -48,11 +46,12 @@ select = [
     "TRY", # tryceratops
     "NPY", # NumPy-specific rules
     "RUF", # Ruff-specific rules
+
 ]
 ignore = [
     "E501", # Line too long
 ]
-
+format = "grouped"
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 # fixable = ["A", "B", "C", "D", "E", "F", "..."]
 # unfixable = []

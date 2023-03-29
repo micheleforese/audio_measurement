@@ -27,7 +27,7 @@ from audio.model.sweep import SweepData
 from audio.usb.usbtmc import ResourceManager, UsbTmc
 from audio.utility import trim_value
 from audio.utility.scpi import SCPI, Bandwidth, Switch
-from audio.utility.timer import Timer, Timer_Message
+from audio.utility.timer import Timer
 
 
 class AmplitudeSweepTable:
@@ -236,7 +236,7 @@ def amplitude_sweep(
 
     Fs = trim_value(
         frequency * config.sampling.Fs_multiplier,
-        max_value=config.nidaq.Fs_max,
+        max_value=config.nidaq.max_frequency_sampling,
     )
 
     nidaq = Ni9223(
@@ -261,7 +261,7 @@ def amplitude_sweep(
         # Trim number_of_samples to MAX value
         Fs = trim_value(
             frequency * config.sampling.Fs_multiplier,
-            max_value=config.nidaq.Fs_max,
+            max_value=config.nidaq.max_frequency_sampling,
         )
 
         # Trim number_of_samples to MAX value
@@ -313,7 +313,7 @@ def amplitude_sweep(
         )
         voltages_sampling.save(save_file_path)
 
-        message: Timer_Message = time.stop()
+        elapsed_time: timedelta = time.stop()
 
         if result.rms:
             max_voltage = max(result.voltages)
@@ -344,7 +344,7 @@ def amplitude_sweep(
                 number_of_samples=config.sampling.number_of_samples,
                 rms=result.rms,
                 gain_dBV=gain_bBV,
-                time=message.elapsed_time,
+                time=elapsed_time,
                 voltage_max=max_voltage,
                 voltage_min=min_voltage,
             )

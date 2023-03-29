@@ -1,3 +1,4 @@
+import datetime
 from dataclasses import dataclass
 from pathlib import Path
 from time import sleep
@@ -37,7 +38,7 @@ from audio.model.sweep import SweepData
 from audio.usb.usbtmc import ResourceManager, UsbTmc
 from audio.utility import trim_value
 from audio.utility.scpi import SCPI, Bandwidth, Switch
-from audio.utility.timer import Timer, Timer_Message
+from audio.utility.timer import Timer
 
 
 def sampling_curve(
@@ -236,7 +237,7 @@ def sampling_curve(
 
     Fs = trim_value(
         frequency * config.sampling.Fs_multiplier,
-        max_value=config.nidaq.Fs_max,
+        max_value=config.nidaq.max_frequency_sampling,
     )
 
     nidaq = Ni9223(
@@ -261,7 +262,7 @@ def sampling_curve(
         # Trim number_of_samples to MAX value
         Fs = trim_value(
             frequency * config.sampling.Fs_multiplier,
-            max_value=config.nidaq.Fs_max,
+            max_value=config.nidaq.max_frequency_sampling,
         )
 
         # Trim number_of_samples to MAX value
@@ -307,7 +308,7 @@ def sampling_curve(
         result: RMSResult = RMS.rms_v2(voltages_sampling)
         voltages_sampling.save(save_file_path)
 
-        message: Timer_Message = time.stop()
+        elapsed_time: datetime.timedelta = time.stop()
 
         if result.rms:
             max_voltage = max(result.voltages)
@@ -346,7 +347,7 @@ def sampling_curve(
                     "red" if gain_bBV <= 0 else "green",
                     transfer_func_dB,
                 ),
-                f"[cyan]{message.elapsed_time}[/]",
+                f"[cyan]{elapsed_time}[/]",
                 f"{max_voltage:.5f}",
                 f"{min_voltage:.5f}",
             )
@@ -598,7 +599,7 @@ def config_set_level(
     frequency = 1000
     Fs = trim_value(
         frequency * config.sampling.Fs_multiplier,
-        max_value=config.nidaq.Fs_max,
+        max_value=config.nidaq.max_frequency_sampling,
     )
     diff_voltage = 0.001
     target_Vrms = VdBu_to_Vrms(dBu)
@@ -956,7 +957,7 @@ def config_set_level_v2(
     frequency = 1000
     Fs = trim_value(
         frequency * config.sampling.Fs_multiplier,
-        max_value=config.nidaq.Fs_max,
+        max_value=config.nidaq.max_frequency_sampling,
     )
     diff_voltage = 0.0005
     target_Vrms = VdBu_to_Vrms(dBu)
@@ -1327,18 +1328,18 @@ def plot_config_set_level_v2(
 def config_balanced_set_level_v2(
     dBu: float,
     config: SweepConfig,
-):
+) -> DataSetLevel | None:
     data_set_level: DataSetLevel | None = None
 
     voltage_amplitude_start: float = 0.01
-    voltage_amplitude = voltage_amplitude_start
+    voltage_amplitude: float = voltage_amplitude_start
     frequency = 1000
-    Fs = trim_value(
+    Fs: float = trim_value(
         frequency * config.sampling.Fs_multiplier,
-        max_value=config.nidaq.Fs_max,
+        max_value=config.nidaq.max_frequency_sampling,
     )
     diff_voltage = 0.0005
-    target_Vrms = VdBu_to_Vrms(dBu)
+    target_Vrms: float = VdBu_to_Vrms(dBu)
     interpolation_rate_rms: float = 50
 
     table = Table(
@@ -1468,7 +1469,7 @@ def config_balanced_set_level_v2(
         set_point=target_Vrms,
         controller_gain=1.5,
         tau_integral=1,
-        tau_derivative=0.5,
+        tau_derivative=0.2,
         controller_output_zero=voltage_amplitude_start,
     )
 
@@ -1495,7 +1496,7 @@ def config_balanced_set_level_v2(
 
         isVoltagesRetrievingOk = False
         while isVoltagesRetrievingOk is not True:
-            voltages = nidaq.read_multi_voltages()
+            voltages: list[float] | None = nidaq.read_multi_voltages()
             if voltages is None:
                 console.log("[ERROR]: Error in retrieving Samples.")
             else:
