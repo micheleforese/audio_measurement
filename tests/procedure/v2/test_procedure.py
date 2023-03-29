@@ -695,7 +695,7 @@ def test_calculation():
     )
 
 
-def test_v2_balanced_procedure():
+def test_v2_balanced_procedure() -> None:
     db = Database()
     test_id = db.insert_test(
         "Test Machine 1",
@@ -759,7 +759,7 @@ def test_v2_balanced_procedure():
     )
 
     config = SweepConfig(
-        RigolConfig(amplitude_peak_to_peak=data_set_level.volts),
+        RigolConfig(amplitude_peak_to_peak=float(data_set_level.volts)),
         NiDaqConfig(
             max_frequency_sampling=1_000_000,
             channels=[
@@ -771,11 +771,11 @@ def test_v2_balanced_procedure():
         ),
         SamplingConfig(
             Fs_multiplier=51,
-            points_per_decade=300,
-            number_of_samples=200,
+            points_per_decade=100,
+            number_of_samples=400,
             number_of_samples_max=1_000,
-            frequency_min=8_000,
-            frequency_max=30_000,
+            frequency_min=10,
+            frequency_max=200_000,
             interpolation_rate=50,
             delay_measurements=0,
         ),
@@ -1010,7 +1010,7 @@ def make_balanced_graph_dB_phase(
     axis_dut_sub_ref_dB.grid(which="minor", color="grey", linestyle="--")
 
     timer_lap = timer.lap()
-    log.info("TIME DUT - REF dB PLOT: %", timer_lap)
+    log.info("TIME DUT - REF dB PLOT: %s", timer_lap)
 
     # DUT - Red [Phase °]
     axis_dut_sub_ref_phase_ax1: Axes = axis[1]
