@@ -53,11 +53,11 @@ class PidController:
     tau_derivative: float
     controller_output_zero: float
 
-    _error_list: list[TimedValue]  #
+    _error_list: list[TimedValue]
     _error_integral: float
     _error_integral_cache_index: int
 
-    _process_output_list: list[float]  #
+    _process_output_list: list[float]
     _process_variable_list: list[float]
 
     _derivative_process_variable_list: list[int]
@@ -116,7 +116,7 @@ class PidController:
         return self._process_variable_list
 
     @property
-    def derivative_process_variable(self: Self) -> Literal[0]:
+    def derivative_process_variable(self: Self) -> int:
         return self._derivative_process_variable
 
     def add_error(self: Self, error: TimedValue) -> None:
@@ -176,7 +176,7 @@ def calculate_area(function: list[float]) -> float:
 
 
 def calculate_gradient(samples: list[float]) -> float:
-    if len(samples) < 1:
+    if len(samples) < 2:
         return 0
     return float(np.gradient(samples)[-1])
 
