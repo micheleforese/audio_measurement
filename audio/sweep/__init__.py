@@ -1,4 +1,5 @@
 import json
+import sys
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -124,11 +125,11 @@ def sweep_amplitude_phase(
         config.sampling.number_of_samples,
         input_channel=config.nidaq.channels,
     )
-    config.nidaq.Fs_max = nidaq.device.ai_max_multi_chan_rate
+    config.nidaq.max_frequency_sampling = nidaq.device.ai_max_multi_chan_rate
 
     Fs = trim_value(
         frequency * config.sampling.Fs_multiplier,
-        max_value=config.nidaq.Fs_max,
+        max_value=config.nidaq.max_frequency_sampling,
     )
     nidaq.create_task("Sweep Amplitude-Phase")
     nidaq.add_ai_channel(config.nidaq.channels)
@@ -187,7 +188,7 @@ def sweep_amplitude_phase(
         # Trim number_of_samples to MAX value
         Fs = trim_value(
             frequency * config.sampling.Fs_multiplier,
-            max_value=config.nidaq.Fs_max,
+            max_value=config.nidaq.max_frequency_sampling,
         )
 
         # GET MEASUREMENTS
@@ -285,7 +286,7 @@ def sweep(
 
     Fs = trim_value(
         frequency * config.sampling.Fs_multiplier,
-        max_value=config.nidaq.Fs_max,
+        max_value=config.nidaq.max_frequency_sampling,
     )
     nidaq.create_task("Sweep")
     nidaq.add_ai_channel([ch.name for ch in config.nidaq.channels])
@@ -389,7 +390,7 @@ def sweep(
         # Trim number_of_samples to MAX value
         Fs = trim_value(
             frequency * config.sampling.Fs_multiplier,
-            max_value=config.nidaq.Fs_max,
+            max_value=config.nidaq.max_frequency_sampling,
         )
 
         time_trim = timer.lap()
@@ -528,7 +529,7 @@ def sweep_single(
 
     Fs = trim_value(
         frequency * config.sampling.Fs_multiplier,
-        max_value=config.nidaq.Fs_max,
+        max_value=config.nidaq.max_frequency_sampling,
     )
     nidaq.create_task("Sweep Single")
     nidaq.add_ai_channel([ch.name for ch in config.nidaq.channels])
@@ -685,7 +686,7 @@ def sweep_balanced_single(
 
     Fs = trim_value(
         frequency * config.sampling.Fs_multiplier,
-        max_value=config.nidaq.Fs_max,
+        max_value=config.nidaq.max_frequency_sampling,
     )
     nidaq.create_task("Sweep Single")
     nidaq.add_ai_channel([ch.name for ch in config.nidaq.channels])
@@ -895,7 +896,7 @@ def sweep_balanced(
 
     Fs = trim_value(
         frequency * config.sampling.Fs_multiplier,
-        max_value=config.nidaq.Fs_max,
+        max_value=config.nidaq.max_frequency_sampling,
     )
     nidaq.create_task("Sweep")
     nidaq.add_ai_channel([ch.name for ch in config.nidaq.channels])
@@ -966,7 +967,6 @@ def sweep_balanced(
             timeout=5,
         )
         response_data = json.loads(response.content.decode())
-        console.log(response_data)
         if response.status_code != 200:
             console.log(f"[RESPONSE ERROR]: {url}")
         else:
@@ -974,19 +974,31 @@ def sweep_balanced(
 
         PB_channels_ids.append(PB_channels_id)
 
+    BANDS: list[tuple[float, float, float]] = [
+        (0, 10, 200),
+        (10, 50, 1_000),
+        (50, 100, 5_000),
+        (100, 500, 10_000),
+        (500, 1_000, 50_000),
+        (1_000, 5_000, 100_000),
+        (5_000, 10_000, 500_000),
+        (10_000, 100_000, 1_000_000),
+        (100_000, 1_000_000, 1_000_000),
+    ]
+
     for idx_frequency, frequency in track(
         enumerate(log_scale.f_list),
         total=len(log_scale.f_list),
         console=console,
     ):
-        time_start = timer.start()
+        time_start: float = timer.start()
 
         # Sets the Frequency
         generator.write(
             SCPI.set_source_frequency(1, round(frequency, 5)),
         )
 
-        time_generator_write_frequency = timer.lap()
+        time_generator_write_frequency: timedelta = timer.lap()
 
         sleep(
             config.sampling.delay_measurements
@@ -994,18 +1006,26 @@ def sweep_balanced(
             else DEFAULT.get("delay"),
         )
 
-        time_sleep = timer.lap()
+        time_sleep: timedelta = timer.lap()
 
         # Trim number_of_samples to MAX value
-        Fs = trim_value(
-            frequency * config.sampling.Fs_multiplier,
-            max_value=config.nidaq.Fs_max,
-        )
+        new_sampling_frequency: float = 0.0
 
-        time_trim = timer.lap()
+        for band in BANDS:
+            low_band, high_band, band_sampling_frequency = band
+            if frequency >= low_band and frequency < high_band:
+                new_sampling_frequency = trim_value(
+                    band_sampling_frequency,
+                    max_value=config.nidaq.max_frequency_sampling,
+                )
+
+        if new_sampling_frequency == 0.0:
+            sys.exit()
 
         # GET MEASUREMENTS
-        nidaq.set_sampling_clock_timing(Fs)
+        if Fs != new_sampling_frequency:
+            Fs = new_sampling_frequency
+            nidaq.set_sampling_clock_timing(Fs)
         time_acquisition_set_clock = timer.lap()
         nidaq.task_start()
         time_acquisition_task_start = timer.lap()
@@ -1044,7 +1064,6 @@ def sweep_balanced(
                 "frequency": frequency,
                 "sampling_frequency": Fs,
             }
-            console.log(json_data)
             response = requests.post(
                 url,
                 data=json_data,
@@ -1054,7 +1073,6 @@ def sweep_balanced(
                 timeout=5,
             )
             response_data = json.loads(response.content.decode())
-            console.log(response_data)
             if response.status_code != 200:
                 console.log(f"[RESPONSE ERROR]: {url}")
             else:
@@ -1069,7 +1087,7 @@ def sweep_balanced(
         )
 
         log.debug(
-            f"[ACQUISITION]: freq: {frequency}, Fs: {Fs}, {time_generator_write_frequency}, {time_trim}, {time_sleep}, {time_db_insert_frequency}, {time_db_insert_sweep_voltage}, {time_acquisition_set_clock}, {time_acquisition_task_start}, {time_acquisition_read}, {time_acquisition_task_stop}",
+            f"[ACQUISITION]: freq: {frequency}, Fs: {Fs}, {time_generator_write_frequency}, {time_sleep}, {time_db_insert_frequency}, {time_db_insert_sweep_voltage}, {time_acquisition_set_clock}, {time_acquisition_task_start}, {time_acquisition_read}, {time_acquisition_task_stop}",
         )
 
     generator.execute(
