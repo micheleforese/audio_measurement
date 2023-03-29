@@ -1,6 +1,7 @@
 import json
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Self
 
 import mysql.connector
@@ -65,18 +66,21 @@ class DbSweepVoltage:
     voltages: list[float]
 
 
+from audio.constant import APP_DB_AUTH_PATH
+
+
 class Database:
     connection: MySQLConnection
     _DATE_TIME_FORMAT: str = r"%Y-%m-%d %H:%M:%S.%f"
 
     def __init__(self: Self) -> None:
         try:
-            db_auth = json.loads(Path("./db.auth.json").read_text())
+            db_auth: dict = json.loads(APP_DB_AUTH_PATH.read_text())
             self.connection = MySQLConnection(
-                host=db_auth["host"],
-                port=db_auth["port"],
-                user=db_auth["user"],
-                password=db_auth["password"],
+                host=db_auth.get("host"),
+                port=db_auth.get("port"),
+                user=db_auth.get("user"),
+                password=db_auth.get("password"),
             )
         except mysql.connector.Error as err:
             console.log(err)
@@ -184,7 +188,7 @@ class Database:
 
     def get_sweeps(self: Self, test_id: int) -> list[DbSweep]:
         cur: MySQLCursor = self.connection.cursor()
-        cur.execute("SELECT * FROM audio.sweep WHERE test_id = %s", (test_id))
+        cur.execute("SELECT * FROM audio.sweep WHERE test_id = %s", (test_id,))
         data: tuple[int, int, str, str, str | None] = cur.fetchone()
         _id, test_id, name, date, comment = data
 
@@ -214,8 +218,8 @@ class Database:
         data: tuple[int, int, float, float] = (
             sweep_id,
             idx,
-            frequency,
-            sampling_frequency,
+            float(frequency),
+            float(sampling_frequency),
         )
         cur.execute(
             """
@@ -245,7 +249,7 @@ class Database:
             FROM audio.frequency
             WHERE sweep_id = %s ORDER BY idx ASC
             """,
-            (sweep_id),
+            (sweep_id,),
         )
 
         data: list[tuple[int, int, int, float, float]] = cur.fetchall()
@@ -279,7 +283,7 @@ class Database:
             WHERE id = %s
             ORDER BY idx ASC
             """,
-            (frequency_id),
+            (frequency_id,),
         )
 
         data: tuple[
@@ -330,7 +334,7 @@ class Database:
 
     def get_channels_from_sweep_id(self: Self, sweep_id: int) -> list[DbChannel]:
         cur: MySQLCursor = self.connection.cursor()
-        cur.execute("SELECT * FROM audio.channel WHERE sweep_id = %s", (sweep_id))
+        cur.execute("SELECT * FROM audio.channel WHERE sweep_id = %s", (sweep_id,))
 
         data: list[tuple[int, int, int, str, str | None]] = cur.fetchall()
 
@@ -342,7 +346,7 @@ class Database:
 
     def get_channel_from_id(self: Self, channel_id: int) -> DbChannel:
         cur: MySQLCursor = self.connection.cursor()
-        cur.execute("SELECT * FROM audio.channel WHERE id = %s", (channel_id))
+        cur.execute("SELECT * FROM audio.channel WHERE id = %s", (channel_id,))
         data: tuple[int, int, int, str, str | None] = cur.fetchone()
 
         _id, sweep_id, idx, name, comment = data
@@ -372,13 +376,13 @@ class Database:
             float | None,
         ] = (
             sweep_id,
-            amplitude,
-            frequency_min,
-            frequency_max,
-            points_per_decade,
+            float(amplitude),
+            float(frequency_min),
+            float(frequency_max),
+            float(points_per_decade),
             number_of_samples,
-            sampling_frequency_multiplier,
-            delay_measurements,
+            float(sampling_frequency_multiplier),
+            float(delay_measurements),
         )
         cur.execute(
             """
@@ -404,7 +408,7 @@ class Database:
             """
             SELECT * FROM audio.sweepConfig WHERE sweep_id = %s
             """,
-            (sweep_id),
+            (sweep_id,),
         )
         data: tuple[
             int,
