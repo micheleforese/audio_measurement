@@ -1,11 +1,13 @@
 import click
 
+from audio.script.generator import generator
 from audio.script.gui import gui
 from audio.script.ni import ni
 from audio.script.plot import plot
 from audio.script.procedure import procedure
 from audio.script.rigol import rigol
 from audio.script.set_level import set_level
+from audio.script.solar import lux, lux_find, lux_set, solar
 from audio.script.sweep import sweep
 from audio.script.sweep_debug import sweep_debug
 from audio.script.test import test
@@ -31,3 +33,12 @@ cli.add_command(gui)
 
 # Test Commands
 cli.add_command(test)
+
+# Solar Panels
+cli.add_command(solar)
+cli.add_command(lux)
+cli.add_command(lux_set)
+cli.add_command(lux_find)
+
+# Generator
+cli.add_command(generator)
