@@ -527,11 +527,13 @@ def lux_pid(target_lux: int, voltage_start: float) -> float:
 @click.option("--max_lux", type=int, default=1000)
 @click.option("--n_points", type=int, default=10)
 @click.option("--n_points", type=int, default=10)
+@click.option("--n_points_sweep", type=int, default=20)
 @click.option("--show_graphs", is_flag=True)
 def panel_characterization(
     min_lux: int,
     max_lux: int,
     n_points: int,
+    n_points_sweep: int,
     show_graphs: bool,
 ) -> None:
     title: str = Prompt.ask("Enter the title for the graph")
@@ -550,7 +552,7 @@ def panel_characterization(
 
     for lux in lux_range:
         voltage_start = lux_pid(lux, voltage_start)
-        max_power = solar_find_max_power(20, show_graph=show_graphs)
+        max_power = solar_find_max_power(n_points_sweep, show_graph=show_graphs)
         y_max_power.append(max_power)
 
     plt.close("all")
