@@ -254,10 +254,14 @@ def solar_find_max_power(
 
     max_power_percentage = y_percentage[max_p_index]
 
+    console.print("Open Voltage", voltage_dvm)
     console.print("MAX Power", max_power)
     console.print("MAX Power Voltage", y_voltage[max_p_index])
     console.print("MAX Power Current", y_current[max_p_index])
-    console.print("MAX Power Percentage Voltage", voltage_range[max_p_index])
+    console.print(
+        "MAX Power Percentage Voltage",
+        voltage_range[max_p_index] / voltage_dvm * 100,
+    )
 
     if show_graph:
         solar_graph(
@@ -434,9 +438,9 @@ def lux_pid(target_lux: int, voltage_start: float) -> float:
 
     pid = PidController(
         target_lux,
-        controller_gain=0.001,
+        controller_gain=0.005,
         tau_integral=1.2,
-        tau_derivative=0.015,
+        tau_derivative=0.02,
         controller_output_zero=voltage_start,
     )
 
