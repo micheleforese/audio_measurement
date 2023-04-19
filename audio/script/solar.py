@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import time
+from dataclasses import dataclass
 from typing import Self
 
 import click
@@ -10,14 +11,100 @@ import numpy as np
 import pyvisa
 import serial
 from extech.light_meter import LightMeter
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from pyvisa.resources.tcpip import TCPIPInstrument
 from rich.live import Live
 from rich.prompt import Prompt
-from rich.table import Table
+from rich.table import Column, Table
 
 from audio.console import console
 from audio.math import percentage_error
 from audio.math.pid import PidController, TimedValue
+
+
+@dataclass()
+class PanelCharacterizationData:
+    lux: float | None
+    open_voltage: float | None
+    mppt_voltage: float | None
+    mppt_current: float | None
+    mppt_power: float | None
+    mppt_voltage_percentage: float | None
+
+
+@dataclass()
+class PanelCharacterizationSweepData:
+    voltage_set: float | None
+    voltage_read: float | None
+    current: float | None
+    power: float | None
+    voltage_percentage: float | None
+
+
+class PanelCharacterizationSweepTable:
+    _table: Table
+
+    def __init__(self: Self) -> None:
+        self._table = Table(
+            Column(r"Voltage Set [mV]", justify="right"),
+            Column(r"Voltage Read [mV]", justify="right"),
+            Column(r"Current [mA]", justify="right"),
+            Column(r"Power [mW]", justify="right"),
+            Column(r"Voltage Percentage [%]", justify="right"),
+            title="Solar Panel Characterization Sweep",
+        )
+
+    def add_row(
+        self: Self,
+        panel_characterization_data: PanelCharacterizationSweepData,
+    ) -> Self:
+        self._table.add_row(
+            f"{panel_characterization_data.voltage_set:.5f}",
+            f"{panel_characterization_data.voltage_read:.5f}",
+            f"{panel_characterization_data.current:.5f}",
+            f"{panel_characterization_data.power:.5%}",
+            f"{panel_characterization_data.voltage_percentage:3.2%}",
+        )
+        return self
+
+    @property
+    def table(self: Self) -> Table:
+        return self._table
+
+
+@dataclass()
+class PanelCharacterizationTable:
+    _table: Table
+
+    def __init__(self: Self) -> None:
+        self._table = Table(
+            Column(r"Lux [lx]", justify="right"),
+            Column(r"Open Voltage [mV]", justify="right"),
+            Column(r"MPPT Voltage [mV]", justify="right"),
+            Column(r"MPPT Current [mA]", justify="right"),
+            Column(r"MPPT Power [mW]", justify="right"),
+            Column(r"MPPT Voltage Percentage [%]", justify="right"),
+            title="Solar Panel Characterization",
+        )
+
+    def add_row(
+        self: Self,
+        panel_characterization_data: PanelCharacterizationData,
+    ) -> Self:
+        self._table.add_row(
+            f"{panel_characterization_data.lux: 5.1f}",
+            f"{panel_characterization_data.open_voltage:.5f}",
+            f"{panel_characterization_data.mppt_voltage:.5f}",
+            f"{panel_characterization_data.mppt_current:.5f}",
+            f"{panel_characterization_data.mppt_power:.5f}",
+            f"{panel_characterization_data.mppt_voltage_percentage:3.2%}",
+        )
+        return self
+
+    @property
+    def table(self: Self) -> Table:
+        return self._table
 
 
 @click.command()
@@ -25,12 +112,10 @@ from audio.math.pid import PidController, TimedValue
 def solar(
     n_points: int,
 ) -> None:
-    title = Prompt.ask("Title")
+    title: str = Prompt.ask("Title")
     rm = pyvisa.ResourceManager()
     resource: TCPIPInstrument = rm.open_resource("TCPIP0::192.168.10.233::inst0::INSTR")
     resource.read_termination = "\n"
-
-    from rich.table import Column
 
     table = Table(
         Column("Voltage Set", justify="right"),
@@ -42,20 +127,17 @@ def solar(
     )
 
     resource.write("*IDN?")
-    response = resource.read(encoding="utf-8")
+    response: str = resource.read(encoding="utf-8")
     console.print(response)
 
     # resource.write("*RST")
     # resource.write("SOURce:RESistance:STATe 1")
     # resource.write("SOURce:RESistance 10000")
     resource.write("OUTPut:MODE SINK")
-    import time
 
-    resource.write("MEAS:VOLT:DVM? (@1)")
+    resource.write("MEAS:VOLT:DVM?")
     voltage_dvm = float(resource.read(encoding="utf-8"))
     console.print("VOLT:DVM", f"{voltage_dvm:f}")
-
-    # time.sleep(5)
 
     resource.write("OUTPut:STATe 1")
 
@@ -151,43 +233,88 @@ def solar(
     plt.close()
 
 
+class RohdeSchwarzNGU201:
+    _device: TCPIPInstrument
+
+    def __init__(self: Self, resource_name: str) -> None:
+        rm = pyvisa.ResourceManager()
+        self._device = rm.open_resource(resource_name)
+        self._device.read_termination = "\n"
+
+    def identify(self: Self) -> str:
+        self._device.write("*IDN?")
+        return self._device.read(encoding="utf-8")
+
+    def voltage_dvm_enable(self: Self) -> None:
+        self._device.write("SOURce:VOLTage:DVM:STATe 1")
+
+    def output_mode_sink(self: Self) -> None:
+        self._device.write("OUTPut:MODE SINK")
+
+    def measure_voltage_dvm(self: Self) -> float:
+        self._device.write("MEAS:VOLT:DVM?")
+        return float(self._device.read(encoding="utf-8"))
+
+    def output_state_on(self: Self) -> None:
+        self._device.write("OUTPut:STATe 1")
+
+    def output_state_off(self: Self) -> None:
+        self._device.write("OUTPut:STATe 0")
+
+    def system_local(self: Self) -> None:
+        self._device.write("SYSTem:LOCal")
+
+    def system_remote(self: Self) -> None:
+        self._device.write("SYSTem:REMote")
+
+    def source_voltage_set(self: Self, voltage: float) -> None:
+        self._device.write(f"SOURce:VOLTage {voltage}")
+
+    def measure_voltage(self: Self) -> float:
+        self._device.write("MEASure:VOLTage?")
+        return float(self._device.read(encoding="utf-8"))
+
+    def measure_current(self: Self) -> float:
+        self._device.write("MEASure:CURRent?")
+        return float(self._device.read(encoding="utf-8"))
+
+    def measure_power(self: Self) -> float:
+        self._device.write("MEASure:POWer?")
+        return float(self._device.read(encoding="utf-8"))
+
+    def reset(self: Self) -> None:
+        self._device.write("*RST")
+
+    def source_resistance_state_on(self: Self) -> None:
+        self._device.write("SOURce:RESistance:STATe 1")
+
+    def source_resistance_state_off(self: Self) -> None:
+        self._device.write("SOURce:RESistance:STATe 0")
+
+    def source_resistance_set(self: Self, resistance: float) -> None:
+        self._device.write(f"SOURce:RESistance {resistance}")
+
+
 def solar_find_max_power(
     n_points: int,
     *,
     show_graph: bool = False,
-) -> float:
-    rm = pyvisa.ResourceManager()
-    resource: TCPIPInstrument = rm.open_resource("TCPIP0::192.168.10.233::inst0::INSTR")
-    resource.read_termination = "\n"
+) -> PanelCharacterizationData:
+    rohde = RohdeSchwarzNGU201("TCPIP0::192.168.10.233::inst0::INSTR")
 
-    from rich.table import Column
+    solar_panel_sweep_table = PanelCharacterizationSweepTable()
 
-    table = Table(
-        Column("Voltage Set", justify="right"),
-        Column("Voltage Read", justify="right"),
-        Column("Current", justify="right"),
-        Column("Power", justify="right"),
-        Column("Percentage", justify="right"),
-        title="Solar Panel Characterization",
-    )
+    console.print(rohde.identify())
 
-    resource.write("*IDN?")
-    response = resource.read(encoding="utf-8")
-    console.print(response)
+    rohde.voltage_dvm_enable()
+    rohde.output_mode_sink()
 
-    # resource.write("*RST")
-    # resource.write("SOURce:RESistance:STATe 1")
-    # resource.write("SOURce:RESistance 10000")
-    resource.write("OUTPut:MODE SINK")
-    import time
-
-    resource.write("MEAS:VOLT:DVM? (@1)")
-    voltage_dvm = float(resource.read(encoding="utf-8"))
+    voltage_dvm: float = rohde.measure_voltage_dvm()
     console.print("VOLT:DVM", f"{voltage_dvm:f}")
 
     # time.sleep(5)
 
-    resource.write("OUTPut:STATe 1")
+    rohde.output_state_on()
 
     time.sleep(0.2)
 
@@ -203,64 +330,64 @@ def solar_find_max_power(
         n_points,
         endpoint=True,
     )
-    resource.write(f"SOURce:VOLTage {voltage_range[0]}")
+    rohde.source_voltage_set(voltage_range[0])
 
     time.sleep(0.5)
 
     with Live(
-        table,
+        solar_panel_sweep_table.table,
         console=console,
         vertical_overflow="visible",
     ):
-        for set_voltage in voltage_range:
-            x_voltage.append(set_voltage)
-            resource.write(f"SOURce:VOLTage {set_voltage}")
+        for voltage_set in voltage_range:
+            x_voltage.append(voltage_set)
+            rohde.source_voltage_set(voltage_set)
             time.sleep(1)
 
-            resource.write("MEASure:VOLTage?")
-            voltage = float(resource.read(encoding="utf-8"))
-            y_voltage.append(voltage)
+            voltage_read: float = rohde.measure_voltage()
+            y_voltage.append(voltage_read)
 
-            resource.write("MEASure:CURRent?")
-            current = -float(resource.read(encoding="utf-8"))
-            current *= 1000
+            current: float = -rohde.measure_current() * 1000
             y_current.append(current)
 
-            resource.write("MEASure:POWer?")
-            power = -float(resource.read(encoding="utf-8"))
-            power *= 1000
+            power: float = -rohde.measure_power() * 1000
             y_power.append(power)
 
-            percentage = (set_voltage / voltage_dvm) * 100
-            y_percentage.append(percentage)
-            table.add_row(
-                f"{set_voltage:0.4f}",
-                f"{voltage:0.4f}",
-                f"{current:0.4f}",
-                f"{power:0.6f}",
-                f"{percentage:0.1f}%",
+            voltage_percentage: float = (voltage_set / voltage_dvm) * 100
+            y_percentage.append(voltage_percentage)
+
+            panel_characterization_sweep_data = PanelCharacterizationSweepData(
+                voltage_set=voltage_set,
+                voltage_read=voltage_read,
+                current=current,
+                power=power,
+                voltage_percentage=voltage_percentage,
             )
+            solar_panel_sweep_table.add_row(panel_characterization_sweep_data)
 
-    resource.write("OUTPut:STATe 0")
-    resource.write("SYSTem:LOCal")
-    # resource.write("SYSTem:REMote")
+    rohde.output_state_off()
+    rohde.system_local()
 
-    max_power: float = -10
-    max_p_index: int = 0
+    console.print(solar_panel_sweep_table)
+
+    _max_power: float = -10
+    _max_p_index: int = 0
     for idx, p in enumerate(y_power):
-        if p > max_power:
-            max_power = p
-            max_p_index = idx
+        if p > _max_power:
+            _max_power = p
+            _max_p_index = idx
 
-    max_power_percentage = y_percentage[max_p_index]
+    mppt_voltage: float = y_voltage[_max_p_index]
+    mppt_current: float = y_current[_max_p_index]
+    mppt_power: float = _max_power
+    mppt_voltage_percentage: float = voltage_range[_max_p_index] / voltage_dvm * 100
 
-    console.print("Open Voltage", voltage_dvm)
-    console.print("MAX Power", max_power)
-    console.print("MAX Power Voltage", y_voltage[max_p_index])
-    console.print("MAX Power Current", y_current[max_p_index])
-    console.print(
-        "MAX Power Percentage Voltage",
-        voltage_range[max_p_index] / voltage_dvm * 100,
+    panel_characterization = PanelCharacterizationData(
+        open_voltage=voltage_dvm,
+        mppt_voltage=mppt_voltage,
+        mppt_current=mppt_current,
+        mppt_power=mppt_power,
+        mppt_voltage_percentage=mppt_voltage_percentage,
     )
 
     if show_graph:
@@ -269,12 +396,12 @@ def solar_find_max_power(
             voltage_dvm=voltage_dvm,
             x_voltage=x_voltage,
             y_voltage=y_voltage,
-            max_power_percentage=max_power_percentage,
+            max_power_percentage=mppt_voltage_percentage,
             y_current=y_current,
             y_power=y_power,
-            max_power=max_power,
+            max_power=_max_power,
         )
-    return max_power
+    return panel_characterization
 
 
 def solar_graph(
@@ -452,8 +579,6 @@ def lux_pid(target_lux: int, voltage_start: float) -> float:
     )
     lux_meter = LightMeter(device_port="/dev/ttyUSB1")
 
-    from rich.table import Column
-
     table = Table(
         Column("Iteration", justify="right"),
         Column("Voltage [V]", justify="right"),
@@ -538,6 +663,7 @@ def panel_characterization(
     max_lux: int,
     n_points: int,
     n_points_sweep: int,
+    *,
     show_graphs: bool,
 ) -> None:
     title: str = Prompt.ask("Enter the title for the graph")
@@ -552,16 +678,35 @@ def panel_characterization(
     x_lux: list[float] = lux_range.tolist()
     y_max_power: list[float] = []
 
+    table = PanelCharacterizationTable()
+
     voltage_start = 38.0
 
     for lux in lux_range:
-        voltage_start = lux_pid(lux, voltage_start)
-        max_power = solar_find_max_power(n_points_sweep, show_graph=show_graphs)
-        y_max_power.append(max_power)
+        voltage_start: float = lux_pid(lux, voltage_start)
+        panel_characterization: PanelCharacterizationData = solar_find_max_power(
+            n_points_sweep,
+            show_graph=show_graphs,
+        )
+        panel_characterization.lux = lux
 
+        console.print(
+            PanelCharacterizationTable().add_row(panel_characterization).table,
+        )
+        _max_power: float = panel_characterization.mppt_power
+        y_max_power.append(_max_power)
+
+        table.add_row(panel_characterization)
+
+    panel_characterization_graph(title=title, x_lux=x_lux, y_max_power=y_max_power)
+
+
+def panel_characterization_graph(
+    title: str,
+    x_lux: list[float],
+    y_max_power: list[float],
+) -> None:
     plt.close("all")
-    from matplotlib.axes import Axes
-    from matplotlib.figure import Figure
 
     sub_plot: tuple[Figure, Axes] = plt.subplots(1)
     fig, graph = sub_plot
