@@ -162,7 +162,7 @@ def solar(
     with Live(
         table,
         console=console,
-        vertical_overflow="visible",
+        vertical_overflow="crop",
     ):
         for set_voltage in voltage_range:
             x_voltage.append(set_voltage)
@@ -322,7 +322,7 @@ def solar_find_max_power(
     y_voltage: list[float] = []
     y_current: list[float] = []
     y_power: list[float] = []
-    y_percentage: list[float] = []
+    x_voltage_percentage: list[float] = []
 
     voltage_range = np.linspace(
         voltage_dvm / 2,
@@ -337,7 +337,8 @@ def solar_find_max_power(
     with Live(
         solar_panel_sweep_table.table,
         console=console,
-        vertical_overflow="visible",
+        vertical_overflow="crop",
+        screen=True,
     ):
         for voltage_set in voltage_range:
             x_voltage.append(voltage_set)
@@ -353,8 +354,8 @@ def solar_find_max_power(
             power: float = -rohde.measure_power() * 1000
             y_power.append(power)
 
-            voltage_percentage: float = (voltage_set / voltage_dvm) * 100
-            y_percentage.append(voltage_percentage)
+            voltage_percentage: float = voltage_set / voltage_dvm
+            x_voltage_percentage.append(voltage_percentage)
 
             panel_characterization_sweep_data = PanelCharacterizationSweepData(
                 voltage_set=voltage_set,
@@ -368,7 +369,7 @@ def solar_find_max_power(
     rohde.output_state_off()
     rohde.system_local()
 
-    console.print(solar_panel_sweep_table)
+    console.print(solar_panel_sweep_table.table)
 
     _max_power: float = -10
     _max_p_index: int = 0
@@ -380,9 +381,10 @@ def solar_find_max_power(
     mppt_voltage: float = y_voltage[_max_p_index]
     mppt_current: float = y_current[_max_p_index]
     mppt_power: float = _max_power
-    mppt_voltage_percentage: float = voltage_range[_max_p_index] / voltage_dvm * 100
+    mppt_voltage_percentage: float = voltage_range[_max_p_index] / voltage_dvm
 
     panel_characterization = PanelCharacterizationData(
+        lux=None,
         open_voltage=voltage_dvm,
         mppt_voltage=mppt_voltage,
         mppt_current=mppt_current,
@@ -413,7 +415,7 @@ def solar_graph(
     y_current: list[float],
     y_power: list[float],
     max_power: float,
-):
+) -> None:
     fig, axs = plt.subplots(3)
     fig.suptitle(title + f" [Open Voltage:{voltage_dvm}]")
 
@@ -423,13 +425,16 @@ def solar_graph(
         x_voltage,
         y_voltage,
         color="green",
-        label=f"MAX Percentage: {max_power_percentage:0.1f}%",
+        label=f"MAX Percentage: {max_power_percentage:0.1%}%",
     )
     axs[1].plot(x_voltage, y_current, color="red", label="")
     axs[2].plot(
-        x_voltage, y_power, color="blue", label=f"MAX Power: {max_power:0.6f} mW"
+        x_voltage,
+        y_power,
+        color="blue",
+        label=f"MAX Power: {max_power:0.6f} mW",
     )
-    axs[2].axvline(max_power_percentage, linestyle="--", color="black")
+    axs[2].axvline(max_power_percentage * 100, linestyle="--", color="black")
     for ax in axs:
         ax.legend(loc="best")
         ax.grid(visible=True, which="both", axis="both")
@@ -472,7 +477,7 @@ def lux_set() -> None:
 @click.command()
 @click.argument("lux", type=int)
 def lux_find(lux: int) -> None:
-    lux_pid(lux, 38.0)
+    lux_pid(lux, 38.0, other_screen=False)
 
 
 def scpi_set_voltage(voltage: float) -> str:
@@ -556,18 +561,21 @@ class KoradPowerSupplyKA6003P:
             current = self.current_max
 
         return self._write(scpi_set_current(current))
-        return self._write(scpi_set_current(current))
-        return self._write(scpi_set_current(current))
 
 
-def lux_pid(target_lux: int, voltage_start: float) -> float:
+def lux_pid(
+    target_lux: int,
+    voltage_start: float,
+    *,
+    other_screen: bool = True,
+) -> float:
     max_delta_lux = 2
 
     pid = PidController(
         target_lux,
-        controller_gain=0.005,
-        tau_integral=1.2,
-        tau_derivative=0.02,
+        controller_gain=0.0025,
+        tau_integral=0.5,
+        tau_derivative=0.015,
         controller_output_zero=voltage_start,
     )
 
@@ -591,7 +599,11 @@ def lux_pid(target_lux: int, voltage_start: float) -> float:
         title=f"[blue]{target_lux} Lux PID.",
     )
 
-    live = Live(table, vertical_overflow="visible", screen=True)
+    live = Live(
+        table,
+        vertical_overflow="visible",
+        screen=other_screen,
+    )
 
     korad.set_current(0.1)
     korad.set_voltage(voltage_start)
@@ -651,6 +663,124 @@ def lux_pid(target_lux: int, voltage_start: float) -> float:
     return output_voltage
 
 
+@dataclass()
+class CustomPidData:
+    interation: int
+    voltage_set: int
+    target_lux: int
+    lux_read: int
+    error: int
+
+
+class CustomPidTable:
+    _table: Table
+
+    def __init__(self: Self) -> None:
+        self._table = Table(
+            Column(r"Iteration", justify="right"),
+            Column(r"Voltage Set [mV]", justify="right"),
+            Column(r"Lux Target [lx]", justify="right"),
+            Column(r"Lux Read [lx]", justify="right"),
+            Column(r"error [lx]", justify="right"),
+            title="Solar Panel Characterization Sweep",
+        )
+
+    def add_row(
+        self: Self,
+        data: CustomPidData,
+    ) -> Self:
+        self._table.add_row(
+            f"{data.interation: 3d}",
+            f"{data.voltage_set:2.2f}",
+            f"{data.target_lux: 3d}",
+            f"{data.lux_read: 3d}",
+            f"{data.error:+3d}",
+        )
+        return self
+
+    @property
+    def table(self: Self) -> Table:
+        return self._table
+
+
+def lux_pid_custom(
+    target_lux: int,
+    max_delta_error_lux: int,
+    voltage_start: int,
+) -> None:
+    korad = KoradPowerSupplyKA6003P(
+        device_port="/dev/ttyACM0",
+        voltage_max=42,
+        current_max=0.1,
+        time_delay=1,
+    )
+    lux_meter = LightMeter(device_port="/dev/ttyUSB1")
+
+    voltage_set: int = voltage_start
+    korad.set_current(0.1)
+    korad.set_voltage(voltage_start / 100)
+    korad.power_on()
+
+    lux_found: bool = False
+    _lux_apply_lux_list: list[int] = [10, 5, 1]
+    _lux_apply_lux_index: int = 0
+
+    last_lux: int = 0
+    iteration: int = 0
+
+    custom_pid_table = CustomPidTable()
+    live = Live(custom_pid_table.table, console=console)
+    live.start()
+
+    lux_read: int = 0
+
+    while not lux_found:
+        console.log(f"[DATA] voltage_set: {voltage_set:.2f}")
+        while True:
+            try:
+                lux_read = lux_meter.read()
+            except Exception:
+                console.log("[ERROR]: lux_read invalid")
+            else:
+                break
+
+        error: int = target_lux - lux_read
+
+        custom_pid_data = CustomPidData(
+            interation=iteration,
+            voltage_set=voltage_set,
+            target_lux=target_lux,
+            lux_read=lux_read,
+            error=error,
+        )
+
+        custom_pid_table.add_row(custom_pid_data)
+
+        if abs(error) <= max_delta_error_lux:
+            lux_found = True
+            break
+
+        last_error: int = target_lux - last_lux
+
+        if last_error * error < 0:
+            _lux_apply_lux_index = min(
+                _lux_apply_lux_index + 1,
+                len(_lux_apply_lux_list) - 1,
+            )
+
+        voltage_set += _lux_apply_lux_list[_lux_apply_lux_index] * int(
+            abs(error) / error,
+        )
+        last_lux = lux_read
+        korad.set_voltage(voltage_set / 100)
+        iteration += 1
+
+    live.stop()
+    console.log("LUX FOUND", lux_read)
+
+    console.print(custom_pid_table.table)
+
+
 @click.command()
 @click.option("--min_lux", type=int, default=20)
 @click.option("--max_lux", type=int, default=1000)
@@ -680,10 +810,11 @@ def panel_characterization(
 
     table = PanelCharacterizationTable()
 
-    voltage_start = 38.0
+    voltage_start: float = 38.0
 
     for lux in lux_range:
-        voltage_start: float = lux_pid(lux, voltage_start)
+        # Prompt.ask(f"Adjust Lux to: {lux}")
+        lux_pid_custom(lux, 2, 3800)
         panel_characterization: PanelCharacterizationData = solar_find_max_power(
             n_points_sweep,
             show_graph=show_graphs,

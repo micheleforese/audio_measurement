@@ -185,7 +185,7 @@ if __name__ == "__main__":
     dbu4: float = 1.27
 
     pid: PidController = PidController(
-        set_point=np.full(40, dbu4),
+        set_point=dbu4,
         controller_gain=15.0,
         tau_integral=2.0,
         tau_derivative=1.0,
