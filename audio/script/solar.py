@@ -303,16 +303,15 @@ def solar_find_max_power(
     rohde = RohdeSchwarzNGU201("TCPIP0::192.168.10.233::inst0::INSTR")
 
     solar_panel_sweep_table = PanelCharacterizationSweepTable()
-
     console.print(rohde.identify())
 
     rohde.voltage_dvm_enable()
     rohde.output_mode_sink()
 
+    time.sleep(0.5)
+
     voltage_dvm: float = rohde.measure_voltage_dvm()
     console.print("VOLT:DVM", f"{voltage_dvm:f}")
-
-    # time.sleep(5)
 
     rohde.output_state_on()
 
@@ -692,8 +691,8 @@ class CustomPidTable:
         self._table.add_row(
             f"{data.interation: 3d}",
             f"{data.voltage_set:2.2f}",
-            f"{data.target_lux: 3d}",
-            f"{data.lux_read: 3d}",
+            f"{data.target_lux:3d}",
+            f"{data.lux_read:3d}",
             f"{data.error:+3d}",
         )
         return self
@@ -722,7 +721,7 @@ def lux_pid_custom(
     korad.power_on()
 
     lux_found: bool = False
-    _lux_apply_lux_list: list[int] = [10, 5, 1]
+    _lux_apply_lux_list: list[int] = [50, 10, 5, 1]
     _lux_apply_lux_index: int = 0
 
     last_lux: int = 0
@@ -735,7 +734,6 @@ def lux_pid_custom(
     lux_read: int = 0
 
     while not lux_found:
-        console.log(f"[DATA] voltage_set: {voltage_set:.2f}")
         while True:
             try:
                 lux_read = lux_meter.read()
@@ -776,9 +774,8 @@ def lux_pid_custom(
         iteration += 1
 
     live.stop()
-    console.log("LUX FOUND", lux_read)
-
     console.print(custom_pid_table.table)
+    console.log("LUX FOUND", lux_read)
 
 
 @click.command()
@@ -808,13 +805,12 @@ def panel_characterization(
     x_lux: list[float] = lux_range.tolist()
     y_max_power: list[float] = []
 
-    table = PanelCharacterizationTable()
+    panel_characterization_table = PanelCharacterizationTable()
 
-    voltage_start: float = 38.0
+    voltage_start: int = 3800
 
     for lux in lux_range:
-        # Prompt.ask(f"Adjust Lux to: {lux}")
-        lux_pid_custom(lux, 2, 3800)
+        lux_pid_custom(int(lux), 2, voltage_start)
         panel_characterization: PanelCharacterizationData = solar_find_max_power(
             n_points_sweep,
             show_graph=show_graphs,
@@ -827,7 +823,18 @@ def panel_characterization(
         _max_power: float = panel_characterization.mppt_power
         y_max_power.append(_max_power)
 
-        table.add_row(panel_characterization)
+        panel_characterization_table.add_row(panel_characterization)
+
+    console.print(panel_characterization_table.table)
+
+    korad = KoradPowerSupplyKA6003P(
+        device_port="/dev/ttyACM0",
+        voltage_max=42,
+        current_max=0.1,
+        time_delay=1,
+    )
+
+    korad.power_off()
 
     panel_characterization_graph(title=title, x_lux=x_lux, y_max_power=y_max_power)
 
