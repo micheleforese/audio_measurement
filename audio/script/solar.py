@@ -130,9 +130,6 @@ def solar(
     response: str = resource.read(encoding="utf-8")
     console.print(response)
 
-    # resource.write("*RST")
-    # resource.write("SOURce:RESistance:STATe 1")
-    # resource.write("SOURce:RESistance 10000")
     resource.write("OUTPut:MODE SINK")
 
     resource.write("MEAS:VOLT:DVM?")
@@ -195,7 +192,6 @@ def solar(
 
     resource.write("OUTPut:STATe 0")
     resource.write("SYSTem:LOCal")
-    # resource.write("SYSTem:REMote")
 
     max_power: float = -10
     max_p_index: int = 0
@@ -223,7 +219,10 @@ def solar(
     )
     axs[1].plot(x_voltage, y_current, color="red", label="")
     axs[2].plot(
-        x_voltage, y_power, color="blue", label=f"MAX Power: {max_power:0.6f} mW"
+        x_voltage,
+        y_power,
+        color="blue",
+        label=f"MAX Power: {max_power:0.6f} mW",
     )
     axs[2].axvline(max_power_percentage, linestyle="--", color="black")
     for ax in axs:

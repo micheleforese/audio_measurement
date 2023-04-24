@@ -1,4 +1,5 @@
 import datetime
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from time import sleep
@@ -178,7 +179,7 @@ def sampling_curve(
         )
         generator.close()
         console.print("[ERROR] - Voltage Input > 12.", style="error")
-        exit()
+        sys.exit()
 
     # Sets the Configuration for the Voltmeter
     generator.execute(
@@ -531,7 +532,7 @@ def plot_from_csv(
         fontsize=40,
     )
     axes.set_ylabel(
-        "Amplitude ($dB$) ($0 \, dB = {} \, Vpp$)".format(
+        "Amplitude ($dB$) ($0 \\, dB = {} \\, Vpp$)".format(
             round(cfg.y_offset, 5) if cfg.y_offset else 0,
         ),
         fontsize=40,
@@ -938,7 +939,7 @@ class DataSetLevel:
     volts: float
     dB: float
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"[DataSetLevel]: volts: {self.volts}, dB: {self.dB}"
 
     def __rich_repr__(self):

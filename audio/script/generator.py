@@ -1,12 +1,8 @@
 import time
 from tkinter import *
-from tkinter import messagebox, ttk
 
 import click
-import pyvisa
 import serial
-
-from audio.console import console
 
 # ==============================================================================
 # Define protocol commands
@@ -41,7 +37,12 @@ DEVICE = "/dev/ttyACM1"
 
 def GetID():
     PS = serial.Serial(
-        DEVICE, baudrate=9600, bytesize=8, parity="N", stopbits=1, timeout=1
+        DEVICE,
+        baudrate=9600,
+        bytesize=8,
+        parity="N",
+        stopbits=1,
+        timeout=1,
     )
     PS.flushInput()
     PS.write(REQUEST_ID)  # Request the ID from the Power Supply
@@ -53,7 +54,12 @@ def GetID():
 
 def Get_I_Set():
     PS = serial.Serial(
-        DEVICE, baudrate=9600, bytesize=8, parity="N", stopbits=1, timeout=1
+        DEVICE,
+        baudrate=9600,
+        bytesize=8,
+        parity="N",
+        stopbits=1,
+        timeout=1,
     )
     PS.flushInput()
     PS.write(REQUEST_SET_CURRENT)  # Request the target current
@@ -61,26 +67,36 @@ def Get_I_Set():
     if I_set == b"":
         I_set = b"0"
     I_set = float(I_set)
-    print(str("Current is set to ") + str(I_set))
+    print("Current is set to " + str(I_set))
     PS.flushInput()
     return I_set
 
 
 def Get_V_Set():
     PS = serial.Serial(
-        DEVICE, baudrate=9600, bytesize=8, parity="N", stopbits=1, timeout=1
+        DEVICE,
+        baudrate=9600,
+        bytesize=8,
+        parity="N",
+        stopbits=1,
+        timeout=1,
     )
     PS.flushInput()
     PS.write(REQUEST_SET_VOLTAGE)  # Request the target voltage
     V_set = float(PS.read(5))
-    print(str("Voltage is set to ") + str(V_set))
+    print("Voltage is set to " + str(V_set))
     PS.flushInput()
     return V_set
 
 
 def Get_Status():
     PS = serial.Serial(
-        DEVICE, baudrate=9600, bytesize=8, parity="N", stopbits=1, timeout=1
+        DEVICE,
+        baudrate=9600,
+        bytesize=8,
+        parity="N",
+        stopbits=1,
+        timeout=1,
     )
     PS.flushInput()
     PS.write(REQUEST_STATUS)  # Request the status of the PS
@@ -92,52 +108,65 @@ def Get_Status():
 
 def SetVoltage(Voltage) -> bytes:
     PS = serial.Serial(
-        DEVICE, baudrate=9600, bytesize=8, parity="N", stopbits=1, timeout=1
+        DEVICE,
+        baudrate=9600,
+        bytesize=8,
+        parity="N",
+        stopbits=1,
+        timeout=1,
     )
     PS.flushInput()
     if float(Voltage) > float(VMAX):
         Voltage = VMAX
-    Voltage = "{:2.2f}".format(float(Voltage))
+    Voltage = f"{float(Voltage):2.2f}"
     Output_string = SET_VOLTAGE + bytes(Voltage, "utf-8")
     PS.write(Output_string)
     print(Output_string)
     PS.flushInput()
     time.sleep(0.2)
-    VeriVolt = "{:2.2f}".format(float(Get_V_Set()))  # Verify PS accepted
+    VeriVolt = f"{float(Get_V_Set()):2.2f}"  # Verify PS accepted
     # the setting
-    #    print(VeriVolt)
-    #    print(Voltage)
     while VeriVolt != Voltage:
         PS.write(Output_string)  # Try one more time
     vEntry.delete(0, 5)
-    vEntry.insert(0, "{:2.2f}".format(float(VeriVolt)))
+    vEntry.insert(0, f"{float(VeriVolt):2.2f}")
     return Output_string
 
 
 def SetCurrent(Current):
     PS = serial.Serial(
-        DEVICE, baudrate=9600, bytesize=8, parity="N", stopbits=1, timeout=1
+        DEVICE,
+        baudrate=9600,
+        bytesize=8,
+        parity="N",
+        stopbits=1,
+        timeout=1,
     )
     PS.flushInput()
     if float(Current) > float(IMAX):
         Current = IMAX
-    Current = "{:2.3f}".format(float(Current))
+    Current = f"{float(Current):2.3f}"
     Output_string = SET_CURRENT + bytes(Current, "utf-8")
     PS.write(Output_string)
     print(Output_string)
     PS.flushInput()
     time.sleep(0.2)
-    VeriAmp = "{:2.3f}".format(float(Get_I_Set()))
+    VeriAmp = f"{float(Get_I_Set()):2.3f}"
     if VeriAmp != Current:
         VeriAmp = 0.00
     iEntry.delete(0, 5)
-    iEntry.insert(0, "{:2.3f}".format(float(VeriAmp)))
+    iEntry.insert(0, f"{float(VeriAmp):2.3f}")
     return Output_string
 
 
 def V_Actual():
     PS = serial.Serial(
-        DEVICE, baudrate=9600, bytesize=8, parity="N", stopbits=1, timeout=1
+        DEVICE,
+        baudrate=9600,
+        bytesize=8,
+        parity="N",
+        stopbits=1,
+        timeout=1,
     )
     PS.flushInput()
     PS.write(REQUEST_ACTUAL_VOLTAGE)  # Request the actual voltage
@@ -145,7 +174,6 @@ def V_Actual():
     V_actual = PS.read(5)
     if V_actual == b"":
         V_actual = b"0"  # deal with the occasional NULL from PS
-    #    print('V_actual = ' + str(V_actual))
     V_actual = float(V_actual)
     PS.flushInput()
     return V_actual
@@ -153,7 +181,12 @@ def V_Actual():
 
 def I_Actual():
     PS = serial.Serial(
-        DEVICE, baudrate=9600, bytesize=8, parity="N", stopbits=1, timeout=1
+        DEVICE,
+        baudrate=9600,
+        bytesize=8,
+        parity="N",
+        stopbits=1,
+        timeout=1,
     )
     PS.flushInput()
     PS.write(REQUEST_ACTUAL_CURRENT)  # Request the actual current
@@ -168,7 +201,12 @@ def I_Actual():
 
 def SetOP(OnOff):
     PS = serial.Serial(
-        DEVICE, baudrate=9600, bytesize=8, parity="N", stopbits=1, timeout=1
+        DEVICE,
+        baudrate=9600,
+        bytesize=8,
+        parity="N",
+        stopbits=1,
+        timeout=1,
     )
     PS.flushInput()
 
@@ -182,7 +220,12 @@ def SetOP(OnOff):
 
 def SetOVP(OnOff):
     PS = serial.Serial(
-        DEVICE, baudrate=9600, bytesize=8, parity="N", stopbits=1, timeout=1
+        DEVICE,
+        baudrate=9600,
+        bytesize=8,
+        parity="N",
+        stopbits=1,
+        timeout=1,
     )
     PS.flushInput()
     Output_string = SET_OVP + OnOff
@@ -194,7 +237,12 @@ def SetOVP(OnOff):
 
 def SetOCP(OnOff):
     PS = serial.Serial(
-        DEVICE, baudrate=9600, bytesize=8, parity="N", stopbits=1, timeout=1
+        DEVICE,
+        baudrate=9600,
+        bytesize=8,
+        parity="N",
+        stopbits=1,
+        timeout=1,
     )
     PS.flushInput()
 
@@ -207,20 +255,14 @@ def SetOCP(OnOff):
 
 
 def Update_VandI():
-    #    print(V_Actual())
-    V_actual = "{:2.2f}".format(V_Actual())
+    V_actual = f"{V_Actual():2.2f}"
     vReadoutLabel.configure(text="{} {}".format(V_actual, "V"))
-    #    print(V_actual)
 
-    I_actual = "{0:.3f}".format(I_Actual())
+    I_actual = f"{I_Actual():.3f}"
     iReadoutLabel.configure(text="{} {}".format(I_actual, "A"))
 
 
-#    print(I_actual)
-
-
 def Application_Loop():
-    #        print('application loop run')
     app.after(75, Update_VandI)
     app.after(100, Application_Loop)
 
@@ -233,7 +275,7 @@ def SetVA():
     if Amps == "":
         Amps = b"0"
         print("changed Amps to 0")
-    Amps = "{0:.3f}".format(float(Amps))
+    Amps = f"{float(Amps):.3f}"
     SetCurrent(Amps)
 
 
@@ -243,14 +285,5 @@ def MemSet(MemNum):
 
 @click.command()
 def generator():
-    # data: bytes = GetID()
-    # console.log(data)
-
-    # data = SetOP("1")
-    # console.log(data)
-    # SetVoltage(42)
-    # voltage = V_Actual()
-    # console.log(voltage)
-
     Application_Loop()
     app.mainloop()

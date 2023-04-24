@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -68,7 +69,7 @@ class Procedure(DecoderXML):
                 steps.append(procedure)
             else:
                 console.print(f"procedure idx {idx} is NULL")
-                exit()
+                sys.exit()
 
         return cls(name, comment, steps)
 

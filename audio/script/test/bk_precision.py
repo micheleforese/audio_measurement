@@ -1,3 +1,4 @@
+import sys
 import time
 
 import click
@@ -85,4 +86,4 @@ def bk_precision():
     plt.legend(loc="best")
     plt.show()
 
-    exit()
+    sys.exit()

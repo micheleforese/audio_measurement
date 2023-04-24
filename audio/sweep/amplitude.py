@@ -1,3 +1,4 @@
+import sys
 from datetime import timedelta
 from pathlib import Path
 from time import sleep
@@ -177,7 +178,7 @@ def amplitude_sweep(
         )
         generator.close()
         console.print("[ERROR] - Voltage Input > 12.", style="error")
-        exit()
+        sys.exit()
 
     # Sets the Configuration for the Voltmeter
     generator.execute(

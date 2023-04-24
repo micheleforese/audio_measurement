@@ -98,13 +98,13 @@ def create_latex_file(
     )
 
     latex_start: str = (
-        "\documentclass[a4, landscape]{article} \n"
+        "\\documentclass[a4, landscape]{article} \n"
         + latex_packages
-        + "\pgfplotsset{compat=1.18}\n"
+        + "\\pgfplotsset{compat=1.18}\n"
         "\begin{document}\n"
     )
 
-    latex_end = "\n\end{document}"
+    latex_end = "\n\\end{document}"
 
     docker_image_file_path: str = image_file.name
     if debug:
@@ -116,7 +116,7 @@ def create_latex_file(
         "\n\null\n"
         "\vfill\n"
         "\begin{figure}[h]"
-        "\centering"
+        "\\centering"
         r"\includegraphics[width=.9\paperwidth]{"
         f"{docker_image_file_path}"
         r"}"

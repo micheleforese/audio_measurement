@@ -1,3 +1,5 @@
+import sys
+
 import click
 
 from audio.console import console
@@ -21,7 +23,7 @@ def instrument():
         console.log("response")
 
     instr.close()
-    exit()
+    sys.exit()
 
     try:
         list_devices: list[Instrument] = UsbTmc.search_devices()

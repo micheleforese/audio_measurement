@@ -102,13 +102,9 @@ def exec_proc(data: DataProcedure, list_step: list[ProcedureStep]) -> None:
 def step_not_implemented(_: DataProcedure, step: ProcedureStep):
     console.print("[STEP] - Unknown.")
 
-    return
-
 
 def step_procedure_text(_: DataProcedure, step: ProcedureText):
     console.print(step.text)
-
-    return
 
 
 def step_procedure_ask(_: DataProcedure, step: ProcedureAsk):
@@ -116,8 +112,6 @@ def step_procedure_ask(_: DataProcedure, step: ProcedureAsk):
 
     while not confirm:
         confirm = Confirm.ask(step.text)
-
-    return
 
 
 def step_procedure_default(data: DataProcedure, step: ProcedureDefault):
@@ -130,8 +124,6 @@ def step_procedure_default(data: DataProcedure, step: ProcedureDefault):
 
     data.default_sweep_config.config = step.sweep_config
 
-    return
-
 
 def step_procedure_file(data: DataProcedure, step: ProcedureFile):
     result: bool = data.cache_file.add(step.key, data.root / step.path)
@@ -139,8 +131,6 @@ def step_procedure_file(data: DataProcedure, step: ProcedureFile):
         console.log(f"[ERROR] - File key '{step.key}' already present in the project")
     else:
         console.log(f"[FILE] - File added: '{step.key}' - '{step.path}'")
-
-    return
 
 
 def step_procedure_set_level(data: DataProcedure, step: ProcedureSetLevel):
@@ -191,8 +181,6 @@ def step_procedure_serial_number(data: DataProcedure, step: ProcedureSerialNumbe
     data.root.mkdir(parents=True, exist_ok=True)
     console.print(f"Created Dir at: '{data.root}'")
 
-    return
-
 
 def step_procedure_insertion_gain(data: DataProcedure, step: ProcedureInsertionGain):
     file_calibration_path: Path
@@ -223,8 +211,6 @@ def step_procedure_insertion_gain(data: DataProcedure, step: ProcedureInsertionG
 
     file_gain_path.write_text(f"{gain:.5}", encoding="utf-8")
 
-    return
-
 
 def step_procedure_print(data: DataProcedure, step: ProcedurePrint):
     for var in step.variables:
@@ -233,8 +219,6 @@ def step_procedure_print(data: DataProcedure, step: ProcedurePrint):
             console.print(
                 "{}: {}".format(var, Path(variable).read_text(encoding="utf-8")),
             )
-
-    return
 
 
 def step_procedure_sweep(data: DataProcedure, step: ProcedureSweep):
@@ -327,14 +311,11 @@ def step_procedure_multiplot(data: DataProcedure, step: ProcedureMultiPlot):
         step.config,
     )
 
-    return
-
 
 def step_procedure_task(data: DataProcedure, step: ProcedureTask):
     console.print(Panel.fit(f"[TASK] - [green]{step.text}[/]"), justify="center")
 
     exec_proc(data, list_step=step.steps)
-    return
 
 
 def step_procedure_phase_sweep(data: DataProcedure, step: ProcedurePhaseSweep):
