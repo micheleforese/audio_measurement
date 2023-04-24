@@ -4,9 +4,9 @@ import typing
 from dataclasses import dataclass
 from enum import Enum
 from typing import Self
-from xml.etree import ElementTree
 
 import rich
+from defusedxml import ElementTree
 
 from audio.config import Config
 from audio.config.type import Range
@@ -23,12 +23,9 @@ class PlotConfigOptions(Enum):
     Y_OFFSET = "y_offset"
 
     X_LIMIT = "x_limit"
-    X_LIMIT_MIN = "min"
-    X_LIMIT_MAX = "max"
-
     Y_LIMIT = "y_limit"
-    Y_LIMIT_MIN = "min"
-    Y_LIMIT_MAX = "max"
+    XY_LIMIT_MIN = "min"
+    XY_LIMIT_MAX = "max"
 
     INTERPOLATION_RATE = "interpolation_rate"
     DPI = "dpi"
@@ -44,12 +41,12 @@ class PlotConfigOptionsXPATH(Enum):
     Y_OFFSET = f"./{PlotConfigOptions.Y_OFFSET}"
 
     X_LIMIT = f"./{PlotConfigOptions.X_LIMIT}"
-    X_LIMIT_MIN = f"./{PlotConfigOptions.X_LIMIT}/{PlotConfigOptions.X_LIMIT_MIN}"
-    X_LIMIT_MAX = f"./{PlotConfigOptions.X_LIMIT}/{PlotConfigOptions.X_LIMIT_MAX}"
+    X_LIMIT_MIN = f"./{PlotConfigOptions.X_LIMIT}/{PlotConfigOptions.XY_LIMIT_MIN}"
+    X_LIMIT_MAX = f"./{PlotConfigOptions.X_LIMIT}/{PlotConfigOptions.XY_LIMIT_MAX}"
 
     Y_LIMIT = f"./{PlotConfigOptions.Y_LIMIT}"
-    Y_LIMIT_MIN = f"./{PlotConfigOptions.Y_LIMIT}/{PlotConfigOptions.Y_LIMIT_MIN}"
-    Y_LIMIT_MAX = f"./{PlotConfigOptions.Y_LIMIT}/{PlotConfigOptions.Y_LIMIT_MAX}"
+    Y_LIMIT_MIN = f"./{PlotConfigOptions.Y_LIMIT}/{PlotConfigOptions.XY_LIMIT_MIN}"
+    Y_LIMIT_MAX = f"./{PlotConfigOptions.Y_LIMIT}/{PlotConfigOptions.XY_LIMIT_MAX}"
 
     INTERPOLATION_RATE = f"./{PlotConfigOptions.INTERPOLATION_RATE}"
     DPI = f"./{PlotConfigOptions.DPI}"
@@ -300,8 +297,6 @@ class PlotConfig(Config, DecoderXML, EncoderYAML):
         file.write_text(self.to_yaml_string())
 
     def to_yaml_string(self: Self) -> str:
-        yaml_string_data: str = ""
-
         yaml_string_list: list[str] = []
 
         y_offset = self._y_offset_to_yaml()
@@ -332,9 +327,7 @@ class PlotConfig(Config, DecoderXML, EncoderYAML):
         if legend is not None:
             yaml_string_list.append(legend)
 
-        yaml_string_data = "\n".join(yaml_string_list)
-
-        return yaml_string_data
+        return "\n".join(yaml_string_list)
 
     def _y_offset_to_yaml(self: Self) -> str | None:
         if self.y_offset is not None:
@@ -369,4 +362,5 @@ class PlotConfig(Config, DecoderXML, EncoderYAML):
     def _legend_to_yaml(self: Self) -> str | None:
         if self.legend is not None:
             return f"{PlotConfigOptions.LEGEND.value}: '{self.legend}'"
+        return None
         return None

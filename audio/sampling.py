@@ -27,7 +27,7 @@ from usbtmc import Instrument
 from audio.config.plot import PlotConfig
 from audio.config.sweep import SweepConfig
 from audio.console import console
-from audio.device.cDAQ import Ni9223
+from audio.device.cdaq import Ni9223
 from audio.math import calculate_voltage_decibel, percentage_error, transfer_function
 from audio.math.algorithm import LogarithmicScale
 from audio.math.interpolation import INTERPOLATION_KIND, logx_interpolation_model

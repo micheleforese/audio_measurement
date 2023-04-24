@@ -4,22 +4,33 @@ import tkinter as tk
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from threading import Lock, Thread
-from tkinter import BooleanVar, DoubleVar, StringVar, ttk
-from typing import Generic, Self, TypeVar
+from tkinter import BooleanVar, DoubleVar, Event, EventType, Frame, Misc, StringVar, ttk
+from typing import TYPE_CHECKING, Generic, Self, TypeVar
 
 import click
-import usb
+
+from audio.exception.device import DeviceNotFoundError
+
+if TYPE_CHECKING:
+    import usb
 
 from audio.console import console
-from audio.device.cDAQ import Ni9223
+from audio.device.cdaq import Ni9223
 from audio.math.interpolation import INTERPOLATION_KIND
 from audio.math.phase import phase_offset_v4
 from audio.math.rms import RMS, RMS_MODE
 from audio.math.voltage import VoltageMode, Vrms_to_VdBu, Vrms_to_Vpp, voltage_converter
 from audio.model.sampling import VoltageSamplingV2
-from audio.usb.usbtmc import ResourceManager, UsbTmc, UsbTmcInstrument
+from audio.usb.usbtmc import ResourceManager, UsbTmc
 from audio.utility import trim_value
 from audio.utility.scpi import SCPI, Bandwidth, Switch
+
+KEY_CTRL = 20
+KEY_SPACEBAR = 65
+KEY_PAGE_UP_PRIOR = 112
+KEY_PAGE_DOWN_NEXT = 117
+KEY_ARROW_UP = 111
+KEY_ARROW_DOWN = 116
 
 rms_data_lock: Lock = Lock()
 
@@ -61,8 +72,10 @@ class RigolAdminGUI:
     generator: UsbTmc
     device: Ni9223
     b_on: bool
+    amplitude_steps: list[float] = [1.0, 0.1, 0.01, 0.001]
+    amplitude_steps_index: int = 0
 
-    channels = [
+    channels: list[str] = [
         "cDAQ9189-1CDBE0AMod5/ai1",
         "cDAQ9189-1CDBE0AMod5/ai2",
     ]
@@ -74,7 +87,7 @@ class RigolAdminGUI:
 
     data: RmsDataParameters
 
-    lbl_Vrms: ttk.Label
+    lbl_voltage_rms: ttk.Label
     ent_frequency: ttk.Entry
     ent_amplitude: ttk.Entry
 
@@ -93,7 +106,7 @@ class RigolAdminGUI:
 
     focus: Focus
 
-    def _ui_build(self):
+    def _ui_build(self: Self) -> None:
         frm_app = tk.Frame(
             master=self.windows,
             borderwidth=5,
@@ -110,7 +123,7 @@ class RigolAdminGUI:
         self._ui_build_read_voltage(frm_app=frm_app)
         self._ui_build_on_off(frm_app=frm_app)
 
-    def _ui_build_amplitude_modes(self, frm_app: tk.Frame):
+    def _ui_build_amplitude_modes(self: Self, frm_app: tk.Frame) -> None:
         frm_amplitude_modes = tk.Frame(
             master=frm_app,
             borderwidth=5,
@@ -121,20 +134,20 @@ class RigolAdminGUI:
             text="Amplitude Modes:",
         )
 
-        btn_amplitude_modes_Vpp = ttk.Button(
+        btn_amplitude_modes_voltage_peak_to_peak = ttk.Button(
             master=frm_amplitude_modes,
             text=VoltageMode.Vpp.name,
-            command=self._handle_amplitude_mode_Vpp,
+            command=self._handle_amplitude_mode_voltage_peak_to_peak,
         )
-        btn_amplitude_modes_Vrms = ttk.Button(
+        btn_amplitude_modes_voltage_rms = ttk.Button(
             master=frm_amplitude_modes,
             text=VoltageMode.Vrms.name,
-            command=self._handle_amplitude_mode_Vrms,
+            command=self._handle_amplitude_mode_voltage_rms,
         )
-        btn_amplitude_modes_VdBu = ttk.Button(
+        btn_amplitude_modes_voltage_dbu = ttk.Button(
             master=frm_amplitude_modes,
             text=VoltageMode.VdBu.name,
-            command=self._handle_amplitude_mode_VdBu,
+            command=self._handle_amplitude_mode_voltage_dbu,
         )
 
         frm_amplitude_modes.pack(
@@ -143,11 +156,11 @@ class RigolAdminGUI:
             expand=True,
         )
         lbl_amplitude_modes.grid(row=0, column=0, sticky="e", ipadx=10)
-        btn_amplitude_modes_Vpp.grid(row=0, column=1, ipadx=5)
-        btn_amplitude_modes_Vrms.grid(row=0, column=2, ipadx=5)
-        btn_amplitude_modes_VdBu.grid(row=0, column=3, ipadx=5)
+        btn_amplitude_modes_voltage_peak_to_peak.grid(row=0, column=1, ipadx=5)
+        btn_amplitude_modes_voltage_rms.grid(row=0, column=2, ipadx=5)
+        btn_amplitude_modes_voltage_dbu.grid(row=0, column=3, ipadx=5)
 
-    def _ui_build_amplitude(self, frm_app: tk.Frame):
+    def _ui_build_amplitude(self: Self, frm_app: tk.Frame) -> None:
         frm_amplitude = tk.Frame(
             master=frm_app,
         )
@@ -178,9 +191,7 @@ class RigolAdminGUI:
         ent_amplitude.grid(row=0, column=1, sticky="w")
         lbl_amplitude_mode_curr.grid(row=0, column=2)
 
-        amplitude_steps = [1.0, 0.1, 0.01, 0.001]
-
-        for idx, step in enumerate(amplitude_steps, start=3):
+        for idx, step in enumerate(self.amplitude_steps, start=3):
             ttk.Radiobutton(
                 master=frm_amplitude,
                 text=str(step),
@@ -188,13 +199,19 @@ class RigolAdminGUI:
                 value=step,
             ).grid(row=0, column=idx, sticky="e")
 
-        self.amplitude_multiplier_var.set(amplitude_steps[0])
+        self.amplitude_multiplier_var.set(
+            self.amplitude_steps[self.amplitude_steps_index],
+        )
 
-        def _handle_frm_amplitude_focus_in(event):
+        def _handle_frm_amplitude_focus_in(
+            _event: Event[Frame],
+        ) -> None:
             console.log("[FOCUS IN]: frm_amplitude")
             self.focus = RigolAdminGUI.Focus.AMPLITUDE
 
-        def _handle_frm_amplitude_focus_out(event):
+        def _handle_frm_amplitude_focus_out(
+            _event: Event[Frame],
+        ) -> None:
             console.log("[FOCUS OUT]: frm_amplitude")
             self.focus = RigolAdminGUI.Focus.UNKNOWN
 
@@ -202,7 +219,7 @@ class RigolAdminGUI:
 
         frm_amplitude.bind("<FocusOut>", _handle_frm_amplitude_focus_out)
 
-    def _ui_build_frequency(self, frm_app: tk.Frame):
+    def _ui_build_frequency(self: Self, frm_app: tk.Frame) -> None:
         frm_frequency = tk.Frame(
             master=frm_app,
             background="blue",
@@ -231,11 +248,15 @@ class RigolAdminGUI:
         lbl_frequency.grid(row=0, column=0, sticky="e", ipadx=10)
         ent_frequency.grid(row=0, column=1)
 
-        def _handle_frm_frequency_focus_in(event):
+        def _handle_frm_frequency_focus_in(
+            _event: Event[Frame],
+        ) -> None:
             console.log("[FOCUS IN]: frm_frequency")
             self.focus = RigolAdminGUI.Focus.FREQUENCY
 
-        def _handle_frm_frequency_focus_out(event):
+        def _handle_frm_frequency_focus_out(
+            _event: Event[Frame],
+        ) -> None:
             console.log("[FOCUS OUT]: frm_frequency")
             self.focus = RigolAdminGUI.Focus.UNKNOWN
 
@@ -243,7 +264,7 @@ class RigolAdminGUI:
 
         frm_frequency.bind("<FocusOut>", _handle_frm_frequency_focus_out)
 
-    def _ui_build_read_voltage(self, frm_app: tk.Frame):
+    def _ui_build_read_voltage(self: Self, frm_app: tk.Frame) -> None:
         frm_read_voltage = tk.Frame(
             master=frm_app,
             background="green",
@@ -262,20 +283,24 @@ class RigolAdminGUI:
 
         for idx, channel in enumerate(self.channels, start=1):
             lbl_channel = ttk.Label(master=frm_read_voltage, text=channel)
-            lbl_Vrms = ttk.Label(master=frm_read_voltage)
-            lbl_Vpp = ttk.Label(master=frm_read_voltage)
-            lbl_VdBu = ttk.Label(master=frm_read_voltage)
+            lbl_voltage_rms = ttk.Label(master=frm_read_voltage)
+            lbl_voltage_peak_to_peak = ttk.Label(master=frm_read_voltage)
+            lbl_voltage_dbu = ttk.Label(master=frm_read_voltage)
 
             _type = type[self.data.lbls]
 
             self.data.lbls.append(
-                (LockValue(lbl_Vrms), LockValue(lbl_Vpp), LockValue(lbl_VdBu)),
+                (
+                    LockValue(lbl_voltage_rms),
+                    LockValue(lbl_voltage_peak_to_peak),
+                    LockValue(lbl_voltage_dbu),
+                ),
             )
 
             lbl_channel.grid(row=idx, column=0, ipadx=20, sticky="ew")
-            lbl_Vrms.grid(row=idx, column=1, ipadx=20, sticky="ew")
-            lbl_VdBu.grid(row=idx, column=2, ipadx=20, sticky="ew")
-            lbl_Vpp.grid(row=idx, column=3, ipadx=20, sticky="ew")
+            lbl_voltage_rms.grid(row=idx, column=1, ipadx=20, sticky="ew")
+            lbl_voltage_dbu.grid(row=idx, column=2, ipadx=20, sticky="ew")
+            lbl_voltage_peak_to_peak.grid(row=idx, column=3, ipadx=20, sticky="ew")
 
         lbl_gain = ttk.Label(master=frm_read_voltage, text="Gain (dB)")
         lbl_gain_value = ttk.Label(master=frm_read_voltage)
@@ -293,7 +318,7 @@ class RigolAdminGUI:
         lbl_phase.grid(row=4, column=0, ipadx=20, sticky="ew")
         lbl_phase_value.grid(row=4, column=1, ipadx=20, sticky="ew")
 
-    def _ui_build_on_off(self, frm_app: tk.Frame):
+    def _ui_build_on_off(self: Self, frm_app: tk.Frame) -> None:
         # ON - OFF
         frm_on_off = tk.Frame(
             master=frm_app,
@@ -316,7 +341,7 @@ class RigolAdminGUI:
         btn_on.grid(row=0, column=0)
         btn_off.grid(row=0, column=1)
 
-    def __init__(self) -> None:
+    def __init__(self: Self) -> None:
         self.amplitude = 0
         self.n_sample = 500
         self.fs_multiplier = 50
@@ -350,65 +375,74 @@ class RigolAdminGUI:
 
         self._ui_build()
 
-        self.windows.bind("<Key>", self._handle_keypress)
+        self.windows.bind(sequence="<Key>", func=self._handle_keypress)
 
         self.thread = Thread(target=update_rms_value, args=(self.data,))
         self.thread.start()
 
-    def start_loop(self):
+    def start_loop(self: Self) -> None:
         self.windows.mainloop()
 
     # Create an event handler
-    def _handle_keypress(self, event):
+    def _handle_keypress(
+        self: Self,
+        event: Event[Misc],
+    ) -> None:
         """Print the character associated to the key pressed"""
-        console.log(event)
+        console.log("[EVENT]:", event)
 
         if event.char == "\x11":
             self.device_turn_off()
             self.generator.close()
             self.windows.destroy()
 
-        if event.char == "\x06":  # CTRL + f
-            self.ent_frequency.focus_set()
-        if event.char == "\x01":  # CTRL + a
-            self.ent_amplitude.focus_set()
-
-        if event.keycode == 65 and event.state == 20:
+        if event.keycode == KEY_SPACEBAR and event.state == KEY_CTRL:
             console.log("[KEY PRESSED]: SPACEBAR")
             self.on_off_state.set(not self.on_off_state.get())
 
-        if self.focus == RigolAdminGUI.Focus.AMPLITUDE:
-            if event.keycode == 111 and event.state == 20:
+        if (
+            self.focus == RigolAdminGUI.Focus.AMPLITUDE
+            and event.type == EventType.KeyPress
+        ):
+            if event.keycode == KEY_ARROW_UP and event.state == KEY_CTRL:
                 self.amplitude_var.set(
                     round(
                         self.amplitude_var.get() + self.amplitude_multiplier_var.get(),
                         3,
                     ),
                 )
-            if event.keycode == 116 and event.state == 20:
+            if event.keycode == KEY_ARROW_DOWN and event.state == KEY_CTRL:
                 self.amplitude_var.set(
                     round(
                         self.amplitude_var.get() - self.amplitude_multiplier_var.get(),
                         3,
                     ),
                 )
-            if event.keycode == 112 and event.state == 20:
-                curr_multiplier = self.amplitude_multiplier_var.get()
-                next_multiplier = curr_multiplier * 10
-                if curr_multiplier == 1.0:
-                    next_multiplier = 0.001
 
-                self.amplitude_multiplier_var.set(next_multiplier)
+            if event.keycode == KEY_PAGE_UP_PRIOR and event.state == KEY_CTRL:
+                self.amplitude_steps_index = max(0, self.amplitude_steps_index - 1)
+                self.amplitude_multiplier_var.set(
+                    self.amplitude_steps[self.amplitude_steps_index],
+                )
+                console.log(
+                    "[Amplitude Step]: ",
+                    self.amplitude_steps[self.amplitude_steps_index],
+                )
 
-            if event.keycode == 117 and event.state == 20:
-                curr_multiplier = self.amplitude_multiplier_var.get()
-                next_multiplier = curr_multiplier / 10
-                if curr_multiplier == 0.001:
-                    next_multiplier = 1.0
+            if event.keycode == KEY_PAGE_DOWN_NEXT and event.state == KEY_CTRL:
+                self.amplitude_steps_index = min(
+                    len(self.amplitude_steps) - 1,
+                    self.amplitude_steps_index + 1,
+                )
+                self.amplitude_multiplier_var.set(
+                    self.amplitude_steps[self.amplitude_steps_index],
+                )
+                console.log(
+                    "[Amplitude Step]: ",
+                    self.amplitude_steps[self.amplitude_steps_index],
+                )
 
-                self.amplitude_multiplier_var.set(next_multiplier)
-
-    def _handle_amplitude_mode_Vpp(self):
+    def _handle_amplitude_mode_voltage_peak_to_peak(self: Self) -> None:
         new_voltage_mode = VoltageMode.Vpp
         new_amplitude = voltage_converter(
             self.amplitude_var.get(),
@@ -426,7 +460,7 @@ class RigolAdminGUI:
         self.amplitude_mode_curr_string_var.set(new_voltage_mode.name)
         self.amplitude_var.set(round(new_amplitude, 3))
 
-    def _handle_amplitude_mode_Vrms(self):
+    def _handle_amplitude_mode_voltage_rms(self: Self) -> None:
         new_voltage_mode = VoltageMode.Vrms
         new_amplitude = voltage_converter(
             self.amplitude_var.get(),
@@ -444,7 +478,7 @@ class RigolAdminGUI:
         self.amplitude_mode_curr_string_var.set(new_voltage_mode.name)
         self.amplitude_var.set(round(new_amplitude, 3))
 
-    def _handle_amplitude_mode_VdBu(self):
+    def _handle_amplitude_mode_voltage_dbu(self: Self) -> None:
         new_voltage_mode = VoltageMode.VdBu
         new_amplitude = voltage_converter(
             self.amplitude_var.get(),
@@ -462,39 +496,23 @@ class RigolAdminGUI:
         self.amplitude_mode_curr_string_var.set(new_voltage_mode.name)
         self.amplitude_var.set(round(new_amplitude, 3))
 
-    def _handle_on_off(self, *args):
-        if self.on_off_state.get():
-            self.device_turn_on()
-        else:
-            self.device_turn_off()
-
-    # def _handle_rms_Vrms(self, *args):
-    #     with self.data.rms_Vrms_var_safe.lock:
-    #         self.lbl_Vrms.config(
-
-    # def _handle_rms_Vpp(self, *args):
-    #     with self.data.rms_Vpp_var_safe.lock:
-    #         self.lbl_Vpp.config(
-
-    # def _handle_rms_VdBu(self, *args):
-    #     with self.data.rms_VdBu_var_safe.lock:
-    #         self.lbl_VdBu.config(
+    def _handle_on_off(self: Self, *args: tuple[str, str, str]) -> None:
+        *_, mode = args
+        if mode == "write":
+            if self.on_off_state.get():
+                self.device_turn_on()
+            else:
+                self.device_turn_off()
 
     def _init_instruments(self: Self) -> None:
         # Asks for the 2 instruments
-        try:
-            rm: ResourceManager = ResourceManager()
-            list_devices: list[usb.core.Device] = rm.search_resources()
-            if len(list_devices) < 1:
-                raise Exception("UsbTmc devices not found.")
-            generator: UsbTmcInstrument | None = rm.open_resource(list_devices[0])
-            if generator is None:
-                return
+        rm: ResourceManager = ResourceManager()
+        list_devices: list[usb.core.Device] = rm.search_resources()
 
-        except Exception as e:
-            console.print(f"{e}")
+        if len(list_devices) < 1:
+            raise DeviceNotFoundError
 
-        self.generator = generator
+        self.generator = rm.open_resource(list_devices[0])
 
         self.generator.open()
 
@@ -515,7 +533,7 @@ class RigolAdminGUI:
 
         self.device.add_ai_channel(self.channels)
 
-    def update_frequency(self):
+    def update_frequency(self: Self) -> None:
         with self.data.frequency.lock:
             # Sets the Configuration for the Voltmeter
             generator_configs: list = [
@@ -524,7 +542,7 @@ class RigolAdminGUI:
 
             SCPI.exec_commands(self.generator, generator_configs)
 
-    def update_amplitude(self):
+    def update_amplitude(self: Self) -> None:
         # Sets the Configuration for the Voltmeter
         generator_configs: list = [
             SCPI.set_source_voltage_amplitude(1, round(self.amplitude, 5)),
@@ -532,39 +550,24 @@ class RigolAdminGUI:
 
         SCPI.exec_commands(self.generator, generator_configs)
 
-    def device_turn_on(self):
+    def device_turn_on(self: Self) -> None:
         generator_configs: list = [
             SCPI.set_output(1, Switch.ON),
         ]
         SCPI.exec_commands(self.generator, generator_configs)
         console.log("[DEVICE]: TURN ON")
 
-    def device_turn_off(self):
+    def device_turn_off(self: Self) -> None:
         generator_configs: list = [
             SCPI.set_output(1, Switch.OFF),
         ]
         SCPI.exec_commands(self.generator, generator_configs)
         console.log("[DEVICE]: TURN OFF")
 
-    def on_frequency_change(self, *args):
-        with self.data.frequency.lock:
-            new_frequency: float
-            try:
-                new_frequency = float(self.data.frequency.value)
-                if new_frequency == 0:
-                    new_frequency = self.data.frequency.value
-
-            except Exception:
-                new_frequency = self.data.frequency.value
-
-            console.log(
-                f"[FREQUENCY]: '{self.data.frequency.value} Hz' -> '{new_frequency}' Hz",
-            )
-
-            self.data.frequency.value = new_frequency
-            self.update_frequency()
-
-    def on_amplitude_change(self, *args):
+    def on_amplitude_change(self: Self, *args: tuple[str, str, str]) -> None:
+        *_, mode = args
+        if mode != "write":
+            return
         curr_amplitude = self.amplitude
         curr_mode = self.amplitude_mode
         next_mode = VoltageMode[self.amplitude_mode_curr_string_var.get()]
@@ -694,6 +697,12 @@ def update_rms_value(data: RmsDataParameters):
                     data.phase.value["text"] = f"{phase_offset:.05f}"
             else:
                 with data.phase.lock:
+                    data.phase.value["text"] = "NONE"
+                    data.phase.value["text"] = "NONE"
+                    data.phase.value["text"] = "NONE"
+                    data.phase.value["text"] = "NONE"
+                    data.phase.value["text"] = "NONE"
+                    data.phase.value["text"] = "NONE"
                     data.phase.value["text"] = "NONE"
                     data.phase.value["text"] = "NONE"
                     data.phase.value["text"] = "NONE"

@@ -8,8 +8,8 @@ import nidaqmx.constants
 import nidaqmx.stream_readers
 import nidaqmx.stream_writers
 import nidaqmx.system
-import numpy
 import numpy as np
+from nidaqmx.errors import DaqError
 from nidaqmx.system import Device
 from nidaqmx.utils import flatten_channel_string
 
@@ -53,7 +53,8 @@ class Ni9251(CDAQAIDevice):
             and self.sampling_frequency
             and frequency > self.sampling_frequency / 2
         ):
-            raise ValueError("The Sampling rate is low: Fs / 2 > frequency.")
+            _msg = "The Sampling rate is low: Fs / 2 > frequency."
+            raise ValueError(_msg)
 
         task: nidaqmx.Task = nidaqmx.Task("Input Voltage")
         task.ai_channels.add_ai_voltage_chan(
@@ -115,7 +116,7 @@ class Ni9223(CDAQAIDevice):
         try:
             # 1. Create a NidaqMX Task
             self.task = nidaqmx.Task(name)
-        except Exception as e:
+        except DaqError as e:
             console.print(f"[EXCEPTION] - {e}")
             self.task_close()
 
@@ -170,16 +171,16 @@ class Ni9223(CDAQAIDevice):
             nidaqmx.stream_readers.AnalogMultiChannelReader(self.task.in_stream)
         )
 
-        values_read = numpy.zeros(
+        values_read = np.zeros(
             (len(self.input_channel), self.number_of_samples),
-            dtype=numpy.float64,
+            dtype=np.float64,
         )
         try:
             reader.read_many_sample(
                 values_read,
                 number_of_samples_per_channel=self.number_of_samples,
             )
-        except Exception as e:
+        except DaqError as e:
             console.log(f"[EXCEPTION]: {e}")
             return None
         return list(values_read.tolist())

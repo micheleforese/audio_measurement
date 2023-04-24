@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 from enum import Enum
+from typing import Self
 
 from audio.console import console
 from audio.usb.usbtmc import UsbTmc
@@ -312,10 +313,10 @@ class SCPI_resistance(SCPI_Command):
 class SCPI_function(SCPI_Command):
     _cmd: str = "FUNCtion"
 
-    def __call__(self, function: Function) -> str:
+    def __call__(self: Self, function: Function) -> str:
         return f"{self._cmd} {function.value}"
 
-    def ask(self):
+    def ask(self: Self) -> str:
         return f"{self._cmd}?"
 
 

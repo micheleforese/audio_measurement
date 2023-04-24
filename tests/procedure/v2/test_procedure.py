@@ -132,10 +132,10 @@ def make_calculation(sweep_id: int, dB_offset: float = 0):
     voltages_dut: list[DbSweepVoltage] = []
 
     for freq_ref in frequencies:
-        voltages_ref.append(db.get_sweep_voltages(freq_ref.id, channels[0].id))
+        voltages_ref.append(db.get_sweep_voltages(freq_ref.id_, channels[0].id_))
 
     for freq_ref in frequencies:
-        voltages_dut.append(db.get_sweep_voltages(freq_ref.id, channels[1].id))
+        voltages_dut.append(db.get_sweep_voltages(freq_ref.id_, channels[1].id_))
     make_graph_dB_phase(
         sweep_id=sweep_id,
         frequencies=frequencies,
@@ -806,7 +806,7 @@ def make_balanced_calculation(sweep_id: int, dB_offset: float = 0):
     voltages_dut: list[VoltageSamplingV2] = []
 
     for freq in frequencies:
-        voltages_ref_plus_raw_db = db.get_sweep_voltages(freq.id, channels[0].id)
+        voltages_ref_plus_raw_db = db.get_sweep_voltages(freq.id_, channels[0].id_)
         voltages_ref_plus_raw = VoltageSamplingV2.from_list(
             voltages_ref_plus_raw_db.voltages,
             input_frequency=freq.frequency,
@@ -814,7 +814,7 @@ def make_balanced_calculation(sweep_id: int, dB_offset: float = 0):
         )
         voltages_ref_plus.append(voltages_ref_plus_raw)
 
-        voltages_ref_minus_raw_db = db.get_sweep_voltages(freq.id, channels[1].id)
+        voltages_ref_minus_raw_db = db.get_sweep_voltages(freq.id_, channels[1].id_)
         voltages_ref_minus_raw = VoltageSamplingV2.from_list(
             voltages_ref_minus_raw_db.voltages,
             input_frequency=freq.frequency,
@@ -837,7 +837,7 @@ def make_balanced_calculation(sweep_id: int, dB_offset: float = 0):
         )
         voltages_ref.append(voltages_ref_raw)
 
-        voltages_dut_plus_raw_db = db.get_sweep_voltages(freq.id, channels[2].id)
+        voltages_dut_plus_raw_db = db.get_sweep_voltages(freq.id_, channels[2].id_)
         voltages_dut_plus_raw = VoltageSamplingV2.from_list(
             voltages_dut_plus_raw_db.voltages,
             input_frequency=freq.frequency,
@@ -845,7 +845,7 @@ def make_balanced_calculation(sweep_id: int, dB_offset: float = 0):
         )
         voltages_dut_plus.append(voltages_dut_plus_raw)
 
-        voltages_dut_minus_raw_db = db.get_sweep_voltages(freq.id, channels[3].id)
+        voltages_dut_minus_raw_db = db.get_sweep_voltages(freq.id_, channels[3].id_)
         voltages_dut_minus_raw = VoltageSamplingV2.from_list(
             voltages_dut_minus_raw_db.voltages,
             input_frequency=freq.frequency,

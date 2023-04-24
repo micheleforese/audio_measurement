@@ -5,9 +5,9 @@ from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from typing import Self
-from xml.etree import ElementTree
 
 import rich
+from defusedxml import ElementTree
 
 from audio.config import Config
 from audio.config.nidaq import NiDaqConfig, NiDaqConfigOptions
@@ -164,4 +164,6 @@ class SweepConfig(Config, DecoderXML):
     def get_plot_from_xml(
         xml: ElementTree.ElementTree,
     ) -> ElementTree.ElementTree | None:
+        return ElementTree.ElementTree(xml.find(SweepConfigOptionsXPATH.PLOT.value))
+        return ElementTree.ElementTree(xml.find(SweepConfigOptionsXPATH.PLOT.value))
         return ElementTree.ElementTree(xml.find(SweepConfigOptionsXPATH.PLOT.value))

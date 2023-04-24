@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Generator
-from typing import Generic, Self, TypeVar
+from typing import TYPE_CHECKING, Generic, Self, TypeVar
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
 
 RangeType = TypeVar("RangeType")
 

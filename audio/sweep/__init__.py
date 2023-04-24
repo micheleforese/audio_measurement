@@ -14,7 +14,7 @@ from audio.config.sweep import SweepConfig
 from audio.console import console
 from audio.constant import APP_HOME
 from audio.database.db import Database
-from audio.device.cDAQ import Ni9223
+from audio.device.cdaq import Ni9223
 from audio.logging import log
 from audio.math.algorithm import LogarithmicScale
 from audio.math.rms import RMS
@@ -148,7 +148,7 @@ def sweep_amplitude_phase(
         datetime.now(),
         "Sweep Input/Output",
     )
-    db.insert_sweep_config(
+    db.insert_sweep_config_data(
         sweep_id,
         config.sampling.frequency_min,
         config.sampling.frequency_max,
@@ -300,7 +300,7 @@ def sweep(
         datetime.now(),
         "Sweep Input/Output",
     )
-    db.insert_sweep_config(
+    db.insert_sweep_config_data(
         sweep_id,
         config.rigol.amplitude_peak_to_peak,
         config.sampling.frequency_min,
@@ -910,7 +910,7 @@ def sweep_balanced(
         datetime.now(),
         "Sweep Input/Output",
     )
-    db.insert_sweep_config(
+    db.insert_sweep_config_data(
         sweep_id,
         config.rigol.amplitude_peak_to_peak,
         config.sampling.frequency_min,

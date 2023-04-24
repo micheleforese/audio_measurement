@@ -77,7 +77,7 @@ def phase_analysis():
             points_per_decade,
         )
 
-        from audio.device.cDAQ import Ni9223
+        from audio.device.cdaq import Ni9223
 
         nidaq = Ni9223(n_sample)
 

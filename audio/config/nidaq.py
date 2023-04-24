@@ -4,9 +4,9 @@ import typing
 from dataclasses import dataclass
 from enum import Enum
 from typing import Self
-from xml.etree import ElementTree
 
 import rich.repr
+from defusedxml import ElementTree
 
 from audio.config import Config
 from audio.console import console
@@ -116,7 +116,7 @@ class NiDaqConfig(Config, DecoderXML):
             return None
 
         return cls(
-            Fs_max=NiDaqConfig.get_Fs_max_from_xml(xml),
+            Fs_max=NiDaqConfig.get_sampling_frequency_max_from_xml(xml),
             voltage_min=NiDaqConfig.get_voltage_min_from_xml(xml),
             voltage_max=NiDaqConfig.get_voltage_max_from_xml(xml),
             channels=NiDaqConfig.get_channels_from_xml(xml),
@@ -127,7 +127,9 @@ class NiDaqConfig(Config, DecoderXML):
         return xml.tag == NiDaqConfigOptions.ROOT.value
 
     @staticmethod
-    def get_Fs_max_from_xml(xml: ElementTree.ElementTree | None) -> float | None:
+    def get_sampling_frequency_max_from_xml(
+        xml: ElementTree.ElementTree | None,
+    ) -> float | None:
         elem_sampling_frequency_max = xml.find(NidaqConfigOptionsXPATH.FS_MAX.value)
         if elem_sampling_frequency_max is not None:
             return float(elem_sampling_frequency_max.text)

@@ -4,10 +4,10 @@ import typing
 from dataclasses import dataclass
 from enum import Enum
 from typing import Self
-from xml.etree import ElementTree
 
 import rich
 import rich.repr
+from defusedxml import ElementTree
 
 from audio.config import Config
 from audio.console import console
@@ -268,4 +268,8 @@ class SamplingConfig(Config, DecoderXML):
         ):
             return float(elem_delay_measurements.text)
 
+        return None
+        return None
+
+        return None
         return None

@@ -1,19 +1,24 @@
+from __future__ import annotations
+
 import json
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Self
+from typing import TYPE_CHECKING, Self
 
 import mysql.connector
 from mysql.connector.connection import MySQLConnection
-from mysql.connector.cursor import MySQLCursor
 
 from audio.console import console
+from audio.constant import APP_DB_AUTH_PATH
+
+if TYPE_CHECKING:
+    from mysql.connector.cursor import MySQLCursor
 
 
 @dataclass
 class DbTest:
-    id: int
+    id_: int
     name: str
     date: datetime
     comment: str | None = None
@@ -21,7 +26,7 @@ class DbTest:
 
 @dataclass
 class DbSweep:
-    id: int
+    id_: int
     test_id: int
     name: str
     date: datetime
@@ -30,7 +35,7 @@ class DbSweep:
 
 @dataclass
 class DbFrequency:
-    id: int
+    id_: int
     sweep_id: int
     idx: int
     frequency: float
@@ -39,7 +44,7 @@ class DbFrequency:
 
 @dataclass
 class DbChannel:
-    id: int
+    id_: int
     sweep_id: int
     idx: int
     name: str
@@ -54,19 +59,16 @@ class DbSweepConfig:
     frequency_max: float | None
     points_per_decade: float | None
     number_of_samples: float | None
-    Fs_multiplier: float | None
+    sampling_frequency_multiplier: float | None
     delay_measurements: float | None
 
 
 @dataclass
 class DbSweepVoltage:
-    id: int
+    id_: int
     frequency_id: int
     channel_id: int
     voltages: list[float]
-
-
-from audio.constant import APP_DB_AUTH_PATH
 
 
 class Database:
@@ -118,7 +120,7 @@ class Database:
         self.connection.commit()
         return cur.lastrowid
 
-    def get_test(self: Self, test_id: int):
+    def get_test(self: Self, test_id: int) -> DbTest:
         cur = self.connection.cursor()
         cur.execute(
             "SELECT id, name, date, comment FROM audio.test WHERE id = %s;",
@@ -127,7 +129,7 @@ class Database:
         data: tuple[int, str, str, str | None] = cur.fetchone()
         _id, name, date, comment = data
         return DbTest(
-            id=_id,
+            id_=_id,
             name=name,
             date=datetime.strptime(date, self._DATE_TIME_FORMAT).astimezone(),
             comment=comment,
@@ -177,7 +179,7 @@ class Database:
 
         return [
             DbSweep(
-                id=_id,
+                id_=_id,
                 test_id=test_id,
                 name=name,
                 date=datetime.strptime(date, self._DATE_TIME_FORMAT).astimezone(),
@@ -192,7 +194,7 @@ class Database:
         data: tuple[int, int, str, str, str | None] = cur.fetchone()
         _id, test_id, name, date, comment = data
 
-        return DbSweep(id=_id, test_id=test_id, name=name, date=date, comment=comment)
+        return DbSweep(id_=_id, test_id=test_id, name=name, date=date, comment=comment)
 
     def get_sweep(self: Self, sweep_id: int) -> DbSweep:
         cur: MySQLCursor = self.connection.cursor()
@@ -200,7 +202,7 @@ class Database:
         data: tuple[int, int, str, str, str | None] = cur.fetchone()
         _id, test_id, name, date, comment = data
         return DbSweep(
-            id=_id,
+            id_=_id,
             test_id=test_id,
             name=name,
             date=datetime.strptime(date, self._DATE_TIME_FORMAT).astimezone(),
@@ -256,7 +258,7 @@ class Database:
 
         frequency_data: list[DbFrequency] = [
             DbFrequency(
-                id=_id,
+                id_=_id,
                 sweep_id=sweep_id,
                 idx=idx,
                 frequency=frequency,
@@ -305,7 +307,7 @@ class Database:
             rms_interpolation_rate,
         ) = data
         frequency_data: DbFrequency = DbFrequency(
-            id=_id,
+            id_=_id,
             sweep_id=sweep_id,
             idx=idx,
             frequency=frequency,
@@ -339,7 +341,7 @@ class Database:
         data: list[tuple[int, int, int, str, str | None]] = cur.fetchall()
 
         channels_data: list[DbChannel] = [
-            DbChannel(id=_id, sweep_id=sweep_id, idx=idx, name=name, comment=comment)
+            DbChannel(id_=_id, sweep_id=sweep_id, idx=idx, name=name, comment=comment)
             for _id, sweep_id, idx, name, comment in data
         ]
         return channels_data
@@ -351,19 +353,15 @@ class Database:
 
         _id, sweep_id, idx, name, comment = data
 
-        return DbChannel(id=_id, sweep_id=sweep_id, idx=idx, name=name, comment=comment)
+        return DbChannel(
+            id_=_id,
+            sweep_id=sweep_id,
+            idx=idx,
+            name=name,
+            comment=comment,
+        )
 
-    def insert_sweep_config(
-        self: Self,
-        sweep_id: int,
-        amplitude: float | None = None,
-        frequency_min: float | None = None,
-        frequency_max: float | None = None,
-        points_per_decade: float | None = None,
-        number_of_samples: int | None = None,
-        sampling_frequency_multiplier: float | None = None,
-        delay_measurements: float | None = None,
-    ) -> int | None:
+    def insert_sweep_config_data(self: Self, data: DbSweepConfig) -> int | None:
         cur: MySQLCursor = self.connection.cursor()
         data: tuple[
             int,
@@ -375,14 +373,14 @@ class Database:
             float | None,
             float | None,
         ] = (
-            sweep_id,
-            float(amplitude),
-            float(frequency_min),
-            float(frequency_max),
-            float(points_per_decade),
-            number_of_samples,
-            float(sampling_frequency_multiplier),
-            float(delay_measurements),
+            data.sweep_id,
+            float(data.amplitude),
+            float(data.frequency_min),
+            float(data.frequency_max),
+            float(data.points_per_decade),
+            data.number_of_samples,
+            float(data.sampling_frequency_multiplier),
+            float(data.delay_measurements),
         )
         cur.execute(
             """
@@ -439,7 +437,7 @@ class Database:
             frequency_max=frequency_max,
             points_per_decade=points_per_decade,
             number_of_samples=number_of_samples,
-            Fs_multiplier=sampling_frequency_multiplier,
+            sampling_frequency_multiplier=sampling_frequency_multiplier,
             delay_measurements=delay_measurements,
         )
 
@@ -491,7 +489,7 @@ class Database:
             float(line) for line in _voltages.decode().splitlines()
         ]
         sweep_voltages_data: DbSweepVoltage = DbSweepVoltage(
-            id=_id,
+            id_=_id,
             frequency_id=_frequency_id,
             channel_id=_channel_id,
             voltages=voltages,
@@ -519,7 +517,7 @@ class Database:
             float(volt) for volt in _voltages.decode().splitlines()
         ]
         return DbSweepVoltage(
-            id=_id,
+            id_=_id,
             frequency_id=_frequency_id,
             channel_id=_channel_id,
             voltages=voltages,

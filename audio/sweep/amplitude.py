@@ -19,7 +19,7 @@ from rich.table import Column, Table
 
 from audio.config.sweep import SweepConfig
 from audio.console import console
-from audio.device.cDAQ import Ni9223
+from audio.device.cdaq import Ni9223
 from audio.math.algorithm import LogarithmicScale
 from audio.math.rms import RMS, RMSResult
 from audio.math.voltage import Vpp_to_Vrms
