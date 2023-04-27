@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import abc
 from enum import Enum
-from typing import Self
+from typing import TYPE_CHECKING, Literal, Self
 
 from audio.console import console
-from audio.usb.usbtmc import UsbTmc
+
+if TYPE_CHECKING:
+    from audio.usb.usbtmc import UsbTmc
 
 
 class Switch(Enum):
@@ -21,12 +23,17 @@ class Bandwidth(Enum):
 
 class SCPI:
     @staticmethod
-    def exec_commands(instr: UsbTmc, commands: list[str], debug: bool = False):
+    def exec_commands(
+        instr: UsbTmc,
+        commands: list[str],
+        *,
+        debug: bool = False,
+    ) -> None:
         for command in commands:
             if command.find("?") > 0:
                 response = instr.ask(command)
 
-                if response == "":
+                if not response:
                     response = "NULL"
 
                 console.print(f"{command}:\t{response}")
@@ -52,8 +59,8 @@ class SCPI:
     def set_voltage_ac_bandwidth(bandwidth: Bandwidth | float) -> str:
         if type(bandwidth) is Bandwidth:
             return f"VOLTage:AC:BANDwidth {bandwidth.value}"
-        else:
-            return f"VOLTage:AC:BANDwidth {bandwidth}"
+
+        return f"VOLTage:AC:BANDwidth {bandwidth}"
 
     @staticmethod
     def set_output(n_output: int, output: Switch) -> str:
@@ -91,8 +98,7 @@ class SCPI:
                 style="error",
             )
             return True
-        else:
-            return False
+        return False
 
     @staticmethod
     def check_output(output: int) -> bool:
@@ -102,8 +108,7 @@ class SCPI:
                 style="error",
             )
             return True
-        else:
-            return False
+        return False
 
     @staticmethod
     def set_source_voltage_amplitude(source: int, amplitude_pp: float) -> str:
@@ -150,167 +155,169 @@ class SCPI:
         return "VOLTage:AC:BANDwidth?"
 
     @staticmethod
-    def set_output_sync(source: int, switch: Switch):
+    def set_output_sync(source: int, switch: Switch) -> str:
         return f":OUTPut{source}:SYNC {switch.value}"
 
     @staticmethod
-    def source_phase_init(source: int):
+    def source_phase_init(source: int) -> str:
         return f":SOURce{source}:PHASe:INITiate"
 
     @staticmethod
-    def source_phase_sync(source: int):
+    def source_phase_sync(source: int) -> str:
         return f":SOURce{source}:PHASe:SYNChronize"
 
 
-class SCPI_Command(abc.ABC):
+class ScpiCommand(abc.ABC):
     _cmd: str = ""
 
-    def __init__(self, cmd: str | None = None) -> None:
+    def __init__(self: Self, cmd: str | None = None) -> None:
         if cmd is not None:
             self._cmd = f"{cmd}:{self.cmd}"
 
-    def __str__(self) -> str:
+    def __str__(self: Self) -> str:
         return self.cmd
 
     @property
-    def cmd(self):
+    def cmd(self: Self) -> str:
         return self._cmd
 
 
-class SCPI_v2:
+class ScpiV2:
     @property
-    def reset(self):
+    def reset(self: Self) -> Literal["*RST"]:
         return "*RST"
 
     @property
-    def trace(self):
-        return SCPI_trace()
+    def trace(self: Self) -> ScpiTrace:
+        return ScpiTrace()
 
     @property
-    def source(self):
-        return SCPI_source()
+    def source(self: Self) -> ScpiSource:
+        return ScpiSource()
 
     @property
-    def sense(self):
-        return SCPI_sense()
+    def sense(self: Self) -> ScpiSense:
+        return ScpiSense()
 
     @property
-    def measure(self):
-        return SCPI_measure()
+    def measure(self: Self) -> ScpiMeasure:
+        return ScpiMeasure()
 
 
-class SCPI_measure(SCPI_Command):
+class ScpiMeasure(ScpiCommand):
     _cmd: str = "MEASure"
 
     @property
-    def voltage(self):
-        return SCPI_voltage(self.cmd)
+    def voltage(self: Self) -> ScpiVoltage:
+        return ScpiVoltage(self.cmd)
 
     @property
-    def current(self):
-        return SCPI_current(self.cmd)
+    def current(self: Self) -> ScpiCurrent:
+        return ScpiCurrent(self.cmd)
 
 
-class SCPI_voltage(SCPI_Command):
+class ScpiVoltage(ScpiCommand):
     _cmd: str = "VOLTage"
 
     # def __call__(self, function: Function) -> str:
 
     @property
-    def dc(self):
+    def dc(self: Self) -> Self:
         return self
 
-    def ask(self):
+    def ask(self: Self) -> str:
         return f"{self._cmd}?"
 
 
-class SCPI_current(SCPI_Command):
+class ScpiCurrent(ScpiCommand):
     _cmd: str = "CURRent"
 
     # def __call__(self, function: Function) -> str:
 
     @property
-    def dc(self):
+    def dc(self: Self) -> Self:
         return self
 
-    def ask(self):
+    def ask(self: Self) -> str:
         return f"{self._cmd}?"
 
 
-class SCPI_sense(SCPI_Command):
+class ScpiSense(ScpiCommand):
     _cmd: str = "SENSe"
 
     @property
-    def average(self):
-        return SCPI_average(self.cmd)
+    def average(self: Self) -> ScpiAverage:
+        return ScpiAverage(self.cmd)
 
 
-class SCPI_trace(SCPI_Command):
+class ScpiTrace(ScpiCommand):
     _cmd: str = "TRACe"
 
     @property
-    def clear(self) -> str:
+    def clear(self: Self) -> str:
         return f"{self.cmd}:CLEar"
 
 
-class SCPI_source(SCPI_Command):
+class ScpiSource(ScpiCommand):
     _cmd: str = "SOURce"
 
     @property
-    def input(self):
-        return SCPI_input(self._cmd)
+    def input_(self: Self) -> ScpiInput:
+        return ScpiInput(self._cmd)
 
     @property
-    def resistance(self):
-        return SCPI_resistance(self._cmd)
+    def resistance(self: Self) -> ScpiResistance:
+        return ScpiResistance(self._cmd)
 
     @property
-    def function(self):
-        return SCPI_function(self._cmd)
+    def function(self: Self) -> ScpiFunction:
+        return ScpiFunction(self._cmd)
 
 
-class SCPI_average(SCPI_Command):
+class ScpiAverage(ScpiCommand):
     _cmd: str = "AVERage"
 
     @property
-    def count(self):
-        return SCPI_count(self.cmd)
+    def count(self: Self) -> ScpiCount:
+        return ScpiCount(self.cmd)
 
 
-class SCPI_count(SCPI_Command):
+class ScpiCount(ScpiCommand):
     _cmd: str = "COUNt"
+    MIN_COUNT = 2
+    MAX_COUNT = 16
 
-    def __call__(self, num: int) -> str | None:
-        if num >= 2 and num <= 16:
+    def __call__(self: Self, num: int) -> str | None:
+        if num >= self.MIN_COUNT and num <= self.MAX_COUNT:
             return f"{self._cmd} {num}"
 
         return None
 
-    def ask(self):
+    def ask(self: Self) -> str:
         return f"{self._cmd}?"
 
 
-class SCPI_input(SCPI_Command):
+class ScpiInput(ScpiCommand):
     _cmd: str = "INPut"
 
-    def __call__(self, state: Switch) -> str:
+    def __call__(self: Self, state: Switch) -> str:
         return f"{self._cmd} {state.value}"
 
-    def ask(self):
+    def ask(self: Self) -> str:
         return f"{self._cmd}?"
 
 
-class SCPI_resistance(SCPI_Command):
+class ScpiResistance(ScpiCommand):
     _cmd: str = "RESistance"
 
-    def __call__(self, ohms: float) -> str:
+    def __call__(self: Self, ohms: float) -> str:
         return f"{self._cmd} {ohms}"
 
-    def ask(self):
+    def ask(self: Self) -> str:
         return f"{self._cmd}?"
 
 
-class SCPI_function(SCPI_Command):
+class ScpiFunction(ScpiCommand):
     _cmd: str = "FUNCtion"
 
     def __call__(self: Self, function: Function) -> str:

@@ -9,7 +9,7 @@ from matplotlib.figure import Figure
 
 from audio.console import console
 from audio.math import rms_full_cycle, trim_sin_zero_offset
-from audio.math.interpolation import INTERPOLATION_KIND, interpolation_model
+from audio.math.interpolation import InterpolationKind, interpolation_model
 from audio.math.rms import RMS
 from audio.model.sweep import SingleSweepData
 from audio.utility import get_subfolder
@@ -148,7 +148,7 @@ def sweep_debug(
             range(0, len(voltages_to_interpolate)),
             voltages_to_interpolate,
             int(len(voltages_to_interpolate) * INTERPOLATION_RATE),
-            kind=INTERPOLATION_KIND.CUBIC,
+            kind=InterpolationKind.CUBIC,
         )
 
         pd.DataFrame(y_interpolated).to_csv(

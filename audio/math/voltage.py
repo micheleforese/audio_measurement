@@ -58,5 +58,5 @@ def voltage_converter(
     return None
 
 
-def calculate_gain_dB(Vin: float, Vout: float) -> float:
+def calculate_gain_db(Vin: float, Vout: float) -> float:
     return 20 * log10(Vout / Vin)

@@ -21,13 +21,13 @@ from audio.constant import APP_HOME
 from audio.database.db import Database, DbChannel, DbFrequency, DbSweepVoltage
 from audio.logging import log
 from audio.math.interpolation import (
-    INTERPOLATION_KIND,
+    InterpolationKind,
     interpolation_model,
     logx_interpolation_model_smoothing_spline,
 )
 from audio.math.phase import phase_offset_v2, phase_offset_v4
 from audio.math.rms import RMS, RMS_MODE, RMSResult
-from audio.math.voltage import calculate_gain_dB
+from audio.math.voltage import calculate_gain_db
 from audio.model.sampling import VoltageSampling, VoltageSamplingV2
 from audio.sampling import (
     DataSetLevel,
@@ -274,7 +274,7 @@ def make_graph_ref_dut_dutrefsub_dB_phase(
             range(0, len(volts_ref.voltages)),
             volts_ref.voltages,
             int(len(volts_ref.voltages) * interpolation_rate_phase),
-            kind=INTERPOLATION_KIND.CUBIC,
+            kind=InterpolationKind.CUBIC,
         )
         voltage_sampling_ref = VoltageSampling.from_list(
             y_interpolated_ref,
@@ -285,7 +285,7 @@ def make_graph_ref_dut_dutrefsub_dB_phase(
             range(0, len(volts_dut.voltages)),
             volts_dut.voltages,
             int(len(volts_dut.voltages) * interpolation_rate_phase),
-            kind=INTERPOLATION_KIND.CUBIC,
+            kind=InterpolationKind.CUBIC,
         )
         voltage_sampling_dut = VoltageSampling.from_list(
             y_interpolated_dut,
@@ -364,7 +364,7 @@ def make_graph_dB_phase(
         rms = RMS.rms_v3(
             voltage_sampling.augment_interpolation(
                 interpolation_rate=interpolation_rate_rms,
-                interpolation_mode=INTERPOLATION_KIND.CUBIC,
+                interpolation_mode=InterpolationKind.CUBIC,
             ),
             trim=True,
             rms_mode=RMS_MODE.FFT,
@@ -388,7 +388,7 @@ def make_graph_dB_phase(
         rms = RMS.rms_v3(
             voltage_sampling.augment_interpolation(
                 interpolation_rate=interpolation_rate_rms,
-                interpolation_mode=INTERPOLATION_KIND.CUBIC,
+                interpolation_mode=InterpolationKind.CUBIC,
             ),
             trim=True,
             rms_mode=RMS_MODE.FFT,
@@ -405,7 +405,7 @@ def make_graph_dB_phase(
     axis_dut_sub_ref_dB.tick_params(labelright=True)
 
     rms_dut_sub_ref_dB: list[float] = [
-        calculate_gain_dB(ref, dut) - dB_offset for ref, dut in zip(rms_ref, rms_dut)
+        calculate_gain_db(ref, dut) - dB_offset for ref, dut in zip(rms_ref, rms_dut)
     ]
 
     (
@@ -469,12 +469,12 @@ def make_graph_dB_phase(
     ):
         voltage_sampling_ref = volts_ref.augment_interpolation(
             interpolation_rate=interpolation_rate_phase,
-            interpolation_mode=INTERPOLATION_KIND.CUBIC,
+            interpolation_mode=InterpolationKind.CUBIC,
         )
 
         voltage_sampling_dut = volts_dut.augment_interpolation(
             interpolation_rate=interpolation_rate_phase,
-            interpolation_mode=INTERPOLATION_KIND.CUBIC,
+            interpolation_mode=InterpolationKind.CUBIC,
         )
 
         try:
@@ -935,7 +935,7 @@ def make_balanced_graph_dB_phase(
         rms = RMS.rms_v3(
             volt_ref.augment_interpolation(
                 interpolation_rate=interpolation_rate_rms,
-                interpolation_mode=INTERPOLATION_KIND.CUBIC,
+                interpolation_mode=InterpolationKind.CUBIC,
             ),
             trim=True,
             rms_mode=RMS_MODE.FFT,
@@ -951,7 +951,7 @@ def make_balanced_graph_dB_phase(
         rms = RMS.rms_v3(
             volt_dut.augment_interpolation(
                 interpolation_rate=interpolation_rate_rms,
-                interpolation_mode=INTERPOLATION_KIND.CUBIC,
+                interpolation_mode=InterpolationKind.CUBIC,
             ),
             trim=True,
             rms_mode=RMS_MODE.FFT,
@@ -968,7 +968,7 @@ def make_balanced_graph_dB_phase(
     axis_dut_sub_ref_dB.tick_params(labelright=True)
 
     rms_dut_sub_ref_dB: list[float] = [
-        calculate_gain_dB(ref, dut) - dB_offset for ref, dut in zip(rms_ref, rms_dut)
+        calculate_gain_db(ref, dut) - dB_offset for ref, dut in zip(rms_ref, rms_dut)
     ]
 
     (
@@ -1032,12 +1032,12 @@ def make_balanced_graph_dB_phase(
     ):
         voltage_sampling_ref = volts_ref.augment_interpolation(
             interpolation_rate=interpolation_rate_phase,
-            interpolation_mode=INTERPOLATION_KIND.CUBIC,
+            interpolation_mode=InterpolationKind.CUBIC,
         )
 
         voltage_sampling_dut = volts_dut.augment_interpolation(
             interpolation_rate=interpolation_rate_phase,
-            interpolation_mode=INTERPOLATION_KIND.CUBIC,
+            interpolation_mode=InterpolationKind.CUBIC,
         )
 
         try:

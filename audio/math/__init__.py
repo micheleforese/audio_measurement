@@ -20,6 +20,8 @@ def decimal_decompose(x: float) -> tuple[float, int]:
 def trim_sin_zero_offset(
     sample: list[float],
 ) -> tuple[list[float], int, int] | None:
+    min_intersections = 3
+
     zero_index_intersections: list[tuple[float, float]] = []
 
     index_start: int = 0
@@ -39,7 +41,7 @@ def trim_sin_zero_offset(
         if slope_normalized < 0:
             zero_index_intersections.append((samp_prev_index, samp_curr_index))
 
-    if len(zero_index_intersections) >= 3:
+    if len(zero_index_intersections) >= min_intersections:
         (
             zero_intersection_start_first,
             zero_intersection_start_second,

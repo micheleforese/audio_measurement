@@ -18,11 +18,11 @@ from audio.device.cdaq import Ni9223
 from audio.logging import log
 from audio.math.algorithm import LogarithmicScale
 from audio.math.rms import RMS
-from audio.math.voltage import calculate_gain_dB
+from audio.math.voltage import calculate_gain_db
 from audio.model.sampling import VoltageSampling
 from audio.usb.usbtmc import ResourceManager
 from audio.utility import trim_value
-from audio.utility.scpi import SCPI, Bandwidth, SCPI_v2, Switch
+from audio.utility.scpi import SCPI, Bandwidth, ScpiV2, Switch
 from audio.utility.timer import Timer
 
 
@@ -83,7 +83,7 @@ def sweep_amplitude_phase(
     except Exception as e:
         console.print(f"{e}")
 
-    scpi = SCPI_v2()
+    scpi = ScpiV2()
 
     if not generator.instr.connected:
         generator.open()
@@ -239,7 +239,7 @@ def sweep(
     except Exception as e:
         console.print(f"{e}")
 
-    scpi = SCPI_v2()
+    scpi = ScpiV2()
 
     if not generator.instr.connected:
         generator.open()
@@ -496,7 +496,7 @@ def sweep_single(
     except Exception as e:
         console.print(f"{e}")
 
-    scpi = SCPI_v2()
+    scpi = ScpiV2()
 
     if not generator.instr.connected:
         generator.open()
@@ -585,7 +585,7 @@ def sweep_single(
         rms_result_dut = RMS.rms_v2(voltage_dut, trim=True, interpolation_rate=50)
         rms_ref_list.append(rms_result_ref.rms)
         rms_dut_list.append(rms_result_dut.rms)
-        gain_dB = calculate_gain_dB(rms_result_ref.rms, rms_result_dut.rms)
+        gain_dB = calculate_gain_db(rms_result_ref.rms, rms_result_dut.rms)
         rms_ref_sub_dut_list_dB.append(gain_dB)
 
         console.log(
@@ -619,7 +619,7 @@ def sweep_single(
     rms_dut_list.append(rms_dut_average)
 
     rms_ref_sub_dut_list_dB.append(
-        calculate_gain_dB(Vin=rms_ref_list[-1], Vout=rms_dut_list[-1]),
+        calculate_gain_db(Vin=rms_ref_list[-1], Vout=rms_dut_list[-1]),
     )
 
     console.log(f"[DATA]: average dB: {rms_ref_sub_dut_list_dB[-1]}")
@@ -653,7 +653,7 @@ def sweep_balanced_single(
     except Exception as e:
         console.print(f"{e}")
 
-    scpi = SCPI_v2()
+    scpi = ScpiV2()
 
     if not generator.instr.connected:
         generator.open()
@@ -780,7 +780,7 @@ def sweep_balanced_single(
         rms_result_dut = RMS.rms_v2(voltage_dut, trim=True, interpolation_rate=50)
         rms_ref_list.append(rms_result_ref.rms)
         rms_dut_list.append(rms_result_dut.rms)
-        gain_dB = calculate_gain_dB(rms_result_ref.rms, rms_result_dut.rms)
+        gain_dB = calculate_gain_db(rms_result_ref.rms, rms_result_dut.rms)
         rms_ref_sub_dut_list_dB.append(gain_dB)
 
         console.log(
@@ -814,7 +814,7 @@ def sweep_balanced_single(
     rms_dut_list.append(rms_dut_average)
 
     rms_ref_sub_dut_list_dB.append(
-        calculate_gain_dB(Vin=rms_ref_list[-1], Vout=rms_dut_list[-1]),
+        calculate_gain_db(Vin=rms_ref_list[-1], Vout=rms_dut_list[-1]),
     )
 
     console.log(f"[DATA]: average dB: {rms_ref_sub_dut_list_dB[-1]}")
@@ -849,7 +849,7 @@ def sweep_balanced(
     except Exception as e:
         console.print(f"{e}")
 
-    scpi = SCPI_v2()
+    scpi = ScpiV2()
 
     if not generator.instr.connected:
         generator.open()

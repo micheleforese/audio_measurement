@@ -328,9 +328,9 @@ def amplitude_sweep(
                 rms=f"{round(result.rms, 5)}",
             )
 
-            from audio.math.voltage import calculate_gain_dB
+            from audio.math.voltage import calculate_gain_db
 
-            gain_bBV = calculate_gain_dB(
+            gain_bBV = calculate_gain_db(
                 Vin=Vpp_to_Vrms(config.rigol.amplitude_peak_to_peak),
                 Vout=result.rms,
             )

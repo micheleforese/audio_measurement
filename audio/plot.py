@@ -10,7 +10,7 @@ from rich.progress import track
 
 from audio.config.sweep import SweepConfig
 from audio.console import console
-from audio.math.interpolation import INTERPOLATION_KIND, logx_interpolation_model
+from audio.math.interpolation import InterpolationKind, logx_interpolation_model
 from audio.model.sweep import SweepData
 
 
@@ -127,7 +127,7 @@ def multiplot(
                     else DEFAULT.get("interpolation_rate")
                 ),
             ),
-            kind=INTERPOLATION_KIND.CUBIC,
+            kind=InterpolationKind.CUBIC,
         )
         xy_sampled = [x_frequency, y_dBV, "o"]
         xy_interpolated = [x_interpolated, y_interpolated, "-"]

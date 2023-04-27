@@ -10,7 +10,7 @@ from scipy.fft import fft
 
 from audio.console import console
 from audio.math import integrate, trim_sin_zero_offset
-from audio.math.interpolation import INTERPOLATION_KIND, interpolation_model
+from audio.math.interpolation import InterpolationKind, interpolation_model
 from audio.model.sampling import VoltageSampling, VoltageSamplingV2
 from audio.utility import read_voltages
 from audio.utility.timer import Timer
@@ -87,7 +87,7 @@ class RMS:
             range(0, len(voltages)),
             voltages,
             int(len(voltages) * interpolation_rate),
-            kind=INTERPOLATION_KIND.CUBIC,
+            kind=InterpolationKind.CUBIC,
         )
 
         if trim:
@@ -186,7 +186,7 @@ class RMS:
         time_report: bool = False,
         trim: bool = False,
         interpolation_rate: float = 1,
-        interpolation_mode: INTERPOLATION_KIND = INTERPOLATION_KIND.CUBIC,
+        interpolation_mode: InterpolationKind = InterpolationKind.CUBIC,
     ):
         result = RMSResult()
         timer = Timer()

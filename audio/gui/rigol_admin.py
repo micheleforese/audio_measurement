@@ -5,18 +5,19 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from threading import Lock, Thread
 from tkinter import BooleanVar, DoubleVar, Event, EventType, Frame, Misc, StringVar, ttk
-from typing import TYPE_CHECKING, Generic, Self, TypeVar
+from typing import TYPE_CHECKING, Generic, NoReturn, Self, TypeVar
 
 import click
 
 from audio.exception.device import DeviceNotFoundError
+from audio.math.voltage import calculate_gain_db
 
 if TYPE_CHECKING:
     import usb
 
 from audio.console import console
 from audio.device.cdaq import Ni9223
-from audio.math.interpolation import INTERPOLATION_KIND
+from audio.math.interpolation import InterpolationKind
 from audio.math.phase import phase_offset_v4
 from audio.math.rms import RMS, RMS_MODE
 from audio.math.voltage import VoltageMode, Vrms_to_VdBu, Vrms_to_Vpp, voltage_converter
@@ -568,14 +569,14 @@ class RigolAdminGUI:
         *_, mode = args
         if mode != "write":
             return
-        curr_amplitude = self.amplitude
-        curr_mode = self.amplitude_mode
-        next_mode = VoltageMode[self.amplitude_mode_curr_string_var.get()]
+        curr_amplitude: float = self.amplitude
+        curr_mode: VoltageMode = self.amplitude_mode
+        next_mode: VoltageMode = VoltageMode[self.amplitude_mode_curr_string_var.get()]
 
         next_amplitude: float
         try:
             next_amplitude = self.amplitude_var.get()
-        except Exception:
+        except Exception:  # noqa: BLE001
             next_amplitude = 0
 
         console.log(
@@ -597,23 +598,25 @@ class UpdateRms(Thread):
     device: Ni9223
     data: RmsDataParameters
 
-    def __init__(self, device: Ni9223, data: RmsDataParameters) -> None:
+    def __init__(self: Self, device: Ni9223, data: RmsDataParameters) -> None:
         Thread.__init__(self)
         self.device = device
         self.data = data
 
 
-def update_rms_value(data: RmsDataParameters):
+def update_rms_value(  # noqa: C901, PLR0912, PLR0915
+    data: RmsDataParameters,
+) -> NoReturn:
     while True:
-        Fs: float | None = None
+        sampling_frequency: float | None = None
         with data.frequency.lock, data.Fs_multiplier.lock:
-            Fs = trim_value(
+            sampling_frequency = trim_value(
                 value=data.frequency.value * data.Fs_multiplier.value,
                 max_value=1000000,
             )
-        if Fs is not None:
+        if sampling_frequency is not None:
             with data.device.lock:
-                data.device.value.set_sampling_clock_timing(Fs)
+                data.device.value.set_sampling_clock_timing(sampling_frequency)
         voltages = []
         with data.device.lock:
             data.device.value.task_start()
@@ -629,10 +632,10 @@ def update_rms_value(data: RmsDataParameters):
                 VoltageSamplingV2.from_list(
                     voltage_sampling,
                     frequency,
-                    Fs,
+                    sampling_frequency,
                 ).augment_interpolation(
                     interpolation_rate=50,
-                    interpolation_mode=INTERPOLATION_KIND.CUBIC,
+                    interpolation_mode=InterpolationKind.CUBIC,
                 ),
             )
 
@@ -653,30 +656,32 @@ def update_rms_value(data: RmsDataParameters):
             if result is None:
                 voltage_rms_values.append((0, 0, 0))
             else:
-                Vrms = result
-                Vpp = Vrms_to_Vpp(Vrms)
-                VdBu = Vrms_to_VdBu(Vrms)
-                voltage_rms_values.append((Vrms, Vpp, VdBu))
+                voltage_rms = result
+                voltage_peak_to_peak = Vrms_to_Vpp(voltage_rms)
+                voltage_dbu = Vrms_to_VdBu(voltage_rms)
+                voltage_rms_values.append(
+                    (voltage_rms, voltage_peak_to_peak, voltage_dbu),
+                )
 
         for lbls, values in zip(data.lbls, voltage_rms_values, strict=True):
-            lblVrms, lblVpp, lblVdBu = lbls
-            Vrms, Vpp, VdBu = values
+            lbl_voltage_rms, lbl_voltage_peak_to_peak, lbl_voltage_dbu = lbls
+            voltage_rms, voltage_peak_to_peak, voltage_dbu = values
 
-            with lblVrms.lock:
-                lblVrms.value["text"] = f"{Vrms:.05f} Vrms"
-            with lblVpp.lock:
-                lblVpp.value["text"] = f"{Vpp:.05f} Vpp"
-            with lblVdBu.lock:
-                lblVdBu.value["text"] = f"{VdBu:.05f} VdBu"
+            with lbl_voltage_rms.lock:
+                lbl_voltage_rms.value["text"] = f"{voltage_rms:.05f} Vrms"
+            with lbl_voltage_peak_to_peak.lock:
+                lbl_voltage_peak_to_peak.value[
+                    "text"
+                ] = f"{voltage_peak_to_peak:.05f} Vpp"
+            with lbl_voltage_dbu.lock:
+                lbl_voltage_dbu.value["text"] = f"{voltage_dbu:.05f} VdBu"
 
-        from audio.math.voltage import calculate_gain_dB
-
-        gain_dB = calculate_gain_dB(
+        gain_db = calculate_gain_db(
             Vin=voltage_rms_values[0][0],
             Vout=voltage_rms_values[1][0],
         )
         with data.gain.lock:
-            data.gain.value["text"] = f"{gain_dB:.05f}"
+            data.gain.value["text"] = f"{gain_db:.05f}"
 
         if voltages_sampling_n[0] is None or voltages_sampling_n[1] is None:
             with data.phase.lock:
@@ -688,7 +693,7 @@ def update_rms_value(data: RmsDataParameters):
             try:
                 phase_offset = phase_offset_v4(volts_0, volts_1)
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 console.log(f"{e}")
                 phase_offset = None
 
@@ -697,13 +702,4 @@ def update_rms_value(data: RmsDataParameters):
                     data.phase.value["text"] = f"{phase_offset:.05f}"
             else:
                 with data.phase.lock:
-                    data.phase.value["text"] = "NONE"
-                    data.phase.value["text"] = "NONE"
-                    data.phase.value["text"] = "NONE"
-                    data.phase.value["text"] = "NONE"
-                    data.phase.value["text"] = "NONE"
-                    data.phase.value["text"] = "NONE"
-                    data.phase.value["text"] = "NONE"
-                    data.phase.value["text"] = "NONE"
-                    data.phase.value["text"] = "NONE"
                     data.phase.value["text"] = "NONE"

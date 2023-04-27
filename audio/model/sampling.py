@@ -8,7 +8,7 @@ import pandas as pd
 from pandas import DataFrame
 
 from audio.console import console
-from audio.math.interpolation import INTERPOLATION_KIND, interpolation_model
+from audio.math.interpolation import InterpolationKind, interpolation_model
 
 
 @dataclass
@@ -88,7 +88,7 @@ class VoltageSamplingV2:
     def augment_interpolation(
         self: Self,
         interpolation_rate: int,
-        interpolation_mode: INTERPOLATION_KIND,
+        interpolation_mode: InterpolationKind,
     ) -> Self:
         voltages_len: int = len(self.voltages)
         n_points: int = int(voltages_len * interpolation_rate)

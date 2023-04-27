@@ -30,10 +30,10 @@ from audio.console import console
 from audio.device.cdaq import Ni9223
 from audio.math import calculate_voltage_decibel, percentage_error, transfer_function
 from audio.math.algorithm import LogarithmicScale
-from audio.math.interpolation import INTERPOLATION_KIND, logx_interpolation_model
+from audio.math.interpolation import InterpolationKind, logx_interpolation_model
 from audio.math.pid import PidController, TimedValue
 from audio.math.rms import RMS, RMS_MODE, RMSResult
-from audio.math.voltage import VdBu_to_Vrms, Vpp_to_Vrms, calculate_gain_dB
+from audio.math.voltage import VdBu_to_Vrms, Vpp_to_Vrms, calculate_gain_db
 from audio.model.sampling import VoltageSampling, VoltageSamplingV2
 from audio.model.sweep import SweepData
 from audio.usb.usbtmc import ResourceManager, UsbTmc
@@ -500,7 +500,7 @@ def plot_from_csv(
             len(x_frequency)
             * (cfg.interpolation_rate if cfg.interpolation_rate is not None else 5),
         ),
-        kind=INTERPOLATION_KIND.CUBIC,
+        kind=InterpolationKind.CUBIC,
     )
 
     xy_sampled = [x_frequency, y_dBV, "o"]
@@ -769,7 +769,7 @@ def config_set_level(
                 approx=result.rms,
             )
 
-            gain_dB: float = calculate_gain_dB(
+            gain_dB: float = calculate_gain_db(
                 result.rms,
                 Vpp_to_Vrms(voltage_amplitude),
             )
@@ -1159,7 +1159,7 @@ def config_set_level_v2(
                 approx=rms_dut.rms,
             )
 
-            gain_dB: float = calculate_gain_dB(rms_ref.rms, rms_dut.rms)
+            gain_dB: float = calculate_gain_db(rms_ref.rms, rms_dut.rms)
 
             gain_dB_list.append(gain_dB)
 
@@ -1540,7 +1540,7 @@ def config_balanced_set_level_v2(
             sampling_frequency=Fs,
         ).augment_interpolation(
             interpolation_rate_rms,
-            interpolation_mode=INTERPOLATION_KIND.CUBIC,
+            interpolation_mode=InterpolationKind.CUBIC,
         )
 
         voltages_sampling_dut_raw: list[float] = []
@@ -1557,7 +1557,7 @@ def config_balanced_set_level_v2(
             sampling_frequency=Fs,
         ).augment_interpolation(
             interpolation_rate_rms,
-            interpolation_mode=INTERPOLATION_KIND.CUBIC,
+            interpolation_mode=InterpolationKind.CUBIC,
         )
 
         rms_ref: float = RMS.rms_v3(
@@ -1590,7 +1590,7 @@ def config_balanced_set_level_v2(
                 approx=rms_dut,
             )
 
-            gain_dB: float = calculate_gain_dB(rms_ref, rms_dut)
+            gain_dB: float = calculate_gain_db(rms_ref, rms_dut)
 
             gain_dB_list.append(gain_dB)
 

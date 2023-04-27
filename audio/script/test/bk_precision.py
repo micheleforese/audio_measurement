@@ -13,9 +13,9 @@ def bk_precision():
     import pyvisa
     from rich.panel import Panel
 
-    from audio.utility.scpi import Function, SCPI_v2
+    from audio.utility.scpi import Function, ScpiV2
 
-    scpi = SCPI_v2()
+    scpi = ScpiV2()
 
     rm = pyvisa.ResourceManager("@py")
     rm.list_resources()
@@ -30,7 +30,7 @@ def bk_precision():
     )
     dev_elec_load.timeout = 5000
     dev_elec_load.write(scpi.source.resistance(166))
-    dev_elec_load.write(scpi.source.input(Switch.ON))
+    dev_elec_load.write(scpi.source.input_(Switch.ON))
     dev_elec_load.write(scpi.source.function(Function.RESISTANCE))
     dev_elec_load.write(scpi.sense.average.count(16))
 

@@ -6,7 +6,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 
-class INTERPOLATION_KIND(enum.Enum):
+class InterpolationKind(enum.Enum):
     LINEAR = "linear"
     NEAREST = "nearest"
     ZERO = "zero"
@@ -21,26 +21,26 @@ def interpolation_model(
     xx: list[float],
     yy: list[float],
     n_points: int,
-    kind: INTERPOLATION_KIND = INTERPOLATION_KIND.LINEAR,
+    kind: InterpolationKind = InterpolationKind.LINEAR,
 ):
     intrp_model = interp1d(xx, yy, kind=kind.value)
 
-    x_interpolated = np.linspace(
+    x_interpolated: np.ndarray[np.float64] = np.linspace(
         min(xx),
         max(xx),
         n_points,
     )
 
-    y_interpolated: np.ndarray = intrp_model(x_interpolated)
+    y_interpolated: np.ndarray[np.float64] = intrp_model(x_interpolated)
 
-    return x_interpolated, y_interpolated
+    return x_interpolated.tolist(), y_interpolated.tolist()
 
 
 def logx_interpolation_model(
     x_log: list[float],
     yy: list[float],
     n_points: int,
-    kind: INTERPOLATION_KIND = INTERPOLATION_KIND.LINEAR,
+    kind: InterpolationKind = InterpolationKind.LINEAR,
 ) -> tuple[list[float], list[float]]:
     x_log = [np.log10(x) for x in x_log]
 
