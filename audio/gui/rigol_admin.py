@@ -78,7 +78,7 @@ class RigolAdminGUI:
 
     channels: list[str] = [
         "cDAQ9189-1CDBE0AMod5/ai1",
-        "cDAQ9189-1CDBE0AMod5/ai2",
+        "cDAQ9189-1CDBE0AMod5/ai3",
     ]
 
     amplitude_mode: VoltageMode

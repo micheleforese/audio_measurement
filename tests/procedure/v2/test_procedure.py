@@ -64,7 +64,7 @@ def test_v2_procedure():
         PB_test_id = response_data["id"]
 
     channel_ref = Channel("cDAQ9189-1CDBE0AMod5/ai1", "Ref")
-    channel_dut = Channel("cDAQ9189-1CDBE0AMod5/ai2", "DUT")
+    channel_dut = Channel("cDAQ9189-1CDBE0AMod5/ai3", "DUT")
 
     sampling_config = SweepConfig(
         RigolConfig(),
@@ -101,8 +101,8 @@ def test_v2_procedure():
             channels=[channel_ref, channel_dut],
         ),
         SamplingConfig(
-            Fs_multiplier=50,
-            points_per_decade=50,
+            Fs_multiplier=51,
+            points_per_decade=5,
             number_of_samples=200,
             number_of_samples_max=1_000,
             frequency_min=10,
@@ -771,10 +771,10 @@ def test_v2_balanced_procedure() -> None:
         ),
         SamplingConfig(
             Fs_multiplier=51,
-            points_per_decade=100,
-            number_of_samples=400,
+            points_per_decade=5,
+            number_of_samples=800,
             number_of_samples_max=1_000,
-            frequency_min=10,
+            frequency_min=20,
             frequency_max=200_000,
             interpolation_rate=50,
             delay_measurements=0,
@@ -1026,8 +1026,8 @@ def make_balanced_graph_dB_phase(
 
     for _freq, volts_ref, volts_dut in zip(
         frequencies,
-        voltages_dut,
         voltages_ref,
+        voltages_dut,
         strict=True,
     ):
         voltage_sampling_ref = volts_ref.augment_interpolation(
@@ -1049,6 +1049,14 @@ def make_balanced_graph_dB_phase(
             console.log(f"{e}")
 
             plt.close()
+            plt.plot(voltage_sampling_ref.voltages, ".-", color="blue")
+            plt.plot(voltage_sampling_dut.voltages, ".-", color="red")
+            plt.show()
+            plt.close()
+
+        if offset_phase is None:
+            plt.close()
+            plt.title(f"freq: {_freq}")
             plt.plot(voltage_sampling_ref.voltages, ".-", color="blue")
             plt.plot(voltage_sampling_dut.voltages, ".-", color="red")
             plt.show()

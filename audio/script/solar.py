@@ -47,10 +47,10 @@ class PanelCharacterizationSweepTable:
 
     def __init__(self: Self) -> None:
         self._table = Table(
-            Column(r"Voltage Set [mV]", justify="right"),
-            Column(r"Voltage Read [mV]", justify="right"),
-            Column(r"Current [mA]", justify="right"),
-            Column(r"Power [mW]", justify="right"),
+            Column(r"Voltage Set \[mV]", justify="right"),
+            Column(r"Voltage Read \[mV]", justify="right"),
+            Column(r"Current \[mA]", justify="right"),
+            Column(r"Power \[mW]", justify="right"),
             Column(r"Voltage Percentage [%]", justify="right"),
             title="Solar Panel Characterization Sweep",
         )
@@ -63,7 +63,7 @@ class PanelCharacterizationSweepTable:
             f"{panel_characterization_data.voltage_set:.5f}",
             f"{panel_characterization_data.voltage_read:.5f}",
             f"{panel_characterization_data.current:.5f}",
-            f"{panel_characterization_data.power:.5%}",
+            f"{panel_characterization_data.power:.5}",
             f"{panel_characterization_data.voltage_percentage:3.2%}",
         )
         return self
@@ -80,10 +80,10 @@ class PanelCharacterizationTable:
     def __init__(self: Self) -> None:
         self._table = Table(
             Column(r"Lux [lx]", justify="right"),
-            Column(r"Open Voltage [mV]", justify="right"),
-            Column(r"MPPT Voltage [mV]", justify="right"),
-            Column(r"MPPT Current [mA]", justify="right"),
-            Column(r"MPPT Power [mW]", justify="right"),
+            Column(r"Open Voltage \[mV]", justify="right"),
+            Column(r"MPPT Voltage \[mV]", justify="right"),
+            Column(r"MPPT Current \[mA]", justify="right"),
+            Column(r"MPPT Power \[mW]", justify="right"),
             Column(r"MPPT Voltage Percentage [%]", justify="right"),
             title="Solar Panel Characterization",
         )
@@ -442,7 +442,7 @@ def solar_graph(
 
 @click.command()
 def lux() -> None:
-    lux_meter = LightMeter(device_port="/dev/ttyUSB1")
+    lux_meter = LightMeter(device_port="/dev/ttyUSB0")
     data: int | None = lux_meter.read()
     console.log(data)
 
@@ -583,7 +583,7 @@ def lux_pid(
         current_max=0.1,
         time_delay=1,
     )
-    lux_meter = LightMeter(device_port="/dev/ttyUSB1")
+    lux_meter = LightMeter(device_port="/dev/ttyUSB0")
 
     table = Table(
         Column("Iteration", justify="right"),
@@ -712,7 +712,7 @@ def lux_pid_custom(
         current_max=0.1,
         time_delay=1,
     )
-    lux_meter = LightMeter(device_port="/dev/ttyUSB1")
+    lux_meter = LightMeter(device_port="/dev/ttyUSB0")
 
     voltage_set: int = voltage_start
     korad.set_current(0.1)
@@ -781,7 +781,6 @@ def lux_pid_custom(
 @click.option("--min_lux", type=int, default=20)
 @click.option("--max_lux", type=int, default=1000)
 @click.option("--n_points", type=int, default=10)
-@click.option("--n_points", type=int, default=10)
 @click.option("--n_points_sweep", type=int, default=20)
 @click.option("--show_graphs", is_flag=True)
 def panel_characterization(
@@ -803,6 +802,7 @@ def panel_characterization(
 
     x_lux: list[float] = lux_range.tolist()
     y_max_power: list[float] = []
+    z_mppt_percentage: list[float] = []
 
     panel_characterization_table = PanelCharacterizationTable()
 
@@ -820,7 +820,10 @@ def panel_characterization(
             PanelCharacterizationTable().add_row(panel_characterization).table,
         )
         _max_power: float = panel_characterization.mppt_power
+        _mppt_percentage: float = panel_characterization.mppt_voltage_percentage
+
         y_max_power.append(_max_power)
+        z_mppt_percentage.append(_mppt_percentage)
 
         panel_characterization_table.add_row(panel_characterization)
 
@@ -835,13 +838,19 @@ def panel_characterization(
 
     korad.power_off()
 
-    panel_characterization_graph(title=title, x_lux=x_lux, y_max_power=y_max_power)
+    panel_characterization_graph(
+        title=title,
+        x_lux=x_lux,
+        y_max_power=y_max_power,
+        z_mppt_percentage=z_mppt_percentage,
+    )
 
 
 def panel_characterization_graph(
     title: str,
     x_lux: list[float],
     y_max_power: list[float],
+    z_mppt_percentage: list[float],
 ) -> None:
     plt.close("all")
 
@@ -851,10 +860,15 @@ def panel_characterization_graph(
 
     graph.plot(x_lux, y_max_power, ".-")
 
-    for x, y in zip(x_lux, y_max_power, strict=True):
+    for lux, power, percentage_voltage in zip(
+        x_lux,
+        y_max_power,
+        z_mppt_percentage,
+        strict=True,
+    ):
         graph.annotate(
-            f"({x:.0f},{y:.5f})",
-            xy=(x, y),
+            f"({lux:.0f} lux, {power:.3f} mW, {percentage_voltage:.1%} VOC)",
+            xy=(lux, power),
             textcoords="offset points",  # how to position the text
             xytext=(0, 10),  # distance from text to points (x,y)
             ha="center",  # horizontal alignment can be left, right or center

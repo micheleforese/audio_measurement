@@ -13,7 +13,7 @@ from rich.table import Column, Table
 from audio.config.sweep import SweepConfig
 from audio.console import console
 from audio.constant import APP_HOME
-from audio.database.db import Database
+from audio.database.db import Database, DbSweepConfig
 from audio.device.cdaq import Ni9223
 from audio.logging import log
 from audio.math.algorithm import LogarithmicScale
@@ -300,7 +300,7 @@ def sweep(
         datetime.now(),
         "Sweep Input/Output",
     )
-    db.insert_sweep_config_data(
+    sweep_config_data: DbSweepConfig = DbSweepConfig(
         sweep_id,
         config.rigol.amplitude_peak_to_peak,
         config.sampling.frequency_min,
@@ -310,6 +310,7 @@ def sweep(
         config.sampling.Fs_multiplier,
         config.sampling.delay_measurements,
     )
+    db.insert_sweep_config_data(sweep_config_data)
 
     PB_sweeps_id: str | None = None
     url = "http://127.0.0.1:8090/api/collections/sweeps/records"
@@ -910,7 +911,7 @@ def sweep_balanced(
         datetime.now(),
         "Sweep Input/Output",
     )
-    db.insert_sweep_config_data(
+    sweep_config_data: DbSweepConfig = DbSweepConfig(
         sweep_id,
         config.rigol.amplitude_peak_to_peak,
         config.sampling.frequency_min,
@@ -920,6 +921,7 @@ def sweep_balanced(
         config.sampling.Fs_multiplier,
         config.sampling.delay_measurements,
     )
+    db.insert_sweep_config_data(sweep_config_data)
 
     PB_sweeps_id: str | None = None
     url = "http://127.0.0.1:8090/api/collections/sweeps/records"
