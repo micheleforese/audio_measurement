@@ -7,7 +7,14 @@ from audio.script.plot import plot
 from audio.script.procedure import procedure
 from audio.script.rigol import rigol
 from audio.script.set_level import set_level
-from audio.script.solar import lux, lux_find, lux_set, panel_characterization, solar
+from audio.script.solar import (
+    find_max_power,
+    lux,
+    lux_find,
+    lux_set,
+    panel_characterization,
+    solar,
+)
 from audio.script.sweep import sweep
 from audio.script.sweep_debug import sweep_debug
 from audio.script.test import test
@@ -39,6 +46,7 @@ cli.add_command(solar)
 cli.add_command(lux)
 cli.add_command(lux_set)
 cli.add_command(lux_find)
+cli.add_command(find_max_power)
 cli.add_command(panel_characterization)
 
 # Generator
