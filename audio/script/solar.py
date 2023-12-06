@@ -3,6 +3,8 @@ from __future__ import annotations
 import sys
 import time
 from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
 from typing import Self
 
 import click
@@ -10,17 +12,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pyvisa
 import serial
-from extech.light_meter import LightMeter
+from audio.console import console
+from audio.device.extech import ExtechLightMeter
+from audio.math import percentage_error
+from audio.math.pid import PidController, TimedValue
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from pyvisa.resources.tcpip import TCPIPInstrument
 from rich.live import Live
 from rich.prompt import Prompt
 from rich.table import Column, Table
-
-from audio.console import console
-from audio.math import percentage_error
-from audio.math.pid import PidController, TimedValue
 
 
 @dataclass()
@@ -31,6 +32,7 @@ class PanelCharacterizationData:
     mppt_current: float | None
     mppt_power: float | None
     mppt_voltage_percentage: float | None
+    mppt_voc: float | None
 
 
 @dataclass()
@@ -71,6 +73,9 @@ class PanelCharacterizationSweepTable:
     @property
     def table(self: Self) -> Table:
         return self._table
+
+
+numErrors = 0
 
 
 @dataclass()
@@ -301,6 +306,7 @@ def solar_find_max_power(
     *,
     show_graph: bool = False,
     lux: int | None = None,
+    output_graph_folder: Path | None = None,
 ) -> PanelCharacterizationData:
     solar_panel_sweep_table = PanelCharacterizationSweepTable()
     console.log(rohde.identify())
@@ -308,14 +314,14 @@ def solar_find_max_power(
     rohde.voltage_dvm_enable()
     rohde.output_mode_sink()
 
-    time.sleep(0.5)
+    time.sleep(1)
 
     voltage_dvm: float = rohde.measure_voltage_dvm()
     console.log("VOLT:DVM", f"{voltage_dvm:f}")
 
     rohde.output_state_on()
 
-    time.sleep(0.2)
+    time.sleep(0.5)
 
     x_voltage: list[float] = []
     y_voltage: list[float] = []
@@ -333,37 +339,61 @@ def solar_find_max_power(
 
     time.sleep(0.5)
 
-    with Live(
-        solar_panel_sweep_table.table,
-        console=console,
-        vertical_overflow="crop",
-        screen=True,
-    ):
-        for voltage_set in voltage_range:
-            x_voltage.append(voltage_set)
+    #    with Live(
+    #        solar_panel_sweep_table.table,
+    #        console=console,
+    #        vertical_overflow="crop",
+    #        screen=True,
+    #    ):
+    for voltage_set in voltage_range:
+        x_voltage.append(voltage_set)
+        #        time.sleep(0.03)
+        #        rohde.source_voltage_set(voltage_set)
+
+        console.print(".", end="")
+        measures_ok: bool = False
+        while not measures_ok:
             rohde.source_voltage_set(voltage_set)
             time.sleep(0.3)
-
             voltage_read: float = rohde.measure_voltage()
-            y_voltage.append(voltage_read)
-
+            #            console.print(",", end="")
+            time.sleep(0.01)
             current: float = -rohde.measure_current() * 1000
-            y_current.append(current)
-
+            #            console.print(":", end="")
+            time.sleep(0.01)
             power: float = -rohde.measure_power() * 1000
-            y_power.append(power)
+            #            console.print(";", end="")
+            #            console.print(voltage_read, current, power)
+            if current < 0:
+                console.print("Current < 0!", current, end="")
+            if power < 0:
+                console.print("Power < 0!", power, end="")
+            if power > 0 and current > 0:
+                measures_ok = True
+            else:
+                console.print(" Ancora Errore!", end="")
+                numErrors = numErrors + 1
 
-            voltage_percentage: float = voltage_set / voltage_dvm
-            x_voltage_percentage.append(voltage_percentage)
+        y_voltage.append(voltage_read)
+        #        time.sleep(0.03)
+        y_current.append(current)
+        #        time.sleep(0.03)
+        y_power.append(power)
 
-            panel_characterization_sweep_data = PanelCharacterizationSweepData(
-                voltage_set=voltage_set,
-                voltage_read=voltage_read,
-                current=current,
-                power=power,
-                voltage_percentage=voltage_percentage,
-            )
-            solar_panel_sweep_table.add_row(panel_characterization_sweep_data)
+        voltage_percentage: float = voltage_set / voltage_dvm
+        #        time.sleep(0.03)
+        x_voltage_percentage.append(voltage_percentage)
+        #        time.sleep(0.03)
+
+        panel_characterization_sweep_data = PanelCharacterizationSweepData(
+            voltage_set=voltage_set,
+            voltage_read=voltage_read,
+            current=current,
+            power=power,
+            voltage_percentage=voltage_percentage,
+        )
+        time.sleep(0.03)
+        solar_panel_sweep_table.add_row(panel_characterization_sweep_data)
 
     rohde.output_state_off()
     rohde.system_local()
@@ -389,21 +419,24 @@ def solar_find_max_power(
         mppt_current=mppt_current,
         mppt_power=mppt_power,
         mppt_voltage_percentage=mppt_voltage_percentage,
+        mppt_voc=voltage_dvm,
     )
 
-    if show_graph:
-        solar_graph(
-            title="Solar Max Power{}".format(
-                f" [lux: {lux}]" if lux is not None else "",
-            ),
-            voltage_dvm=voltage_dvm,
-            x_voltage=x_voltage,
-            y_voltage=y_voltage,
-            max_power_percentage=mppt_voltage_percentage,
-            y_current=y_current,
-            y_power=y_power,
-            max_power=_max_power,
-        )
+    solar_graph(
+        title="Solar Max Power{}".format(
+            f" [lux: {lux}]" if lux is not None else "",
+        ),
+        voltage_dvm=voltage_dvm,
+        x_voltage=x_voltage,
+        y_voltage=y_voltage,
+        max_power_percentage=mppt_voltage_percentage,
+        y_current=y_current,
+        y_power=y_power,
+        max_power=_max_power,
+        output_graph_folder=output_graph_folder,
+        show_graph=show_graph,
+    )
+
     return panel_characterization
 
 
@@ -416,8 +449,11 @@ def solar_graph(
     y_current: list[float],
     y_power: list[float],
     max_power: float,
+    *,
+    output_graph_folder: Path | None = None,
+    show_graph: bool = False,
 ) -> None:
-    fig, axs = plt.subplots(3)
+    fig, axs = plt.subplots(3, figsize=(16, 8), dpi=300)
     fig.suptitle(title + f" [Open Voltage:{voltage_dvm}]")
 
     x_voltage = [(v / voltage_dvm) * 100 for v in x_voltage]
@@ -428,7 +464,11 @@ def solar_graph(
         color="green",
         label=f"V - MAX Percentage: {max_power_percentage:0.1%}%",
     )
+    axs[0].axvline(max_power_percentage * 100, linestyle="--", color="black")
+
     axs[1].plot(x_voltage, y_current, color="red", label="Current [mA]")
+    axs[1].axvline(max_power_percentage * 100, linestyle="--", color="black")
+
     axs[2].plot(
         x_voltage,
         y_power,
@@ -436,16 +476,23 @@ def solar_graph(
         label=f"P - MAX Power: {max_power:0.6f} mW",
     )
     axs[2].axvline(max_power_percentage * 100, linestyle="--", color="black")
+
     for ax in axs:
         ax.legend(loc="best")
         ax.grid(visible=True, which="both", axis="both")
-    plt.show()
+
+    if output_graph_folder is not None:
+        fig.savefig(output_graph_folder)
+
+    if show_graph:
+        plt.show()
+
     plt.close()
 
 
 @click.command()
 def lux() -> None:
-    lux_meter = LightMeter(device_port="/dev/ttyUSB0")
+    lux_meter = ExtechLightMeter(device_port="/dev/ttyUSB0")
     data: int | None = lux_meter.read()
     console.log(data)
 
@@ -485,7 +532,7 @@ def lux_find(lux: int) -> None:
         current_max=1.4,
         time_delay=0.5,
     )
-    lux_meter = LightMeter(device_port="/dev/ttyUSB0")
+    lux_meter = ExtechLightMeter(device_port="/dev/ttyUSB0")
     pid = PidController(
         lux,
         controller_gain=0.0025,
@@ -582,7 +629,7 @@ class KoradPowerSupplyKA6003P:
 def lux_pid(
     pid: PidController,
     korad: KoradPowerSupplyKA6003P,
-    lux_meter: LightMeter,
+    lux_meter: ExtechLightMeter,
     target_lux: int,
     voltage_start: float,
     *,
@@ -615,9 +662,10 @@ def lux_pid(
 
     lux_found: bool = False
     iteration: int = 0
-    live.start()
+    # live.start()
     while not lux_found:
         time.sleep(0.2)
+        console.print(".", end="")
         lux_read: int | None = lux_meter.read()
         if lux_read is None:
             live.console.log("ERROR: lux read none.")
@@ -716,7 +764,7 @@ def lux_pid_custom(
         current_max=1.2,
         time_delay=1,
     )
-    lux_meter = LightMeter(device_port="/dev/ttyUSB0")
+    lux_meter = ExtechLightMeter(device_port="/dev/ttyUSB0")
 
     voltage_set: int = voltage_start
     korad.set_current(1.2)
@@ -810,31 +858,54 @@ def find_max_power(
 
 
 @click.command()
-@click.option("--min_lux", type=int, default=20)
-@click.option("--max_lux", type=int, default=1000)
+@click.option(
+    "--min_lux",
+    type=int,
+    default=20,
+    help="Minimum Measure Lux Value",
+)
+@click.option(
+    "--max_lux",
+    type=int,
+    default=1000,
+    help="maximum Measure Lux Value",
+)
 @click.option("--n_points", type=int, default=10)
-@click.option("--n_points_sweep", type=int, default=20)
+@click.option(
+    "--n_points_mppt",
+    type=int,
+    default=20,
+    help="Number of Sweep points for MPPT (Maximum Power Point Tracking)",
+)
 @click.option("--show_graphs", is_flag=True)
 def panel_characterization(
     min_lux: int,
     max_lux: int,
     n_points: int,
-    n_points_sweep: int,
+    n_points_mppt: int,
     *,
     show_graphs: bool,
 ) -> None:
     title: str = Prompt.ask("Enter the title for the graph")
+
+    date_now: str = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+
+    folder_name: Path = Path(f"{date_now} {title}")
+
     lux_range = np.linspace(start=min_lux, stop=max_lux, num=n_points, endpoint=True)
 
-    console.print("title:", title)
+    console.print("Folder:", folder_name.as_posix())
     console.print("min_lux:", min_lux)
     console.print("max_lux:", max_lux)
     console.print("n_points:", n_points)
     console.print("lux_range:", lux_range)
 
+    folder_name.mkdir(parents=True, exist_ok=True)
+
     x_lux: list[float] = lux_range.tolist()
     y_max_power: list[float] = []
     z_mppt_percentage: list[float] = []
+    w_mppt_voc: list[float] = []
 
     panel_characterization_table = PanelCharacterizationTable()
 
@@ -842,32 +913,33 @@ def panel_characterization(
 
     korad = KoradPowerSupplyKA6003P(
         device_port="/dev/ttyACM0",
-        voltage_max=48,
+        voltage_max=48.5,
         current_max=1.3,
         time_delay=1,
     )
-    lux_meter = LightMeter(device_port="/dev/ttyUSB0")
+    lux_meter = ExtechLightMeter(device_port="/dev/ttyUSB0")
     rohde = RohdeSchwarzNGU201("TCPIP0::192.168.10.233::inst0::INSTR")
 
     for lux in lux_range:
-        # lux_pid_custom(int(lux), 2, voltage_start)
         target_lux = int(lux)
         pid = PidController(
             target_lux,
-            controller_gain=0.0025,
+            controller_gain=0.0045,
             tau_integral=0.5,
-            tau_derivative=0.015,
+            tau_derivative=0.02,
             controller_output_zero=voltage_start,
         )
         lux_pid(pid, korad, lux_meter, target_lux, voltage_start, max_delta_lux=2)
 
         panel_characterization: PanelCharacterizationData = solar_find_max_power(
             rohde,
-            n_points_sweep,
+            n_points_mppt,
             show_graph=show_graphs,
             lux=lux,
+            output_graph_folder=folder_name / f"{title} - {target_lux} Lux.png",
         )
         panel_characterization.lux = lux
+        w_mppt_voc.append(panel_characterization.mppt_voc)
 
         console.print(
             PanelCharacterizationTable().add_row(panel_characterization).table,
@@ -881,6 +953,7 @@ def panel_characterization(
         panel_characterization_table.add_row(panel_characterization)
 
     console.print(panel_characterization_table.table)
+    console.print("number of NGU201 Errors = ", numErrors)
 
     korad.power_off()
 
@@ -889,6 +962,8 @@ def panel_characterization(
         x_lux=x_lux,
         y_max_power=y_max_power,
         z_mppt_percentage=z_mppt_percentage,
+        w_mppt_voc=w_mppt_voc,
+        output_graph_folder=folder_name / f"{title}.png",
     )
 
 
@@ -897,27 +972,36 @@ def panel_characterization_graph(
     x_lux: list[float],
     y_max_power: list[float],
     z_mppt_percentage: list[float],
+    w_mppt_voc: list[float],
+    *,
+    output_graph_folder: Path | None = None,
+    show_graph: bool = False,
 ) -> None:
     plt.close("all")
 
-    sub_plot: tuple[Figure, Axes] = plt.subplots(1)
+    sub_plot: tuple[Figure, Axes] = plt.subplots(1, figsize=(16, 8), dpi=300)
     fig, graph = sub_plot
     fig.suptitle(title)
 
     graph.plot(x_lux, y_max_power, ".-")
 
-    for lux, power, percentage_voltage in zip(
+    for lux, power, percentage_voltage, mppt_voc in zip(
         x_lux,
         y_max_power,
         z_mppt_percentage,
+        w_mppt_voc,
         strict=True,
     ):
         graph.annotate(
-            f"({lux:.0f} lux, {power:.3f} mW, {percentage_voltage:.1%} VOC)",
+            f"({lux:.0f} lux, {power:.3f} mW, {percentage_voltage:.1%} VOC [{mppt_voc:.3f}])",
             xy=(lux, power),
             textcoords="offset points",  # how to position the text
             xytext=(0, 10),  # distance from text to points (x,y)
             ha="center",  # horizontal alignment can be left, right or center
         )
 
-    plt.show()
+    if output_graph_folder is not None:
+        fig.savefig(output_graph_folder)
+
+    if show_graph:
+        plt.show()
