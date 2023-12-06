@@ -14,13 +14,13 @@ tests/**/*.csv
 tests/**/*.png
 
 .pytest_cache
-env
+.venv
 
 **/*.egg-info
+dist
 
 # Test script
 /audio-test
-
 
 # Docs
 /docs/site
