@@ -888,7 +888,7 @@ def panel_characterization(
 ) -> None:
     title: str = Prompt.ask("Enter the title for the graph")
 
-    date_now: str = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+    date_now: str = datetime.now().strftime("[%Y-%m-%d %H-%M-%S]")
 
     folder_name: Path = Path(f"{date_now} {title}")
 

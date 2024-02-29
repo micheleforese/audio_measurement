@@ -37,7 +37,10 @@ from audio.sampling import (
 from audio.sweep import sweep, sweep_balanced, sweep_balanced_single, sweep_single
 from audio.utility.timer import Timer
 
-
+def create_database_v2():
+    db = Database()
+    db.create_database()
+    
 def test_v2_procedure():
     db = Database()
     test_id = db.insert_test(

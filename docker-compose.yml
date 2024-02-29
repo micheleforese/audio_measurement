@@ -27,4 +27,4 @@ services:
       - '3306'
       - '33060'
     volumes:
-      - ./data/db/mysql:/var/lib/mysql
+      - /audio/db/mysql:/var/lib/mysql

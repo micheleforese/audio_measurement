@@ -78,12 +78,15 @@ class Database:
     def __init__(self: Self) -> None:
         try:
             db_auth: dict = json.loads(APP_DB_AUTH_PATH.read_text())
+            console.print(db_auth)
             self.connection = MySQLConnection(
                 host=db_auth.get("host"),
                 port=db_auth.get("port"),
                 user=db_auth.get("user"),
                 password=db_auth.get("password"),
             )
+            if self.connection.is_connected():
+                console.print("Connected to MySQL database")
         except mysql.connector.Error as err:
             console.log(err)
 
