@@ -62,7 +62,7 @@ class VoltageSamplingV2:
         sampling_frequency: float,
     ) -> pd.DataFrame:
         time_in_seconds_x: list[float] = [
-            n * (1 / sampling_frequency) for n in range(0, len(voltages))
+            n * (1 / sampling_frequency) for n in range(len(voltages))
         ]
         return DataFrame(
             zip(time_in_seconds_x, voltages, strict=True),

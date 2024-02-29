@@ -8,7 +8,7 @@ import rich
 @dataclass
 @rich.repr.auto
 class CacheFile:
-    database: dict[str, Path] = field(default_factory=lambda: {})
+    database: dict[str, Path] = field(default_factory=dict)
 
     def get(self: Self, key: str) -> Path | None:
         file: Path | None = self.database.get(key, None)

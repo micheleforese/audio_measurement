@@ -140,8 +140,8 @@ class Ni9223(CDAQAIDevice):
         self.task.start()
 
     def task_stop(self: Self) -> None:
-        # while not self.task.is_task_done():
-        #     pass
+        while not self.task.is_task_done():
+            pass
         self.task.stop()
 
     def task_close(self: Self) -> None:

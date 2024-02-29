@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import json
+import configparser
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -11,7 +11,6 @@ from mysql.connector.connection import MySQLConnection
 
 from audio.console import console
 from audio.constant import APP_DB_AUTH_PATH
-import configparser
 
 if TYPE_CHECKING:
     from mysql.connector.cursor import MySQLCursor
@@ -80,9 +79,9 @@ class DatabaseConfig:
     def __init__(self, config_path: Path) -> None:
         if not config_path.exists():
             config_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             # Create the file with default values
-            with open(config_path, 'w') as f:
+            with open(config_path, "w") as f:
                 default_config = """
 [Database]
 host = localhost

@@ -3,6 +3,7 @@ import math
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import click
 import matplotlib.pyplot as plt
 import numpy as np
 import requests
@@ -36,7 +37,6 @@ from audio.sampling import (
 )
 from audio.sweep import sweep, sweep_balanced, sweep_balanced_single, sweep_single
 from audio.utility.timer import Timer
-import click
 
 
 def create_database_v2():
@@ -172,7 +172,7 @@ def make_graph_ref_dut_dutrefsub_dB_phase(
     plt.suptitle(f"ID: {sweep_id}, dB: {dB_offset:0.5f}, comment: {comment}")
     plt.style.use("ggplot")
 
-    freq_volts_ref = zip(frequencies, voltages_ref)
+    freq_volts_ref = zip(frequencies, voltages_ref, strict=False)
 
     rms_ref: list[RMSResult] = []
 
@@ -185,7 +185,7 @@ def make_graph_ref_dut_dutrefsub_dB_phase(
         rms = RMS.rms_v2(voltage_sampling, interpolation_rate=50)
         rms_ref.append(rms)
 
-    for freq_ref, rms_result in zip(frequencies, rms_ref):
+    for freq_ref, rms_result in zip(frequencies, rms_ref, strict=False):
         console.log(
             f"[DATA]: freq: {freq_ref.frequency:.05f}, rms: {rms_result.rms:.05f}",
         )
@@ -201,7 +201,7 @@ def make_graph_ref_dut_dutrefsub_dB_phase(
     file = directory / f"{datetime.now().strftime('%Y-%m-%dT%H-%M-%SZ')}.jpeg"
 
     # DUT
-    freq_volts_dut = zip(frequencies, voltages_dut)
+    freq_volts_dut = zip(frequencies, voltages_dut, strict=False)
 
     rms_dut: list[RMSResult] = []
 
@@ -214,7 +214,7 @@ def make_graph_ref_dut_dutrefsub_dB_phase(
         rms = RMS.rms_v2(voltage_sampling, interpolation_rate=50)
         rms_dut.append(rms)
 
-    for freq_ref, rms_result in zip(frequencies, rms_dut):
+    for freq_ref, rms_result in zip(frequencies, rms_dut, strict=False):
         console.log(
             f"[DATA]: freq: {freq_ref.frequency:.05f}, rms: {rms_result.rms:.05f}",
         )
@@ -233,7 +233,7 @@ def make_graph_ref_dut_dutrefsub_dB_phase(
 
     rms_dut_sub_ref: list[float] = []
 
-    for ref, dut in zip(rms_ref, rms_dut):
+    for ref, dut in zip(rms_ref, rms_dut, strict=False):
         rms_dut_sub_ref.append(dut.rms - ref.rms)
 
     axis_dut_sub_ref.semilogx(
@@ -246,7 +246,7 @@ def make_graph_ref_dut_dutrefsub_dB_phase(
 
     rms_dut_sub_ref_dB: list[float] = []
 
-    for ref, dut in zip(rms_ref, rms_dut):
+    for ref, dut in zip(rms_ref, rms_dut, strict=False):
         rms_dut_sub_ref_dB.append(20 * math.log10(dut.rms / ref.rms))
 
     rms_dut_sub_ref_dB = [rms - dB_offset for rms in rms_dut_sub_ref_dB]
@@ -276,9 +276,9 @@ def make_graph_ref_dut_dutrefsub_dB_phase(
     offset_phase_ref_dut: list[float] = []
     interpolation_rate_phase = 50
 
-    for freq, volts_ref, volts_dut in zip(frequencies, voltages_dut, voltages_ref):
+    for freq, volts_ref, volts_dut in zip(frequencies, voltages_dut, voltages_ref, strict=False):
         _, y_interpolated_ref = interpolation_model(
-            range(0, len(volts_ref.voltages)),
+            range(len(volts_ref.voltages)),
             volts_ref.voltages,
             int(len(volts_ref.voltages) * interpolation_rate_phase),
             kind=InterpolationKind.CUBIC,
@@ -289,7 +289,7 @@ def make_graph_ref_dut_dutrefsub_dB_phase(
             sampling_frequency=freq.sampling_frequency * interpolation_rate_phase,
         )
         _, y_interpolated_dut = interpolation_model(
-            range(0, len(volts_dut.voltages)),
+            range(len(volts_dut.voltages)),
             volts_dut.voltages,
             int(len(volts_dut.voltages) * interpolation_rate_phase),
             kind=InterpolationKind.CUBIC,
@@ -358,7 +358,7 @@ def make_graph_dB_phase(
     voltage_sampling_dut_list: list[VoltageSamplingV2] = []
 
     # Ref
-    freq_volts_ref = zip(frequencies, voltages_ref)
+    freq_volts_ref = zip(frequencies, voltages_ref, strict=False)
     rms_ref: list[float] = []
     for freq_ref, volt_ref in freq_volts_ref:
         voltage_sampling = VoltageSamplingV2.from_list(
@@ -382,7 +382,7 @@ def make_graph_dB_phase(
     log.info(f"TIME CALCULATION REF RMS: {timer_lap}")
 
     # DUT
-    freq_volts_dut = zip(frequencies, voltages_dut)
+    freq_volts_dut = zip(frequencies, voltages_dut, strict=False)
     rms_dut: list[RMSResult] = []
     for freq_ref, volt_dut in freq_volts_dut:
         voltage_sampling = VoltageSamplingV2.from_list(
@@ -412,7 +412,7 @@ def make_graph_dB_phase(
     axis_dut_sub_ref_dB.tick_params(labelright=True)
 
     rms_dut_sub_ref_dB: list[float] = [
-        calculate_gain_db(ref, dut) - dB_offset for ref, dut in zip(rms_ref, rms_dut)
+        calculate_gain_db(ref, dut) - dB_offset for ref, dut in zip(rms_ref, rms_dut, strict=False)
     ]
 
     (
@@ -976,7 +976,7 @@ def make_balanced_graph_dB_phase(
     axis_dut_sub_ref_dB.tick_params(labelright=True)
 
     rms_dut_sub_ref_dB: list[float] = [
-        calculate_gain_db(ref, dut) - dB_offset for ref, dut in zip(rms_ref, rms_dut)
+        calculate_gain_db(ref, dut) - dB_offset for ref, dut in zip(rms_ref, rms_dut, strict=False)
     ]
 
     (

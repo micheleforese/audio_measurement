@@ -200,9 +200,7 @@ def create_latex_file(
 
     if debug:
         console.print(
-            '[DOCKER] - Command: \n "[bold green]{}[/bold green]"'.format(
-                docker_command_run,
-            ),
+            f'[DOCKER] - Command: \n "[bold green]{docker_command_run}[/bold green]"',
         )
 
     stdout, stderr = exec_command(docker_command_run)

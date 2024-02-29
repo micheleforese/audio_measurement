@@ -1,5 +1,6 @@
 import click
 
+from audio.procedure.analysis import analysis, balanced_analysis
 from audio.script.generator import generator
 from audio.script.gui import gui
 from audio.script.ni import ni
@@ -18,7 +19,6 @@ from audio.script.solar import (
 from audio.script.sweep import sweep
 from audio.script.sweep_debug import sweep_debug
 from audio.script.test import test
-from audio.procedure.analysis import analysis, balanced_analysis
 
 
 @click.group()

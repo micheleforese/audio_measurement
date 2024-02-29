@@ -51,7 +51,6 @@ select = [
 ignore = [
     "E501", # Line too long
 ]
-format = "grouped"
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 # fixable = ["A", "B", "C", "D", "E", "F", "..."]
 # unfixable = []

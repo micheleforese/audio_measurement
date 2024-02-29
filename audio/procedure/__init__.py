@@ -82,7 +82,7 @@ class Procedure(DecoderXML):
 class DataProcedure:
     name: str
     root: Path
-    data: dict = field(default_factory=lambda: {})
+    data: dict = field(default_factory=dict)
     cache_csv_data: CacheCsvData = field(default_factory=lambda: CacheCsvData())
     cache_file: CacheFile = field(default_factory=lambda: CacheFile())
     default_sweep_config: DefaultSweepConfig = field(

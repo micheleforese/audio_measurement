@@ -123,7 +123,7 @@ def test_database():
         y = amplitude * np.sin((2 * np.pi) * freq * x)
         return (x, y)
 
-    for freq_id, (freq, Fs) in enumerate(zip(log_scale.f_list, Fs_list)):
+    for freq_id, (freq, Fs) in enumerate(zip(log_scale.f_list, Fs_list, strict=False)):
         freq_id = db.insert_frequency(sweep_id, freq_id, freq, Fs)
 
         data_x, data_y = generate_sine_wave(freq, 1.5, Fs, 800)

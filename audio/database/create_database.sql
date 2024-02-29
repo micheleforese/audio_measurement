@@ -1,3 +1,4 @@
+-- Active: 1707302713082@@localhost@3306@audio
 CREATE DATABASE IF NOT EXISTS audio;
 
 CREATE TABLE IF NOT EXISTS audio.test(

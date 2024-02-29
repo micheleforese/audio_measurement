@@ -40,7 +40,7 @@ class DockerCLI:
 
         if user is not None:
             docker_run_command.append(
-                f"--user {str(user.user_id)}:{str(user.group)}",
+                f"--user {user.user_id!s}:{user.group!s}",
             )
 
         if volume is not None:

@@ -287,9 +287,7 @@ def sampling_curve(
         time = Timer()
         time.start()
 
-        sweep_frequency_path = measurements_path / "{}".format(
-            round(frequency, 5),
-        ).replace(".", "_", 1)
+        sweep_frequency_path = measurements_path / f"{round(frequency, 5)}".replace(".", "_", 1)
         sweep_frequency_path.mkdir(parents=True, exist_ok=True)
 
         save_file_path = sweep_frequency_path / "sample.csv"
@@ -369,7 +367,7 @@ def sampling_curve(
                 fs_list,
                 oversampling_ratio_list,
                 n_periods_list,
-                n_samples_list,
+                n_samples_list, strict=False,
             ),
         ),
         columns=[

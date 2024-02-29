@@ -145,7 +145,7 @@ def sweep_debug(
         INTERPOLATION_RATE = 10
 
         x_interpolated, y_interpolated = interpolation_model(
-            range(0, len(voltages_to_interpolate)),
+            range(len(voltages_to_interpolate)),
             voltages_to_interpolate,
             int(len(voltages_to_interpolate) * INTERPOLATION_RATE),
             kind=InterpolationKind.CUBIC,

@@ -84,7 +84,7 @@ class RMS:
                 )
 
         _, y_interpolated = interpolation_model(
-            range(0, len(voltages)),
+            range(len(voltages)),
             voltages,
             int(len(voltages) * interpolation_rate),
             kind=InterpolationKind.CUBIC,
@@ -197,7 +197,7 @@ class RMS:
             return None
 
         _, y_interpolated = interpolation_model(
-            range(0, voltages_len),
+            range(voltages_len),
             voltages,
             int(voltages_len * interpolation_rate),
             kind=interpolation_mode,

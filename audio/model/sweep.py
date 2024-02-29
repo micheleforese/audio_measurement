@@ -64,7 +64,7 @@ class SingleSweepData:
 
     @staticmethod
     def get_frequency_from_dictionary(dictionary: dict) -> float | None:
-        frequency: float | None = dictionary.get("frequency", None)
+        frequency: float | None = dictionary.get("frequency")
 
         if frequency is not None:
             frequency = float(frequency)
@@ -73,7 +73,7 @@ class SingleSweepData:
 
     @staticmethod
     def get_Fs_from_dictionary(dictionary: dict) -> float | None:
-        Fs: float | None = dictionary.get("Fs", None)
+        Fs: float | None = dictionary.get("Fs")
 
         if Fs is not None:
             Fs = float(Fs)
@@ -168,7 +168,7 @@ class SweepData:
 
     @staticmethod
     def get_amplitude_from_dictionary(dictionary: dict) -> float | None:
-        amplitude: float | None = dictionary.get("amplitude", None)
+        amplitude: float | None = dictionary.get("amplitude")
 
         if amplitude is not None:
             amplitude = float(amplitude)

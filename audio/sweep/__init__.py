@@ -203,7 +203,7 @@ def sweep_amplitude_phase(
 
         sweep_voltages_ids: list[int] = []
 
-        for channel, voltages_sweep in zip(channel_ids, voltages):
+        for channel, voltages_sweep in zip(channel_ids, voltages, strict=False):
             _id = db.insert_sweep_voltages(
                 frequency_id,
                 channel,
@@ -546,7 +546,7 @@ def sweep_single(
     rms_ref_sub_dut_list_dB: list[float] = []
 
     for _ in track(
-        range(0, n_sweep),
+        range(n_sweep),
         total=n_sweep,
         console=console,
     ):
@@ -600,6 +600,8 @@ def sweep_single(
         log.debug(
             f"[ACQUISITION]: freq: {frequency}, Fs: {Fs}, {time_acquisition_read}",
         )
+
+    nidaq.task_close()
 
     rms_ref_average = 0
 
@@ -703,7 +705,7 @@ def sweep_balanced_single(
     rms_ref_sub_dut_list_dB: list[float] = []
 
     for _ in track(
-        range(0, n_sweep),
+        range(n_sweep),
         total=n_sweep,
         console=console,
     ):
@@ -1055,8 +1057,8 @@ def sweep_balanced(
         directory.mkdir(parents=True, exist_ok=True)
 
         for PK_channel_id, voltage_data in zip(PB_channels_ids, voltages, strict=True):
-            file = directory / f"{datetime.now().strftime('%Y-%m-%dT%H-%M-%SZ')}.csv"
-            pd.DataFrame(voltage_data).to_csv(file)
+            csv_file_path = directory / f"{datetime.now().strftime('%Y-%m-%dT%H-%M-%SZ')}.csv"
+            pd.DataFrame(voltage_data).to_csv(csv_file_path)
 
             url = "http://127.0.0.1:8090/api/collections/measurements/records"
             json_data = {
@@ -1066,17 +1068,19 @@ def sweep_balanced(
                 "frequency": frequency,
                 "sampling_frequency": Fs,
             }
+            csv_file= Path.open(csv_file_path, "rb")
             response = requests.post(
                 url,
                 data=json_data,
                 files={
-                    "samples": Path.open(file, "rb"),
+                    "samples": csv_file,
                 },
                 timeout=5,
             )
+            csv_file.close()
             response_data = json.loads(response.content.decode())
             if response.status_code != 200:
-                console.log(f"[RESPONSE ERROR]: {url}")
+                console.log(f"[RESPONSE ERROR {response.status_code}]: {url}")
             else:
                 response_data["id"]
 
@@ -1091,6 +1095,8 @@ def sweep_balanced(
         log.debug(
             f"[ACQUISITION]: freq: {frequency}, Fs: {Fs}, {time_generator_write_frequency}, {time_sleep}, {time_db_insert_frequency}, {time_db_insert_sweep_voltage}, {time_acquisition_set_clock}, {time_acquisition_task_start}, {time_acquisition_read}, {time_acquisition_task_stop}",
         )
+
+    nidaq.task_close()
 
     generator.execute(
         [
