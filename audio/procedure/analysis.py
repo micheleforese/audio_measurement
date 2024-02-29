@@ -36,12 +36,16 @@ from audio.sampling import (
 )
 from audio.sweep import sweep, sweep_balanced, sweep_balanced_single, sweep_single
 from audio.utility.timer import Timer
+import click
+
 
 def create_database_v2():
     db = Database()
     db.create_database()
-    
-def test_v2_procedure():
+
+
+@click.command()
+def analysis():
     db = Database()
     test_id = db.insert_test(
         "Test Machine 1",
@@ -698,7 +702,8 @@ def test_calculation():
     )
 
 
-def test_v2_balanced_procedure() -> None:
+@click.command()
+def balanced_analysis() -> None:
     db = Database()
     test_id = db.insert_test(
         "Test Machine 1",

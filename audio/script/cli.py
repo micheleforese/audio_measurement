@@ -18,6 +18,7 @@ from audio.script.solar import (
 from audio.script.sweep import sweep
 from audio.script.sweep_debug import sweep_debug
 from audio.script.test import test
+from audio.procedure.analysis import analysis, balanced_analysis
 
 
 @click.group()
@@ -51,3 +52,12 @@ cli.add_command(panel_characterization)
 
 # Generator
 cli.add_command(generator)
+
+@click.group()
+def audio() -> None:
+    """CLI for Audio Application"""
+
+cli.add_command(audio)
+
+audio.add_command(analysis)
+audio.add_command(balanced_analysis)
