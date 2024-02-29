@@ -12,16 +12,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pyvisa
 import serial
-from audio.console import console
-from audio.device.extech import ExtechLightMeter
-from audio.math import percentage_error
-from audio.math.pid import PidController, TimedValue
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from pyvisa.resources.tcpip import TCPIPInstrument
 from rich.live import Live
 from rich.prompt import Prompt
 from rich.table import Column, Table
+
+from audio.console import console
+from audio.device.extech import ExtechLightMeter
+from audio.math import percentage_error
+from audio.math.pid import PidController, TimedValue
 
 
 @dataclass()
@@ -354,7 +355,7 @@ def solar_find_max_power(
         measures_ok: bool = False
         while not measures_ok:
             rohde.source_voltage_set(voltage_set)
-            time.sleep(0.3)
+            time.sleep(0.5)
             voltage_read: float = rohde.measure_voltage()
             #            console.print(",", end="")
             time.sleep(0.01)
