@@ -21,3 +21,8 @@ python3 -m pip install --editable .
 ## NI-DRIVER
 
 In the `driver` there are all the packages for installing the ni-daqmx driver.
+
+## Pocket Base
+```
+./pocketbase --dir "/audio/pocketbase/pb_data" --hooksDir "/audio/pocketbase/pb_hooks" --migrationsDir "/audio/pocketbase/pb_migrations" serve
+```
