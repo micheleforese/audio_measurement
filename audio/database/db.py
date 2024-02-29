@@ -11,6 +11,7 @@ from mysql.connector.connection import MySQLConnection
 
 from audio.console import console
 from audio.constant import APP_DB_AUTH_PATH
+import configparser
 
 if TYPE_CHECKING:
     from mysql.connector.cursor import MySQLCursor
@@ -70,6 +71,38 @@ class DbSweepVoltage:
     channel_id: int
     voltages: list[float]
 
+class DatabaseConfig:
+    host: str
+    port: str
+    user: str
+    password: str
+
+    def __init__(self, config_path: Path) -> None:
+        if not config_path.exists():
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Create the file with default values
+            with open(config_path, 'w') as f:
+                default_config = """
+[Database]
+host = localhost
+port = 3306
+user = root
+password = password
+"""
+                f.write(default_config)
+
+        # Load configuration using configparser
+        config = configparser.ConfigParser()
+        config.read(config_path)
+
+        # Read configuration values
+        self.host = config.get("Database", "host")
+        self.port = config.get("Database", "port")
+        self.user = config.get("Database", "user")
+        self.password = config.get("Database", "password")
+
+
 
 class Database:
     connection: MySQLConnection
@@ -77,13 +110,13 @@ class Database:
 
     def __init__(self: Self) -> None:
         try:
-            db_auth: dict = json.loads(APP_DB_AUTH_PATH.read_text())
-            console.print(db_auth)
+            db_config = DatabaseConfig(APP_DB_AUTH_PATH)
+            console.print(db_config)
             self.connection = MySQLConnection(
-                host=db_auth.get("host"),
-                port=db_auth.get("port"),
-                user=db_auth.get("user"),
-                password=db_auth.get("password"),
+                host=db_config.host,
+                port=db_config.port,
+                user=db_config.user,
+                password=db_config.password,
             )
             if self.connection.is_connected():
                 console.print("Connected to MySQL database")
